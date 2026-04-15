@@ -11,9 +11,13 @@ Run after analyze.py:
 Safe to re-run — skips insights that already have a vector stored.
 """
 
+import logging
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from database import get_connection, init_db
+
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 MODEL_NAME = "all-MiniLM-L6-v2"  # 22MB, fast, great for semantic search
 
