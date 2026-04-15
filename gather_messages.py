@@ -2,7 +2,7 @@
 
 import re
 import time
-from playwright.sync_api import BrowserContext
+from playwright.sync_api import BrowserContext, Page
 from database import insert_video, insert_pending_description
 
 # Matches the full YouTube URL including all query params (stops at whitespace)
@@ -57,6 +57,9 @@ def go_through_channel(context: BrowserContext, channel_url: str, role: str) -> 
     """
     Navigate to a Discord thread, scroll to load all messages,
     parse YouTube links, and store them in the DB.
+
+    Messages are parsed incrementally during scrolling so that any messages
+    Discord de-renders from the DOM (virtual scroll) are still captured.
     """
     page = context.new_page()
     page.goto(channel_url, wait_until="networkidle")
@@ -66,115 +69,185 @@ def go_through_channel(context: BrowserContext, channel_url: str, role: str) -> 
     page.wait_for_selector(message_list_selector, timeout=15000)
     page.wait_for_timeout(2000)  # wait for initial messages to render
 
-    print(f"[{role}] Scrolling to load all messages…")
-    _scroll_to_top(page)
-
-    messages = page.query_selector_all("li[id^='chat-messages-']")
-    print(f"[{role}] Parsing {len(messages)} message elements")
-
+    seen_msg_ids: set[str] = set()
     saved = pending = 0
 
-    for msg_el in messages:
-        time_el = msg_el.query_selector("time")
-        timestamp = time_el.get_attribute("datetime") if time_el else None
+    def flush_visible(label: str = "") -> None:
+        """Parse and persist all currently visible messages not yet seen."""
+        nonlocal saved, pending
+        messages = page.query_selector_all("li[id^='chat-messages-']")
+        for msg_el in messages:
+            msg_id = msg_el.get_attribute("id") or ""
+            if msg_id in seen_msg_ids:
+                continue
+            seen_msg_ids.add(msg_id)
 
-        content_el = msg_el.query_selector("[class*='messageContent']")
-        if not content_el:
-            continue
-        text = content_el.inner_text().strip()
-        if not text:
-            continue
+            time_el = msg_el.query_selector("time")
+            timestamp = time_el.get_attribute("datetime") if time_el else None
 
-        youtube_url, description = parse_message(text)
+            content_el = msg_el.query_selector("[class*='messageContent']")
+            if not content_el:
+                continue
+            text = content_el.inner_text().strip()
+            if not text:
+                continue
 
-        if youtube_url:
-            video_id = extract_video_id(youtube_url)
-            if video_id:
-                insert_video(
-                    video_id=video_id,
-                    video_url=youtube_url,
-                    role=role,
-                    message_timestamp=timestamp or "",
-                    video_title=description,
-                    description=description,
-                )
-                saved += 1
-                print(f"  [saved] {video_id} | {description or '(no desc)'}")
-        else:
-            if timestamp:
-                insert_pending_description(role=role, description=text, message_timestamp=timestamp)
-                pending += 1
+            youtube_url, description = parse_message(text)
+
+            if youtube_url:
+                video_id = extract_video_id(youtube_url)
+                if video_id:
+                    insert_video(
+                        video_id=video_id,
+                        video_url=youtube_url,
+                        role=role,
+                        message_timestamp=timestamp or "",
+                        video_title=description,
+                        description=description,
+                    )
+                    saved += 1
+                    print(f"  [saved] {video_id} | {description or '(no desc)'}")
+            else:
+                if timestamp:
+                    insert_pending_description(
+                        role=role, description=text, message_timestamp=timestamp
+                    )
+                    pending += 1
+
+    print(f"[{role}] Scrolling to load all messages…")
+    _load_all_messages(page, flush_visible)
+
+    # Final flush for anything visible after scrolling completes
+    flush_visible("final")
 
     print(f"[{role}] Done — {saved} videos saved, {pending} pending descriptions")
     page.close()
 
 
-def _scroll_to_top(page, max_attempts: int = 400) -> None:
+def _scroller_state(page: Page) -> dict:
+    """Return scrollTop and scrollHeight of the main chat scroller."""
+    return page.evaluate("""
+        () => {
+            const el = document.querySelector('[class*="scroller__36d07"]')
+                     || document.querySelector('[class*="scroller"][class*="auto"]');
+            return el
+                ? { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight,
+                    clientHeight: el.clientHeight }
+                : { scrollTop: 0, scrollHeight: 0, clientHeight: 0 };
+        }
+    """)
+
+
+def _load_all_messages(page: Page, flush_fn, max_attempts: int = 400) -> None:
     """
-    Scroll the Discord message list upward until all messages are loaded.
+    Load every message in a Discord thread channel using a two-phase strategy,
+    flushing visible messages to the DB after each scroll step.
 
-    Scrolls incrementally by -1500px per step rather than jumping to 0 —
-    incremental scrolling reliably triggers Discord's lazy-load whereas
-    setting scrollTop=0 directly can bypass the IntersectionObserver.
+    Phase 1 — scroll DOWN: some channels start at the oldest message (scrollTop=0)
+    and load newer ones as you advance toward the bottom.
 
-    Stops when:
-      - scrollTop reaches 0 AND message count is stable (truly at top), OR
-      - A Discord "beginning of channel" marker is visible, OR
-      - Message count has been stale for 8+ rounds (safety exit)
+    Phase 2 — scroll UP: other channels start at the newest message (bottom) and
+    load older ones as you scroll up. Also catches any remaining old messages for
+    channels that were already fully loaded by Phase 1.
+
+    Termination in each phase is driven by scrollTop position (are we actually at
+    the edge?) rather than just message-count stability, so virtual-DOM channels
+    (where Discord de-renders messages to save memory) don't stop early.
     """
-    prev_count = 0
-    stale_rounds = 0
+    try:
+        page.click("ol[data-list-id='chat-messages']", timeout=3000)
+    except Exception:
+        pass
 
-    for attempt in range(max_attempts):
-        # Scroll up by a chunk on the actual scrollable container.
-        # Discord's ol[data-list-id] has no overflow — we need its closest
-        # scrollable ancestor (div[class*="scroller"]).
-        at_top = page.evaluate("""
+    half = max_attempts // 2
+
+    def _scroll_down_step() -> None:
+        page.evaluate("""
             () => {
-                const ol = document.querySelector("ol[data-list-id='chat-messages']");
-                if (!ol) return true;
-                // Walk up to find the scrollable parent
-                let el = ol.parentElement;
-                while (el && el !== document.body) {
-                    if (el.scrollHeight > el.clientHeight) break;
-                    el = el.parentElement;
-                }
-                if (!el || el === document.body) return true;
-                el.scrollTop = Math.max(0, el.scrollTop - 1500);
-                return el.scrollTop === 0;
+                document.querySelectorAll('[class*="scroller"]').forEach(el => {
+                    if (el.scrollHeight > el.clientHeight)
+                        el.scrollTop = el.scrollHeight;
+                });
             }
         """)
+        page.keyboard.press("End")
 
-        # Wait for Discord to fetch and render older messages
-        time.sleep(2.0)
+    def _scroll_up_step() -> None:
+        page.evaluate("""
+            () => {
+                document.querySelectorAll('[class*="scroller"]').forEach(el => {
+                    if (el.scrollHeight > el.clientHeight)
+                        el.scrollTop = Math.max(0, el.scrollTop - 2000);
+                });
+            }
+        """)
+        page.keyboard.press("PageUp")
+
+    # ── Phase 1: scroll to bottom ──────────────────────────────────────────
+    prev_count = 0
+    stale_rounds = 0
+    for attempt in range(half):
+        _scroll_down_step()
+        time.sleep(2.5)
+        flush_fn()
+
+        state = _scroller_state(page)
+        at_bottom = state["scrollHeight"] - state["clientHeight"] - state["scrollTop"] < 20
 
         current_count = page.eval_on_selector_all(
             "li[id^='chat-messages-']", "els => els.length"
         )
-
-        reached_beginning = page.evaluate("""
-            () => !!document.querySelector(
-                '[class*="channelBeginning"], [class*="firstMessage"], [class*="beginning-"], [class*="welcomeCta"]'
-            )
-        """)
-
-        if reached_beginning:
-            print(f"  → Reached beginning of channel ({current_count} messages loaded)")
-            break
-
         if current_count == prev_count:
             stale_rounds += 1
-            # Only stop if we're actually at the top scroll position
-            if at_top and stale_rounds >= 3:
-                print(f"  → At scroll top, no new messages ({current_count} loaded)")
-                break
-            # Safety exit if totally stuck regardless of position
-            if stale_rounds >= 8:
-                print(f"  → No new messages after {stale_rounds} attempts ({current_count} loaded)")
+            if stale_rounds >= 4 and at_bottom:
+                print(f"  → Phase 1 stable at bottom ({current_count} visible)")
                 break
         else:
             stale_rounds = 0
-            if current_count % 50 == 0 or attempt % 20 == 0:
-                print(f"  → {current_count} messages loaded…")
+            if attempt % 5 == 0 and attempt > 0:
+                print(f"  → {current_count} messages visible (↓)…")
+        prev_count = current_count
 
+    # ── Phase 2: scroll to top ─────────────────────────────────────────────
+    at_top_rounds = 0
+    prev_count = 0
+    stale_rounds = 0
+    for attempt in range(half):
+        _scroll_up_step()
+        time.sleep(2.5)
+        flush_fn()
+
+        reached_beginning = page.evaluate(
+            "() => !!document.querySelector('[class*=\"channelBeginning\"]')"
+        )
+        if reached_beginning:
+            current_count = page.eval_on_selector_all(
+                "li[id^='chat-messages-']", "els => els.length"
+            )
+            print(f"  → Reached beginning ({current_count} visible)")
+            break
+
+        state = _scroller_state(page)
+        at_top = state["scrollTop"] <= 10
+
+        if at_top:
+            at_top_rounds += 1
+            if at_top_rounds >= 3:
+                current_count = page.eval_on_selector_all(
+                    "li[id^='chat-messages-']", "els => els.length"
+                )
+                print(f"  → scrollTop=0 for {at_top_rounds} rounds, stopping ({current_count} visible)")
+                break
+        else:
+            at_top_rounds = 0
+
+        current_count = page.eval_on_selector_all(
+            "li[id^='chat-messages-']", "els => els.length"
+        )
+        if current_count != prev_count:
+            stale_rounds = 0
+            if attempt % 5 == 0 and attempt > 0:
+                print(f"  → {current_count} messages visible (↑)…")
+        else:
+            stale_rounds += 1
         prev_count = current_count

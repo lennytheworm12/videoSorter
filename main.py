@@ -21,7 +21,7 @@ load_dotenv()
 CHANNEL_KEYS = ["TOP_URL", "JUNGLE_URL", "MID_URL", "ADC_URL", "SUPPORT_URL"]
 
 
-def stage_scrape() -> None:
+def stage_scrape(role_filter: str | None = None) -> None:
     print("\n=== STAGE 1: Scraping Discord threads ===")
 
     role_url_map: dict[str, str] = {
@@ -29,6 +29,10 @@ def stage_scrape() -> None:
         for key in CHANNEL_KEYS
         if os.environ.get(key)
     }
+
+    if role_filter:
+        role_url_map = {k: v for k, v in role_url_map.items() if k == role_filter}
+
     print(f"Channels: {list(role_url_map.keys())}")
 
     headless = os.environ.get("HEADLESS", "false").lower() == "true"
@@ -67,8 +71,10 @@ def main() -> None:
     args = set(sys.argv[1:])
     run_all = not args
 
+    role_filter = next((a.split("=")[1] for a in args if a.startswith("--role=")), None)
+
     if run_all or "--scrape" in args:
-        stage_scrape()
+        stage_scrape(role_filter=role_filter)
 
     if run_all or "--transcribe" in args:
         stage_transcribe()

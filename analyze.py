@@ -21,7 +21,7 @@ from champions import correct_names, champion_names_for_prompt
 
 load_dotenv()
 
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e2b")
 
 # ~4 chars per token. Keep chunks at 32K chars (~8K tokens) so the full prompt
 # stays well within Gemma 4 e2b's 16K context window after adding prompt overhead.

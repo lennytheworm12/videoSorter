@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e2b")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:4b")
 
 # ---------------------------------------------------------------------------
 # Canonical question templates

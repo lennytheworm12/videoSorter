@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
 load_dotenv()
 
-url = os.environ["TOP_URL"]
+url = os.environ["MID_URL"]
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
@@ -75,6 +75,96 @@ with sync_playwright() as p:
     for s in scrollables:
         print(f"  <{s['tag']}> id={s['id']!r} class={s['classList']!r} "
               f"scrollH={s['scrollHeight']} clientH={s['clientHeight']} scrollTop={s['scrollTop']}")
+
+    beginning_initially = page.evaluate("() => !!document.querySelector('[class*=\"channelBeginning\"]')")
+    print(f"\n=== channelBeginning visible initially: {beginning_initially} ===")
+
+    print("\n=== Repeatedly scroll to BOTTOM until stable ===")
+    prev = 0
+    for i in range(10):
+        page.evaluate("""
+            () => {
+                document.querySelectorAll('[class*="scroller"]').forEach(el => {
+                    if (el.scrollHeight > el.clientHeight) {
+                        el.scrollTop = el.scrollHeight;
+                    }
+                });
+            }
+        """)
+        page.wait_for_timeout(2500)
+        count = page.eval_on_selector_all("li[id^='chat-messages-']", "els => els.length")
+        beginning = page.evaluate("() => !!document.querySelector('[class*=\"channelBeginning\"]')")
+        scroller_st = page.evaluate("""
+            () => {
+                const el = document.querySelector('[class*="scroller__36d07"]');
+                if (!el) return {};
+                return { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight };
+            }
+        """)
+        print(f"  iter {i+1}: {count} messages | scrollTop={scroller_st.get('scrollTop')} scrollH={scroller_st.get('scrollHeight')} | beginning={beginning}")
+        if beginning:
+            print("  → channelBeginning found!")
+            break
+        if count == prev and i >= 2:
+            print(f"  → Stale at {count}")
+            break
+        prev = count
+
+    print("\n=== Parent chain of the ol (first 8 ancestors) ===")
+    chain = page.evaluate("""
+        () => {
+            const ol = document.querySelector("ol[data-list-id='chat-messages']");
+            if (!ol) return [];
+            const results = [];
+            let el = ol.parentElement;
+            for (let i = 0; i < 8 && el; i++) {
+                const style = window.getComputedStyle(el);
+                results.push({
+                    tag: el.tagName,
+                    id: el.id || '',
+                    classList: Array.from(el.classList).slice(0, 4).join(' '),
+                    overflow: style.overflow,
+                    overflowY: style.overflowY,
+                    scrollHeight: el.scrollHeight,
+                    clientHeight: el.clientHeight,
+                    scrollTop: el.scrollTop,
+                });
+                el = el.parentElement;
+            }
+            return results;
+        }
+    """)
+    for i, el in enumerate(chain):
+        print(f"  [{i}] <{el['tag']}> id={el['id']!r} class={el['classList']!r} "
+              f"overflow={el['overflow']!r}/{el['overflowY']!r} "
+              f"scrollH={el['scrollHeight']} clientH={el['clientHeight']} scrollTop={el['scrollTop']}")
+
+    print("\n=== All elements with overflow auto/scroll ===")
+    overflow_els = page.evaluate("""
+        () => {
+            const results = [];
+            document.querySelectorAll('*').forEach(el => {
+                const style = window.getComputedStyle(el);
+                const oy = style.overflowY;
+                if (oy === 'auto' || oy === 'scroll') {
+                    results.push({
+                        tag: el.tagName,
+                        id: el.id || '',
+                        classList: Array.from(el.classList).slice(0, 4).join(' '),
+                        overflowY: oy,
+                        scrollHeight: el.scrollHeight,
+                        clientHeight: el.clientHeight,
+                        scrollTop: el.scrollTop,
+                    });
+                }
+            });
+            return results;
+        }
+    """)
+    for el in overflow_els:
+        print(f"  <{el['tag']}> id={el['id']!r} class={el['classList']!r} "
+              f"overflowY={el['overflowY']!r} "
+              f"scrollH={el['scrollHeight']} clientH={el['clientHeight']} scrollTop={el['scrollTop']}")
 
     context.close()
     browser.close()

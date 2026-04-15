@@ -29,7 +29,7 @@ from embed import load_all_vectors
 load_dotenv()
 
 MODEL_NAME = "all-MiniLM-L6-v2"
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e2b")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:4b")
 TOP_K = 12
 
 RAG_SYSTEM_PROMPT = """
