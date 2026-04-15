@@ -12,6 +12,7 @@ dependencies = [
     "yt-dlp>=2024.1.0",
     "youtube-transcript-api>=0.6.0",
     "ollama>=0.3.0",
+    "sentence-transformers>=5.4.1",
 ]
 [tool.pyright]
 venvPath = "."

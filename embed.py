@@ -1,64 +1,126 @@
 """
 PHASE 4: Embed insights into vectors using sentence-transformers.
 
-PURPOSE:
-    Converts each insight string from the DB into a 384-dimensional numerical
-    vector that captures its semantic meaning. Similar insights end up with
-    similar vectors regardless of exact wording — this is what makes search work.
+Converts each insight string into a 384-dimensional vector that captures
+semantic meaning. Similar insights produce similar vectors regardless of
+exact wording — this is what makes semantic search work in query.py.
 
-HOW IT WORKS:
-    1. Load all insights with status='analyzed' from the DB
-    2. Run each insight string through sentence-transformers (all-MiniLM-L6-v2)
-       — a small BERT model that runs locally on your GPU
-    3. Store the resulting vector as a binary blob back in the DB alongside the insight
+Run after analyze.py:
+    python embed.py
 
-MODEL CHOICE:
-    all-MiniLM-L6-v2 — 22MB, fast, good quality for semantic search
-    Can swap to all-mpnet-base-v2 for higher quality at 2x the size/time
-
-STORAGE:
-    Vectors stored as numpy binary blobs in the insights table.
-    At ~50K insights × 384 dims × 4 bytes = ~75MB total — fits in memory easily.
-    No separate vector DB needed at this scale.
-
-DEPENDENCIES TO ADD:
-    sentence-transformers>=3.0.0
+Safe to re-run — skips insights that already have a vector stored.
 """
 
-# TODO: import sentence_transformers
-# TODO: import numpy as np
-# from database import get_connection
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from database import get_connection, init_db
 
-# MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "all-MiniLM-L6-v2"  # 22MB, fast, great for semantic search
+
+
+def _add_embedding_column() -> None:
+    """Add embedding column to insights table if it doesn't exist yet."""
+    with get_connection() as conn:
+        cols = [row[1] for row in conn.execute("PRAGMA table_info(insights)").fetchall()]
+        if "embedding" not in cols:
+            conn.execute("ALTER TABLE insights ADD COLUMN embedding BLOB")
+            conn.commit()
 
 
 def embed_insights() -> None:
-    """
-    Load all un-embedded insights from DB, generate vectors, store back.
-    Safe to re-run — skips insights that already have a vector.
-    """
-    # TODO:
-    # 1. Add `embedding BLOB` column to insights table if not exists
-    # 2. Load SentenceTransformer(MODEL_NAME) — will use GPU automatically if available
-    # 3. Fetch all insights WHERE embedding IS NULL
-    # 4. Batch encode: model.encode(texts, batch_size=64, show_progress_bar=True)
-    # 5. For each insight, serialize vector: embedding.astype(np.float32).tobytes()
-    # 6. UPDATE insights SET embedding = ? WHERE id = ?
-    pass
+    _add_embedding_column()
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, text FROM insights WHERE embedding IS NULL"
+        ).fetchall()
+
+    if not rows:
+        print("No insights to embed — all already have vectors.")
+        return
+
+    print(f"Loading model: {MODEL_NAME}")
+    model = SentenceTransformer(MODEL_NAME)
+
+    ids = [r["id"] for r in rows]
+    texts = [r["text"] for r in rows]
+
+    print(f"Embedding {len(texts)} insights…")
+    vectors = model.encode(
+        texts,
+        batch_size=64,
+        show_progress_bar=True,
+        convert_to_numpy=True,
+        normalize_embeddings=True,  # pre-normalise so dot product = cosine similarity
+    )
+
+    with get_connection() as conn:
+        for insight_id, vector in zip(ids, vectors):
+            blob = vector.astype(np.float32).tobytes()
+            conn.execute(
+                "UPDATE insights SET embedding = ? WHERE id = ?",
+                (blob, insight_id),
+            )
+        conn.commit()
+
+    print(f"Done — {len(ids)} insights embedded.")
 
 
-def load_all_vectors():
+def load_all_vectors(
+    role: str | None = None,
+    champion: str | None = None,
+    insight_type: str | None = None,
+) -> tuple[list[int], list[str], list[dict], np.ndarray]:
     """
-    Load all insight IDs, text, metadata, and vectors from DB into memory.
-    Returns arrays ready for cosine similarity search.
+    Load insight IDs, texts, metadata, and vectors from DB.
+    Optional filters narrow the pool before returning.
+
+    Returns:
+        ids       — list of insight row IDs
+        texts     — list of insight strings
+        metadata  — list of dicts with video_id, role, champion, insight_type
+        matrix    — numpy array shape (n, 384), pre-normalised
     """
-    # TODO:
-    # 1. SELECT id, video_id, insight_type, text, embedding FROM insights
-    # 2. Deserialize blobs: np.frombuffer(row['embedding'], dtype=np.float32)
-    # 3. Stack into a matrix: shape (n_insights, 384)
-    # 4. Return (ids, texts, metadata, matrix)
-    pass
+    query = """
+        SELECT i.id, i.text, i.insight_type, i.embedding,
+               v.video_id, v.role, v.champion
+        FROM insights i
+        JOIN videos v ON i.video_id = v.video_id
+        WHERE i.embedding IS NOT NULL
+    """
+    params = []
+    if role:
+        query += " AND v.role = ?"
+        params.append(role)
+    if champion:
+        query += " AND LOWER(v.champion) = LOWER(?)"
+        params.append(champion)
+    if insight_type:
+        query += " AND i.insight_type = ?"
+        params.append(insight_type)
+
+    with get_connection() as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    if not rows:
+        return [], [], [], np.empty((0, 384), dtype=np.float32)
+
+    ids, texts, metadata, vectors = [], [], [], []
+    for row in rows:
+        ids.append(row["id"])
+        texts.append(row["text"])
+        metadata.append({
+            "video_id": row["video_id"],
+            "role": row["role"],
+            "champion": row["champion"],
+            "insight_type": row["insight_type"],
+        })
+        vectors.append(np.frombuffer(row["embedding"], dtype=np.float32))
+
+    matrix = np.stack(vectors)
+    return ids, texts, metadata, matrix
 
 
 if __name__ == "__main__":
+    init_db()
     embed_insights()
