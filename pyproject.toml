@@ -1,0 +1,19 @@
+[project]
+name = "videosorter"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "playwright>=1.57.0",
+    "pytest>=9.0.2",
+    "pytest-playwright>=0.7.2",
+    "python-dotenv>=1.2.1",
+    "yt-dlp>=2024.1.0",
+    "youtube-transcript-api>=0.6.0",
+    "ollama>=0.3.0",
+]
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
