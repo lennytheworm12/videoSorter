@@ -60,10 +60,11 @@ def go_through_channel(context: BrowserContext, channel_url: str, role: str) -> 
     """
     page = context.new_page()
     page.goto(channel_url, wait_until="networkidle")
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(4000)  # give Discord extra time to hydrate
 
     message_list_selector = "ol[data-list-id='chat-messages']"
     page.wait_for_selector(message_list_selector, timeout=15000)
+    page.wait_for_timeout(2000)  # wait for initial messages to render
 
     print(f"[{role}] Scrolling to load all messages…")
     _scroll_to_top(page)
@@ -108,34 +109,72 @@ def go_through_channel(context: BrowserContext, channel_url: str, role: str) -> 
     page.close()
 
 
-def _scroll_to_top(page, max_attempts: int = 150) -> None:
+def _scroll_to_top(page, max_attempts: int = 400) -> None:
     """
-    Scroll the Discord message list upward until no new messages load.
-    Uses page key HOME as a fallback if scrollTop doesn't trigger loads.
+    Scroll the Discord message list upward until all messages are loaded.
+
+    Scrolls incrementally by -1500px per step rather than jumping to 0 —
+    incremental scrolling reliably triggers Discord's lazy-load whereas
+    setting scrollTop=0 directly can bypass the IntersectionObserver.
+
+    Stops when:
+      - scrollTop reaches 0 AND message count is stable (truly at top), OR
+      - A Discord "beginning of channel" marker is visible, OR
+      - Message count has been stale for 8+ rounds (safety exit)
     """
     prev_count = 0
     stale_rounds = 0
 
     for attempt in range(max_attempts):
-        # Primary: set scrollTop to 0 on the message list
-        page.evaluate("""
-            const el = document.querySelector("ol[data-list-id='chat-messages']");
-            if (el) el.scrollTop = 0;
+        # Scroll up by a chunk on the actual scrollable container.
+        # Discord's ol[data-list-id] has no overflow — we need its closest
+        # scrollable ancestor (div[class*="scroller"]).
+        at_top = page.evaluate("""
+            () => {
+                const ol = document.querySelector("ol[data-list-id='chat-messages']");
+                if (!ol) return true;
+                // Walk up to find the scrollable parent
+                let el = ol.parentElement;
+                while (el && el !== document.body) {
+                    if (el.scrollHeight > el.clientHeight) break;
+                    el = el.parentElement;
+                }
+                if (!el || el === document.body) return true;
+                el.scrollTop = Math.max(0, el.scrollTop - 1500);
+                return el.scrollTop === 0;
+            }
         """)
-        time.sleep(1.5)
+
+        # Wait for Discord to fetch and render older messages
+        time.sleep(2.0)
 
         current_count = page.eval_on_selector_all(
             "li[id^='chat-messages-']", "els => els.length"
         )
 
+        reached_beginning = page.evaluate("""
+            () => !!document.querySelector(
+                '[class*="channelBeginning"], [class*="firstMessage"], [class*="beginning-"], [class*="welcomeCta"]'
+            )
+        """)
+
+        if reached_beginning:
+            print(f"  → Reached beginning of channel ({current_count} messages loaded)")
+            break
+
         if current_count == prev_count:
             stale_rounds += 1
-            if stale_rounds >= 4:
-                print(f"  → Reached top after {attempt + 1} scroll attempts ({current_count} messages loaded)")
+            # Only stop if we're actually at the top scroll position
+            if at_top and stale_rounds >= 3:
+                print(f"  → At scroll top, no new messages ({current_count} loaded)")
+                break
+            # Safety exit if totally stuck regardless of position
+            if stale_rounds >= 8:
+                print(f"  → No new messages after {stale_rounds} attempts ({current_count} loaded)")
                 break
         else:
             stale_rounds = 0
-            if attempt % 10 == 0 and attempt > 0:
+            if current_count % 50 == 0 or attempt % 20 == 0:
                 print(f"  → {current_count} messages loaded…")
 
         prev_count = current_count
