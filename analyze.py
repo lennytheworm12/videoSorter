@@ -51,6 +51,18 @@ SYSTEM_PROMPT = textwrap.dedent("""
       "Take Teleport over Ignite against poke mages like Orianna or Syndra — you need
        the ability to recover from losing trades and impact side lanes"
 
+    Also extract FIRST-PRINCIPLES reasoning — the underlying logic behind WHY tips work.
+    These are mental models and matchup archetypes, not just actions:
+      "Poke mages beat all-in champions by winning the attrition game — your entire
+       gameplan in this archetype is survival to a powerspike, which changes your wave
+       positioning, recall timing, and trade patterns throughout laning phase"
+      "When you are the scaling champion in a losing lane matchup, the correct mental
+       model is to think in terms of waves: every decision should be about minimising
+       CS loss and denying the enemy a free recall rather than trying to win trades"
+      "Understanding when to freeze vs slow push comes down to who has priority —
+       if you have priority you push and roam, if you don't you freeze to negate ganks"
+    These belong in the 'principles' category.
+
     Bad — ignore these entirely:
       Vague: "you should ward more", "play safer", "trade better"
       Play-by-play commentary: "ok so here he walks up", "yeah he misses that CS"
@@ -84,7 +96,12 @@ EXTRACTION_PROMPT = textwrap.dedent("""
     Return exactly this JSON structure. Use [] for any category with no insights found.
     No text before or after the JSON.
 
+    'principles' = the underlying WHY and mental models (matchup archetypes, wave
+    state logic, win conditions, game phase reasoning). These explain the logic
+    behind multiple tips and are the most valuable insights to capture.
+
     {{
+        "principles": [],
         "laning_tips": [],
         "champion_mechanics": [],
         "matchup_advice": [],
