@@ -209,11 +209,44 @@ def score_source_grounding(insight_text: str, window_matrix: np.ndarray) -> floa
 
 
 def chunk_transcript(transcript: str) -> list[str]:
-    """Split a transcript into chunks that fit comfortably in the LLM context."""
+    """
+    Split a transcript into chunks up to CHUNK_CHARS each, always breaking at
+    a sentence boundary (. ! ?) when one exists near the target size.
+    Falls back to word boundary if no punctuation found (common in raw captions).
+
+    A 200-char lookahead window is searched before the hard limit, so chunks
+    can be slightly shorter than CHUNK_CHARS but never cut mid-sentence.
+    """
+    SENTENCE_ENDINGS = {'.', '!', '?'}
+    LOOKAHEAD = 200  # chars before the hard limit to search for a sentence end
+
     chunks = []
-    for i in range(0, len(transcript), CHUNK_CHARS):
-        chunks.append(transcript[i : i + CHUNK_CHARS])
-    return chunks
+    start = 0
+    n = len(transcript)
+
+    while start < n:
+        end = min(start + CHUNK_CHARS, n)
+
+        if end < n:
+            # Search backwards from end for a sentence boundary
+            window_start = max(start, end - LOOKAHEAD)
+            split_at = None
+            for i in range(end - 1, window_start - 1, -1):
+                if transcript[i] in SENTENCE_ENDINGS:
+                    split_at = i + 1  # include the punctuation in this chunk
+                    break
+
+            # No sentence boundary found — fall back to last word boundary
+            if split_at is None:
+                space = transcript.rfind(' ', window_start, end)
+                split_at = space + 1 if space != -1 else end
+
+            end = split_at
+
+        chunks.append(transcript[start:end].strip())
+        start = end
+
+    return [c for c in chunks if c]
 
 
 def _call_ollama(chunk: str, role: str, champion: str | None, description: str | None, model: str) -> dict[str, list[str]]:
