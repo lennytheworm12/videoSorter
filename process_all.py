@@ -184,7 +184,8 @@ def process_role(role: str, videos: list) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Transcribe + analyze all videos")
-    parser.add_argument("--role", choices=ROLES, help="Process one role only")
+    parser.add_argument("--role", choices=ROLES, nargs="+", metavar="ROLE",
+                        help="One or more roles to process (e.g. --role support top)")
     parser.add_argument("--video", metavar="VIDEO_ID", help="Process a single video by ID (resets it first if already analyzed)")
     parser.add_argument("--status", action="store_true", help="Print counts and exit")
     parser.add_argument(
@@ -240,7 +241,7 @@ def main() -> None:
         print(f"  ✓ {n_insights} insights saved{flag_note}")
         return
 
-    roles_to_run = [args.role] if args.role else ROLES
+    roles_to_run = args.role if args.role else ROLES
 
     if args.reanalyze:
         with get_connection() as conn:
