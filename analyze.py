@@ -33,7 +33,7 @@ _WINDOW_STRIDE = 20
 # ~4 chars per token. Keep chunks at 20K chars (~5K tokens) so the full prompt
 # (system + champion list + extraction prompt + chunk) stays within Gemma's
 # 16K context window and leaves ~6K tokens for the JSON output.
-CHUNK_CHARS = 20_000
+CHUNK_CHARS = 10_000
 
 SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert League of Legends (LoL) coach analyzing transcripts from coaching
@@ -236,7 +236,8 @@ def _call_ollama(chunk: str, role: str, champion: str | None, description: str |
         ],
         options={
             "temperature": 0.1,  # low temp = more consistent structured output
-            "num_ctx": 16384,     # context window — 1hr transcript fits comfortably
+            "num_ctx": 16384,     # context window size
+            "num_predict": 4096,  # max output tokens — enough for ~80 insights
         },
     )
 
