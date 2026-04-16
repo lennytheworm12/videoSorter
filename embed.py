@@ -13,6 +13,7 @@ Safe to re-run — skips insights that already have a vector stored.
 
 import logging
 import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer
 from database import get_connection, init_db
 
@@ -43,8 +44,9 @@ def embed_insights() -> None:
         print("No insights to embed — all already have vectors.")
         return
 
-    print(f"Loading model: {MODEL_NAME}")
-    model = SentenceTransformer(MODEL_NAME)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Loading model: {MODEL_NAME} (device={device})")
+    model = SentenceTransformer(MODEL_NAME, device=device)
 
     ids = [r["id"] for r in rows]
     texts = [r["text"] for r in rows]

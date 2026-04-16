@@ -13,8 +13,10 @@ Safe to re-run — already-analyzed videos are skipped.
 
 import json
 import os
+import time
 import textwrap
 import numpy as np
+import torch
 from dotenv import load_dotenv
 import ollama
 from sentence_transformers import SentenceTransformer
@@ -167,12 +169,13 @@ EXTRACTION_PROMPT = textwrap.dedent("""
 
 
 _embed_model: SentenceTransformer | None = None
+_EMBED_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def _get_embed_model() -> SentenceTransformer:
     global _embed_model
     if _embed_model is None:
-        _embed_model = SentenceTransformer(EMBED_MODEL_NAME)
+        _embed_model = SentenceTransformer(EMBED_MODEL_NAME, device=_EMBED_DEVICE)
     return _embed_model
 
 
@@ -261,6 +264,7 @@ def _call_ollama(chunk: str, role: str, champion: str | None, description: str |
     # Append full champion list to system prompt so the model knows every name
     system = SYSTEM_PROMPT + "\n\nFULL CHAMPION LIST (use exact spelling from this list):\n" + champion_names_for_prompt()
 
+    t0 = time.time()
     response = ollama.chat(
         model=model,
         messages=[
@@ -273,6 +277,7 @@ def _call_ollama(chunk: str, role: str, champion: str | None, description: str |
             "num_predict": 4096,  # max output tokens — enough for ~80 insights
         },
     )
+    print(f"      [timing] gemma: {time.time() - t0:.1f}s | {len(chunk):,} chars in", end=" ")
 
     # Support both dict and object style (ollama SDK changed between versions)
     msg = response["message"] if isinstance(response, dict) else response.message

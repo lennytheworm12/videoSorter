@@ -15,6 +15,7 @@ Usage:
 import argparse
 import logging
 import sys
+import time
 
 # Suppress noisy model-load warnings
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
@@ -115,6 +116,7 @@ def analyze_video(video: dict) -> tuple[int, int]:
             print(f"ERROR: {e}")
             continue
 
+        t_embed = time.time()
         window_matrix = _embed_chunk_windows(chunk)
         chunk_total = 0
         for insight_type, items in result.items():
@@ -123,7 +125,7 @@ def analyze_video(video: dict) -> tuple[int, int]:
                     score = score_source_grounding(item, window_matrix)
                     aggregated.setdefault(insight_type, []).append((item.strip(), score))
                     chunk_total += 1
-        print(f"      → {chunk_total} insights")
+        print(f"embed: {time.time() - t_embed:.2f}s → {chunk_total} insights")
 
     total = flagged = 0
     for insight_type, items in aggregated.items():
