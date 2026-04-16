@@ -16,20 +16,14 @@ import logging
 import argparse
 import numpy as np
 from sentence_transformers import SentenceTransformer
-import ollama
 
-# Suppress noisy sentence-transformers / transformers warnings
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
-from dotenv import load_dotenv
-import os
 
 from pipeline.embed import load_all_vectors
-
-load_dotenv()
+from core.llm import chat as llm_chat
 
 MODEL_NAME = "all-MiniLM-L6-v2"
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:4b")
 TOP_K = 12
 
 RAG_SYSTEM_PROMPT = """
@@ -171,17 +165,7 @@ def answer(
 
     prompt = RAG_USER_PROMPT.format(question=question, insights=formatted)
 
-    response = ollama.chat(
-        model=OLLAMA_MODEL,
-        messages=[
-            {"role": "system", "content": RAG_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        options={"temperature": 0.2, "num_ctx": 8192},
-    )
-
-    msg = response["message"] if isinstance(response, dict) else response.message
-    generated = (msg["content"] if isinstance(msg, dict) else msg.content).strip()
+    generated = llm_chat(system=RAG_SYSTEM_PROMPT, user=prompt, temperature=0.2)
 
     if show_sources:
         sources = "\n\n---\nSources retrieved:\n" + "\n".join(

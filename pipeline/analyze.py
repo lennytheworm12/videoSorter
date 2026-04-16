@@ -17,15 +17,10 @@ import time
 import textwrap
 import numpy as np
 import torch
-from dotenv import load_dotenv
-import ollama
 from sentence_transformers import SentenceTransformer
 from core.database import get_videos_by_status, set_status, insert_insight, get_connection
 from core.champions import correct_names, champion_names_for_prompt
-
-load_dotenv()
-
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e2b")
+from core.llm import chat as llm_chat, BACKEND, MODEL as LLM_MODEL
 EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
 
 # Window size (words) and stride for sliding-window source grounding
@@ -265,23 +260,8 @@ def _call_ollama(chunk: str, role: str, champion: str | None, description: str |
     system = SYSTEM_PROMPT + "\n\nFULL CHAMPION LIST (use exact spelling from this list):\n" + champion_names_for_prompt()
 
     t0 = time.time()
-    response = ollama.chat(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-        options={
-            "temperature": 0.1,  # low temp = more consistent structured output
-            "num_ctx": 16384,     # context window size
-            "num_predict": 4096,  # max output tokens — enough for ~80 insights
-        },
-    )
-    print(f"      [timing] gemma: {time.time() - t0:.1f}s | {len(chunk):,} chars in", end=" ")
-
-    # Support both dict and object style (ollama SDK changed between versions)
-    msg = response["message"] if isinstance(response, dict) else response.message
-    raw = (msg["content"] if isinstance(msg, dict) else msg.content).strip()
+    raw = llm_chat(system=system, user=prompt, temperature=0.1, max_tokens=4096)
+    print(f"      [timing] {BACKEND}: {time.time() - t0:.1f}s | {len(chunk):,} chars in", end=" ")
 
     # Strip markdown code fences if the model wraps output despite instructions
     if raw.startswith("```"):
@@ -312,7 +292,6 @@ def extract_insights_from_chunk(
     role: str,
     champion: str | None,
     description: str | None,
-    model: str,
     _depth: int = 0,
 ) -> dict[str, list[str]]:
     """
@@ -326,7 +305,7 @@ def extract_insights_from_chunk(
     MIN_CHARS = 2_000  # don't split below this; just skip
 
     try:
-        result = _call_ollama(chunk, role, champion, description, model)
+        result = _call_ollama(chunk, role, champion, description, model=None)
     except ValueError as exc:
         if _depth >= MAX_DEPTH or len(chunk) < MIN_CHARS:
             print(f"    [warn] {exc} (chunk too small to split further, skipping)")
@@ -341,8 +320,8 @@ def extract_insights_from_chunk(
         half_a, half_b = chunk[:split_at], chunk[split_at:]
         print(f"    [retry] splitting chunk in half ({len(half_a):,} + {len(half_b):,} chars, depth={_depth + 1})")
 
-        result_a = extract_insights_from_chunk(half_a, role, champion, description, model, _depth + 1)
-        result_b = extract_insights_from_chunk(half_b, role, champion, description, model, _depth + 1)
+        result_a = extract_insights_from_chunk(half_a, role, champion, description, _depth + 1)
+        result_b = extract_insights_from_chunk(half_b, role, champion, description, _depth + 1)
         result = _merge_results(result_a, result_b)
 
     # Post-process: correct champion name misspellings in every insight string

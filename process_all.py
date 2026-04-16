@@ -33,7 +33,7 @@ from pipeline.transcribe import fetch_via_transcript_api, fetch_via_yt_dlp
 from pipeline.analyze import (
     extract_insights_from_chunk, chunk_transcript,
     _embed_chunk_windows, score_source_grounding,
-    already_analyzed, OLLAMA_MODEL,
+    already_analyzed,
 )
 from core.champions import correct_names, champion_names_for_prompt
 
@@ -110,7 +110,7 @@ def analyze_video(video: dict) -> tuple[int, int]:
         print(f"    chunk {i + 1}/{len(chunks)}…", flush=True)
         try:
             result = extract_insights_from_chunk(
-                chunk, role, champion, description, OLLAMA_MODEL
+                chunk, role, champion, description
             )
         except Exception as e:
             print(f"ERROR: {e}")

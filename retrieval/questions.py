@@ -18,12 +18,7 @@ Usage:
 import json
 import os
 import argparse
-import ollama
-from dotenv import load_dotenv
-
-load_dotenv()
-
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:4b")
+from core.llm import chat as llm_chat
 
 # ---------------------------------------------------------------------------
 # Canonical question templates
@@ -194,17 +189,7 @@ def normalize(question: str) -> dict:
         templates=_TEMPLATE_LIST,
     )
 
-    response = ollama.chat(
-        model=OLLAMA_MODEL,
-        messages=[
-            {"role": "system", "content": NORMALIZE_SYSTEM},
-            {"role": "user", "content": prompt},
-        ],
-        options={"temperature": 0.1, "num_ctx": 4096},
-    )
-
-    msg = response["message"] if isinstance(response, dict) else response.message
-    raw = (msg["content"] if isinstance(msg, dict) else msg.content).strip()
+    raw = llm_chat(system=NORMALIZE_SYSTEM, user=prompt, temperature=0.1)
 
     if raw.startswith("```"):
         raw = raw.split("```", 2)[1]
