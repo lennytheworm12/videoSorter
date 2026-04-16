@@ -17,7 +17,7 @@ from youtube_transcript_api._errors import (
     NoTranscriptFound,
     VideoUnavailable,
 )
-from database import get_videos_by_status, set_status, set_transcription
+from core.database import get_videos_by_status, set_status, set_transcription
 
 SUBTITLE_DIR = pathlib.Path("subtitles")
 SUBTITLE_DIR.mkdir(exist_ok=True)

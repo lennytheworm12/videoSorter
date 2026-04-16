@@ -13,8 +13,8 @@ import os
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-from gather_messages import go_through_channel
-from database import init_db, try_fill_descriptions
+from scrape.gather_messages import go_through_channel
+from core.database import init_db, try_fill_descriptions
 
 load_dotenv()
 
@@ -55,13 +55,13 @@ def stage_scrape(role_filter: str | None = None) -> None:
 
 def stage_transcribe() -> None:
     print("\n=== STAGE 2: Fetching transcripts ===")
-    from transcribe import run as transcribe_run
+    from pipeline.transcribe import run as transcribe_run
     transcribe_run()
 
 
 def stage_analyze() -> None:
     print("\n=== STAGE 3: Extracting insights with LLM ===")
-    from analyze import run as analyze_run
+    from pipeline.analyze import run as analyze_run
     analyze_run()
 
 

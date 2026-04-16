@@ -230,7 +230,7 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True) -> str:
     Full pipeline: normalize question → extract filters → query knowledge base.
     Drop-in replacement for query.answer() with smarter routing.
     """
-    from query import answer
+    from retrieval.query import answer
 
     print(f"Normalizing question…")
     parsed = normalize(question)
@@ -240,14 +240,14 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True) -> str:
         print(f"  ({parsed['reasoning']})")
     print()
 
-    # Use the first (highest priority) insight type as the primary filter
-    primary_type = parsed["insight_types"][0] if parsed["insight_types"] else None
-
+    # Role is used as a DB filter (narrows the pool to the right role).
+    # Champion is NOT used as a DB filter — it would eliminate results when no
+    # videos exist for that specific champion. Instead it's already baked into
+    # the normalized question text, so semantic search surfaces it naturally.
+    # insight_type filter is skipped too — too restrictive on small datasets.
     return answer(
         question=parsed["normalized"],
         role=parsed.get("role"),
-        champion=parsed.get("champion"),
-        insight_type=primary_type,
         top_k=top_k,
         show_sources=show_sources,
     )
@@ -272,7 +272,7 @@ def main() -> None:
         return
 
     if args.raw:
-        from query import answer
+        from retrieval.query import answer
         print(answer(question, show_sources=True))
         return
 

@@ -21,7 +21,7 @@ import logging
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
-from database import get_all_insights_with_embeddings, update_cluster_scores
+from core.database import get_all_insights_with_embeddings, update_cluster_scores
 
 # Cosine similarity threshold to count an insight as a "cluster neighbour"
 SIMILARITY_THRESHOLD = 0.75

@@ -20,8 +20,8 @@ import torch
 from dotenv import load_dotenv
 import ollama
 from sentence_transformers import SentenceTransformer
-from database import get_videos_by_status, set_status, insert_insight, get_connection
-from champions import correct_names, champion_names_for_prompt
+from core.database import get_videos_by_status, set_status, insert_insight, get_connection
+from core.champions import correct_names, champion_names_for_prompt
 
 load_dotenv()
 

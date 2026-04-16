@@ -24,7 +24,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 from dotenv import load_dotenv
 import os
 
-from embed import load_all_vectors
+from pipeline.embed import load_all_vectors
 
 load_dotenv()
 

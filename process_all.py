@@ -25,17 +25,17 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 import warnings
 warnings.filterwarnings("ignore")
 
-from database import (
+from core.database import (
     get_connection, get_videos_by_status,
     set_status, set_transcription, insert_insight,
 )
-from transcribe import fetch_via_transcript_api, fetch_via_yt_dlp
-from analyze import (
+from pipeline.transcribe import fetch_via_transcript_api, fetch_via_yt_dlp
+from pipeline.analyze import (
     extract_insights_from_chunk, chunk_transcript,
     _embed_chunk_windows, score_source_grounding,
     already_analyzed, OLLAMA_MODEL,
 )
-from champions import correct_names, champion_names_for_prompt
+from core.champions import correct_names, champion_names_for_prompt
 
 ROLES = ["top", "jungle", "mid", "adc", "support"]
 

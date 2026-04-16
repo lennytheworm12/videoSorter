@@ -15,7 +15,7 @@ import logging
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
-from database import get_connection, init_db
+from core.database import get_connection, init_db
 
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)

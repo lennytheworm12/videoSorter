@@ -3,7 +3,7 @@
 import re
 import time
 from playwright.sync_api import BrowserContext, Page
-from database import insert_video, insert_pending_description
+from core.database import insert_video, insert_pending_description
 
 # Matches the full YouTube URL including all query params (stops at whitespace)
 # Group 1 = full URL, used for stripping from description text
