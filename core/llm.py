@@ -32,11 +32,16 @@ if _GOOGLE_API_KEY:
     _DEFAULT_MODEL = _LLM_MODEL or "gemini-2.5-flash"
     _client = _genai.Client(api_key=_GOOGLE_API_KEY)
 
+    # Query the model's actual output token limit at startup
+    _model_info = _client.models.get(model=_DEFAULT_MODEL)
+    _MAX_OUTPUT_TOKENS = _model_info.output_token_limit
+    print(f"[llm] Gemini backend: {_DEFAULT_MODEL} (max output tokens: {_MAX_OUTPUT_TOKENS:,})")
+
     def chat(
         system: str,
         user: str,
         temperature: float = 0.1,
-        max_tokens: int = 4096,
+        max_tokens: int | None = None,
         model: str | None = None,
     ) -> str:
         response = _client.models.generate_content(
@@ -45,7 +50,7 @@ if _GOOGLE_API_KEY:
             config=_gtypes.GenerateContentConfig(
                 system_instruction=system,
                 temperature=temperature,
-                max_output_tokens=max_tokens,
+                max_output_tokens=max_tokens or _MAX_OUTPUT_TOKENS,
             ),
         )
         return response.text.strip()
