@@ -208,15 +208,18 @@ def score_source_grounding(insight_text: str, window_matrix: np.ndarray) -> floa
 
 def chunk_transcript(transcript: str) -> list[str]:
     """
-    Split a transcript into chunks up to CHUNK_CHARS each, always breaking at
-    a sentence boundary (. ! ?) when one exists near the target size.
-    Falls back to word boundary if no punctuation found (common in raw captions).
+    Gemini: returns the full transcript as a single chunk — 1M token context
+    means even the longest coaching session fits in one call.
 
-    A 200-char lookahead window is searched before the hard limit, so chunks
-    can be slightly shorter than CHUNK_CHARS but never cut mid-sentence.
+    Ollama fallback: splits into CHUNK_CHARS-sized chunks at sentence
+    boundaries (. ! ?) with a 200-char lookahead, falling back to word
+    boundaries for unpunctuated auto-captions.
     """
+    if BACKEND == "gemini":
+        return [transcript]
+
     SENTENCE_ENDINGS = {'.', '!', '?'}
-    LOOKAHEAD = 200  # chars before the hard limit to search for a sentence end
+    LOOKAHEAD = 200
 
     chunks = []
     start = 0
@@ -226,15 +229,13 @@ def chunk_transcript(transcript: str) -> list[str]:
         end = min(start + CHUNK_CHARS, n)
 
         if end < n:
-            # Search backwards from end for a sentence boundary
             window_start = max(start, end - LOOKAHEAD)
             split_at = None
             for i in range(end - 1, window_start - 1, -1):
                 if transcript[i] in SENTENCE_ENDINGS:
-                    split_at = i + 1  # include the punctuation in this chunk
+                    split_at = i + 1
                     break
 
-            # No sentence boundary found — fall back to last word boundary
             if split_at is None:
                 space = transcript.rfind(' ', window_start, end)
                 split_at = space + 1 if space != -1 else end
