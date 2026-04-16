@@ -29,7 +29,7 @@ if _GOOGLE_API_KEY:
     from google import genai as _genai
     from google.genai import types as _gtypes
 
-    _DEFAULT_MODEL = _LLM_MODEL or "gemini-2.5-flash-preview-04-17"
+    _DEFAULT_MODEL = _LLM_MODEL or "gemini-2.5-flash"
     _client = _genai.Client(api_key=_GOOGLE_API_KEY)
 
     def chat(
