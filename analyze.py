@@ -14,18 +14,26 @@ Safe to re-run — already-analyzed videos are skipped.
 import json
 import os
 import textwrap
+import numpy as np
 from dotenv import load_dotenv
 import ollama
+from sentence_transformers import SentenceTransformer
 from database import get_videos_by_status, set_status, insert_insight, get_connection
 from champions import correct_names, champion_names_for_prompt
 
 load_dotenv()
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e2b")
+EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
 
-# ~4 chars per token. Keep chunks at 32K chars (~8K tokens) so the full prompt
-# stays well within Gemma 4 e2b's 16K context window after adding prompt overhead.
-CHUNK_CHARS = 32_000
+# Window size (words) and stride for sliding-window source grounding
+_WINDOW_WORDS = 40
+_WINDOW_STRIDE = 20
+
+# ~4 chars per token. Keep chunks at 20K chars (~5K tokens) so the full prompt
+# (system + champion list + extraction prompt + chunk) stays within Gemma's
+# 16K context window and leaves ~6K tokens for the JSON output.
+CHUNK_CHARS = 20_000
 
 SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert League of Legends (LoL) coach analyzing transcripts from coaching
@@ -42,41 +50,78 @@ SYSTEM_PROMPT = textwrap.dedent("""
       "TP" = Teleport (summoner spell)
     Correct these in your output — always use the proper LoL name.
 
-    WHAT COUNTS AS A GOOD INSIGHT:
-    Good — specific, actionable, contains a clear condition and action:
-      "Buy QSS before your second item when facing Malzahar — his suppression removes
-       you from the fight and you cannot react without it"
-      "When ahead on Cassiopeia, slow push the wave before backing so it crashes under
-       their tower and denies your opponent 15-20 CS while you shop"
-      "Take Teleport over Ignite against poke mages like Orianna or Syndra — you need
-       the ability to recover from losing trades and impact side lanes"
+    INSIGHT CATEGORIES — understand the distinction between all nine:
 
-    Also extract FIRST-PRINCIPLES reasoning — the underlying logic behind WHY tips work.
-    These are mental models and matchup archetypes, not just actions:
-      "Poke mages beat all-in champions by winning the attrition game — your entire
-       gameplan in this archetype is survival to a powerspike, which changes your wave
-       positioning, recall timing, and trade patterns throughout laning phase"
-      "When you are the scaling champion in a losing lane matchup, the correct mental
-       model is to think in terms of waves: every decision should be about minimising
-       CS loss and denying the enemy a free recall rather than trying to win trades"
-      "Understanding when to freeze vs slow push comes down to who has priority —
-       if you have priority you push and roam, if you don't you freeze to negate ganks"
-    These belong in the 'principles' category.
+    champion_identity: The strategic role and win condition of the specific champion
+    being coached. Capture statements about WHAT this champion is trying to do,
+    WHEN they are strong or weak, and WHAT winning looks like for them. These describe
+    the champion's game plan at a high level — when the coach explains the champion's
+    purpose or overall game plan, not individual tips.
+      Bad: specific tips, wave advice, itemization — those go in other categories
+      IMPORTANT: only extract champion_identity insights explicitly stated in the
+      transcript — do not infer win conditions from general LoL knowledge
 
-    Bad — ignore these entirely:
+    game_mechanics: ONLY advice about the game client itself — keybindings,
+    settings, cursor behaviour, camera configuration, or mouse/input technique.
+    These tips apply identically regardless of champion, role, or game state.
+    If you removed the champion and game context entirely, the tip would still
+    make sense as standalone client advice.
+      YES: "Bind champion-only toggle so your cursor turns red — this prevents
+            accidental tower hits during dives" (keybinding / client setting)
+      YES: "Use semi-locked camera so you can see terrain ahead without losing
+            your character" (camera setting)
+      NO:  "When trading, auto-attack before running up" (that is laning_tips)
+      NO:  "Use champion-only toggle when diving" (that is a dive decision,
+            not a settings tip — only extract it if the coach explains HOW to
+            set it up or bind it)
+      This category is often empty — [] is correct for most videos.
+
+    principles: Strategic mental models and the underlying WHY behind decisions.
+    These explain LoL logic that applies across multiple champions or situations —
+    wave state reasoning, matchup archetypes, macro timing logic.
+      Good: "Poke mages beat all-in champions by winning the resource attrition game —
+             your entire gameplan is survival to a powerspike"
+      Good: "When you have priority in lane, push and look to roam — when you don't
+             have priority, freeze to negate the enemy jungler's threat"
+      Bad: champion-specific win conditions (→ champion_identity) or physical
+           execution tips (→ game_mechanics)
+
+    laning_tips: Specific actionable decisions during laning phase — wave management,
+    trading patterns, positioning, recall timing. Champion-context is fine here.
+
+    champion_mechanics: How to use this champion's abilities effectively — combos,
+    power spike windows, ability sequencing, cooldown management.
+
+    matchup_advice: How to play against specific champions or champion archetypes.
+    Include the condition and the adjustment required.
+
+    macro_advice: Post-laning decisions — roaming, objective priority, side lane
+    management, team coordination, win condition execution in mid/late game.
+
+    teamfight_tips: Positioning, target selection, ability usage in team fights.
+
+    vision_control: Ward placement, when to ward, how to contest vision.
+
+    itemization: Item choices, build order, and summoner spell selection with reasoning.
+
+    general_advice: Mindset, mental approach, and broadly applicable advice that does
+    not fit any specific category above. Keep this sparse — most advice belongs
+    somewhere more specific.
+
+    WHAT TO IGNORE ENTIRELY:
       Vague: "you should ward more", "play safer", "trade better"
-      Play-by-play commentary: "ok so here he walks up", "yeah he misses that CS"
+      Play-by-play: "ok so here he walks up", "yeah he misses that CS"
       Meta-commentary: "that was a good play", "I can see you've improved"
       Unanswered student questions with no coaching response
 
     OUTPUT RULES — follow exactly:
     1. Return valid JSON only. No markdown fences, no text outside the JSON object.
-    2. Empty category = [] — NEVER write a string like "no insights found" or
-       "the transcript does not contain...". An empty list [] is the only valid empty value.
+    2. Empty category = [] — NEVER write a string like "no insights found".
+       An empty list [] is the only valid empty value.
     3. Each insight must be a complete standalone sentence. Someone reading it without
-       watching the video must be able to understand and apply it immediately.
+       watching the video must understand and apply it immediately.
     4. Always use correct LoL spelling for champion names, item names, and game terms.
-    5. Do not invent advice that is not explicitly stated in the transcript.
+    5. Do not invent advice not explicitly stated in the transcript.
 """).strip()
 
 
@@ -96,11 +141,9 @@ EXTRACTION_PROMPT = textwrap.dedent("""
     Return exactly this JSON structure. Use [] for any category with no insights found.
     No text before or after the JSON.
 
-    'principles' = the underlying WHY and mental models (matchup archetypes, wave
-    state logic, win conditions, game phase reasoning). These explain the logic
-    behind multiple tips and are the most valuable insights to capture.
-
     {{
+        "champion_identity": [],
+        "game_mechanics": [],
         "principles": [],
         "laning_tips": [],
         "champion_mechanics": [],
@@ -114,6 +157,48 @@ EXTRACTION_PROMPT = textwrap.dedent("""
 """).strip()
 
 
+_embed_model: SentenceTransformer | None = None
+
+
+def _get_embed_model() -> SentenceTransformer:
+    global _embed_model
+    if _embed_model is None:
+        _embed_model = SentenceTransformer(EMBED_MODEL_NAME)
+    return _embed_model
+
+
+def _embed_chunk_windows(chunk: str) -> np.ndarray:
+    """
+    Split a transcript chunk into overlapping word windows and embed them.
+    Returns a (n_windows, 384) normalised float32 matrix.
+    Used once per chunk so all insights in that chunk can be scored cheaply.
+    """
+    words = chunk.split()
+    windows = [
+        " ".join(words[i : i + _WINDOW_WORDS])
+        for i in range(0, max(1, len(words) - _WINDOW_WORDS + 1), _WINDOW_STRIDE)
+    ]
+    if not windows:
+        windows = [chunk[:500]]
+    model = _get_embed_model()
+    return model.encode(windows, convert_to_numpy=True, normalize_embeddings=True)
+
+
+def score_source_grounding(insight_text: str, window_matrix: np.ndarray) -> float:
+    """
+    Return the max cosine similarity between an insight and any window of its
+    source transcript chunk.  Pre-normalised vectors → dot product = cosine sim.
+
+    Score interpretation:
+      > 0.50  likely grounded in the transcript
+      0.30-0.50  uncertain
+      < 0.30  likely hallucinated from model priors
+    """
+    model = _get_embed_model()
+    vec = model.encode(insight_text, convert_to_numpy=True, normalize_embeddings=True)
+    return float((window_matrix @ vec).max())
+
+
 def chunk_transcript(transcript: str) -> list[str]:
     """Split a transcript into chunks that fit comfortably in the LLM context."""
     chunks = []
@@ -122,13 +207,8 @@ def chunk_transcript(transcript: str) -> list[str]:
     return chunks
 
 
-def extract_insights_from_chunk(
-    chunk: str,
-    role: str,
-    champion: str | None,
-    description: str | None,
-    model: str,
-) -> dict[str, list[str]]:
+def _call_ollama(chunk: str, role: str, champion: str | None, description: str | None, model: str) -> dict[str, list[str]]:
+    """Single LLM call for one chunk. Returns parsed dict or raises ValueError on bad JSON."""
     prompt = EXTRACTION_PROMPT.format(
         role=role,
         champion=champion or "unknown",
@@ -163,10 +243,59 @@ def extract_insights_from_chunk(
     raw = raw.strip()
 
     try:
-        result = json.loads(raw)
-    except json.JSONDecodeError:
-        print(f"    [warn] JSON parse failed, raw output:\n{raw[:300]}")
-        return {}
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"JSON parse failed: {raw[:200]}") from exc
+
+
+def _merge_results(a: dict, b: dict) -> dict:
+    """Merge two insight dicts by extending each category's list."""
+    merged = dict(a)
+    for key, items in b.items():
+        if key in merged:
+            merged[key] = merged[key] + (items if isinstance(items, list) else [])
+        else:
+            merged[key] = items if isinstance(items, list) else []
+    return merged
+
+
+def extract_insights_from_chunk(
+    chunk: str,
+    role: str,
+    champion: str | None,
+    description: str | None,
+    model: str,
+    _depth: int = 0,
+) -> dict[str, list[str]]:
+    """
+    Extract insights from a transcript chunk.
+
+    If the model's JSON output is truncated (parse failure), the chunk is split
+    in half and each half is retried independently — up to 2 levels deep (quartering
+    the original chunk). This handles dense chunks without shrinking all chunks globally.
+    """
+    MAX_DEPTH = 2
+    MIN_CHARS = 2_000  # don't split below this; just skip
+
+    try:
+        result = _call_ollama(chunk, role, champion, description, model)
+    except ValueError as exc:
+        if _depth >= MAX_DEPTH or len(chunk) < MIN_CHARS:
+            print(f"    [warn] {exc} (chunk too small to split further, skipping)")
+            return {}
+
+        mid = len(chunk) // 2
+        # Split at nearest word boundary
+        split_at = chunk.rfind(" ", mid - 200, mid + 200)
+        if split_at == -1:
+            split_at = mid
+
+        half_a, half_b = chunk[:split_at], chunk[split_at:]
+        print(f"    [retry] splitting chunk in half ({len(half_a):,} + {len(half_b):,} chars, depth={_depth + 1})")
+
+        result_a = extract_insights_from_chunk(half_a, role, champion, description, model, _depth + 1)
+        result_b = extract_insights_from_chunk(half_b, role, champion, description, model, _depth + 1)
+        result = _merge_results(result_a, result_b)
 
     # Post-process: correct champion name misspellings in every insight string
     for key, items in result.items():
@@ -217,21 +346,30 @@ def run() -> None:
                 print(f"  [error] chunk {i + 1}: {e}")
                 continue
 
+            # Pre-embed this chunk's windows once; reuse for all insights
+            window_matrix = _embed_chunk_windows(chunk)
+
             for insight_type, items in result.items():
                 if insight_type not in aggregated:
                     aggregated[insight_type] = []
-                aggregated[insight_type].extend(items)
+                for item in items:
+                    if isinstance(item, str):
+                        score = score_source_grounding(item, window_matrix)
+                        aggregated[insight_type].append((item, score))
 
         # Persist to DB
         total = 0
+        flagged = 0
         for insight_type, items in aggregated.items():
-            for item in items:
+            for item, source_score in items:
                 if item.strip():
-                    insert_insight(video_id, insight_type, item.strip())
+                    insert_insight(video_id, insight_type, item.strip(), source_score)
                     total += 1
+                    if source_score < 0.30:
+                        flagged += 1
 
         set_status(video_id, "analyzed")
-        print(f"  Saved {total} insights")
+        print(f"  Saved {total} insights ({flagged} low source-score, possible hallucinations)")
 
 
 if __name__ == "__main__":

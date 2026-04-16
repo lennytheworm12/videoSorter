@@ -33,13 +33,26 @@ def init_db() -> None:
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS insights (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                video_id     TEXT NOT NULL REFERENCES videos(video_id),
-                insight_type TEXT NOT NULL,
-                text         TEXT NOT NULL,
-                created_at   TEXT DEFAULT (datetime('now'))
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_id      TEXT NOT NULL REFERENCES videos(video_id),
+                insight_type  TEXT NOT NULL,
+                text          TEXT NOT NULL,
+                source_score  REAL DEFAULT NULL,
+                cluster_score REAL DEFAULT NULL,
+                confidence    REAL DEFAULT NULL,
+                created_at    TEXT DEFAULT (datetime('now'))
             )
         """)
+        # Add confidence columns to existing DBs that predate this schema
+        for col, typedef in [
+            ("source_score",  "REAL DEFAULT NULL"),
+            ("cluster_score", "REAL DEFAULT NULL"),
+            ("confidence",    "REAL DEFAULT NULL"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE insights ADD COLUMN {col} {typedef}")
+            except Exception:
+                pass  # column already exists
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pending_descriptions (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,13 +111,45 @@ def set_transcription(video_id: str, transcription: str) -> None:
         conn.commit()
 
 
-def insert_insight(video_id: str, insight_type: str, text: str) -> None:
+def insert_insight(
+    video_id: str,
+    insight_type: str,
+    text: str,
+    source_score: float | None = None,
+) -> int:
+    """Insert an insight and return its row id."""
     with get_connection() as conn:
-        conn.execute(
-            "INSERT INTO insights (video_id, insight_type, text) VALUES (?, ?, ?)",
-            (video_id, insight_type, text),
+        cur = conn.execute(
+            "INSERT INTO insights (video_id, insight_type, text, source_score) VALUES (?, ?, ?, ?)",
+            (video_id, insight_type, text, source_score),
         )
         conn.commit()
+        return cur.lastrowid
+
+
+def update_cluster_scores(scores: list[tuple[float, float, int]]) -> None:
+    """
+    Bulk-update cluster_score and confidence for a list of insights.
+    scores: list of (cluster_score, confidence, insight_id)
+    """
+    with get_connection() as conn:
+        conn.executemany(
+            "UPDATE insights SET cluster_score = ?, confidence = ? WHERE id = ?",
+            scores,
+        )
+        conn.commit()
+
+
+def get_all_insights_with_embeddings() -> list:
+    """Return all insights that have an embedding stored."""
+    with get_connection() as conn:
+        return conn.execute(
+            """
+            SELECT id, video_id, insight_type, text, embedding, source_score
+            FROM insights
+            WHERE embedding IS NOT NULL
+            """
+        ).fetchall()
 
 
 def get_videos_by_status(status: str) -> list:

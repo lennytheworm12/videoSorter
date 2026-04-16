@@ -59,17 +59,23 @@ directly rather than speaking in generalities.
 def cosine_search(
     query_vector: np.ndarray,
     matrix: np.ndarray,
+    confidences: np.ndarray | None = None,
     top_k: int = TOP_K,
 ) -> list[int]:
     """
     Return indices of the top_k most similar rows in matrix to query_vector.
     Both query_vector and matrix rows must be pre-normalised (done in embed.py).
-    Dot product of unit vectors = cosine similarity.
+
+    If confidences is provided (per-insight 0-1 score), the final ranking uses:
+        final_score = cosine_similarity * (0.5 + 0.5 * confidence)
+    This down-weights likely-hallucinated insights without fully excluding them.
     """
     if matrix.shape[0] == 0:
         return []
-    scores = matrix @ query_vector          # shape: (n,)
-    top_indices = np.argsort(scores)[::-1]  # descending
+    scores = matrix @ query_vector  # cosine similarity, shape: (n,)
+    if confidences is not None:
+        scores = scores * (0.5 + 0.5 * confidences)
+    top_indices = np.argsort(scores)[::-1]
     return top_indices[:top_k].tolist()
 
 
@@ -107,17 +113,21 @@ def retrieve(
         normalize_embeddings=True,
     )
 
-    top_indices = cosine_search(query_vec, matrix, top_k=top_k)
+    # Use confidence scores to down-weight likely hallucinations
+    confidences = np.array([m.get("confidence") or 0.5 for m in metadata])
+    top_indices = cosine_search(query_vec, matrix, confidences=confidences, top_k=top_k)
 
     results = []
     for i in top_indices:
-        score = float(matrix[i] @ query_vec)
+        cosine = float(matrix[i] @ query_vec)
+        conf = float(confidences[i])
         results.append({
             "text": texts[i],
             "insight_type": metadata[i]["insight_type"],
             "role": metadata[i]["role"],
             "champion": metadata[i]["champion"],
-            "score": round(score, 4),
+            "score": round(cosine, 4),
+            "confidence": round(conf, 4),
         })
 
     return results

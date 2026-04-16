@@ -87,7 +87,7 @@ def load_all_vectors(
     """
     query = """
         SELECT i.id, i.text, i.insight_type, i.embedding,
-               v.video_id, v.role, v.champion
+               i.confidence, v.video_id, v.role, v.champion
         FROM insights i
         JOIN videos v ON i.video_id = v.video_id
         WHERE i.embedding IS NOT NULL
@@ -118,6 +118,7 @@ def load_all_vectors(
             "role": row["role"],
             "champion": row["champion"],
             "insight_type": row["insight_type"],
+            "confidence": row["confidence"],
         })
         vectors.append(np.frombuffer(row["embedding"], dtype=np.float32))
 
