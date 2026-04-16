@@ -106,7 +106,7 @@ def analyze_video(video: dict) -> tuple[int, int]:
     aggregated: dict[str, list[tuple[str, float]]] = {}
 
     for i, chunk in enumerate(chunks):
-        print(f"    chunk {i + 1}/{len(chunks)}…", end=" ", flush=True)
+        print(f"    chunk {i + 1}/{len(chunks)}…", flush=True)
         try:
             result = extract_insights_from_chunk(
                 chunk, role, champion, description, OLLAMA_MODEL
@@ -123,7 +123,7 @@ def analyze_video(video: dict) -> tuple[int, int]:
                     score = score_source_grounding(item, window_matrix)
                     aggregated.setdefault(insight_type, []).append((item.strip(), score))
                     chunk_total += 1
-        print(f"{chunk_total} insights")
+        print(f"      → {chunk_total} insights")
 
     total = flagged = 0
     for insight_type, items in aggregated.items():
@@ -185,6 +185,7 @@ def process_role(role: str, videos: list) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Transcribe + analyze all videos")
     parser.add_argument("--role", choices=ROLES, help="Process one role only")
+    parser.add_argument("--video", metavar="VIDEO_ID", help="Process a single video by ID (resets it first if already analyzed)")
     parser.add_argument("--status", action="store_true", help="Print counts and exit")
     parser.add_argument(
         "--reanalyze",
@@ -195,6 +196,48 @@ def main() -> None:
 
     if args.status:
         print_status()
+        return
+
+    # ── single-video mode ──────────────────────────────────────────────────────
+    if args.video:
+        vid_id = args.video
+        with get_connection() as conn:
+            video = conn.execute(
+                "SELECT * FROM videos WHERE video_id = ?", (vid_id,)
+            ).fetchone()
+        if not video:
+            print(f"Video not found: {vid_id}")
+            return
+        # Reset so it gets reprocessed regardless of current status
+        with get_connection() as conn:
+            conn.execute("DELETE FROM insights WHERE video_id = ?", (vid_id,))
+            conn.execute(
+                "UPDATE videos SET status = 'transcribed' WHERE video_id = ? AND status = 'analyzed'",
+                (vid_id,),
+            )
+            conn.commit()
+        # Reload after potential status change
+        with get_connection() as conn:
+            video = conn.execute(
+                "SELECT * FROM videos WHERE video_id = ?", (vid_id,)
+            ).fetchone()
+        print(f"\nSingle-video mode: {vid_id}  ({video['role']} | {video['champion'] or '?'})")
+        print(f"Status: {video['status']}\n")
+        if video["status"] == "pending":
+            print("  → transcribing…", end=" ", flush=True)
+            ok = transcribe_video(video)
+            if not ok:
+                print("no transcript available")
+                return
+            with get_connection() as conn:
+                video = conn.execute(
+                    "SELECT * FROM videos WHERE video_id = ?", (vid_id,)
+                ).fetchone()
+            print(f"{len((video['transcription'] or '').split()):,} words")
+        print("  → analyzing…")
+        n_insights, n_flagged = analyze_video(video)
+        flag_note = f", {n_flagged} low-confidence" if n_flagged else ""
+        print(f"  ✓ {n_insights} insights saved{flag_note}")
         return
 
     roles_to_run = [args.role] if args.role else ROLES
