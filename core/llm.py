@@ -51,6 +51,7 @@ if _GOOGLE_API_KEY:
                 system_instruction=system,
                 temperature=temperature,
                 max_output_tokens=max_tokens or _MAX_OUTPUT_TOKENS,
+                thinking_config=_gtypes.ThinkingConfig(thinking_budget=0),
             ),
         )
         return response.text.strip()
