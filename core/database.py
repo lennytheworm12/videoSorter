@@ -43,11 +43,13 @@ def init_db() -> None:
                 created_at    TEXT DEFAULT (datetime('now'))
             )
         """)
-        # Add confidence columns to existing DBs that predate this schema
+        # Add columns to existing DBs that predate this schema
         for col, typedef in [
-            ("source_score",  "REAL DEFAULT NULL"),
-            ("cluster_score", "REAL DEFAULT NULL"),
-            ("confidence",    "REAL DEFAULT NULL"),
+            ("source_score",      "REAL DEFAULT NULL"),
+            ("cluster_score",     "REAL DEFAULT NULL"),
+            ("confidence",        "REAL DEFAULT NULL"),
+            ("repetition_count",  "INTEGER DEFAULT 1"),
+            ("is_duplicate",      "INTEGER DEFAULT 0"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE insights ADD COLUMN {col} {typedef}")
@@ -116,12 +118,13 @@ def insert_insight(
     insight_type: str,
     text: str,
     source_score: float | None = None,
+    repetition_count: int = 1,
 ) -> int:
     """Insert an insight and return its row id."""
     with get_connection() as conn:
         cur = conn.execute(
-            "INSERT INTO insights (video_id, insight_type, text, source_score) VALUES (?, ?, ?, ?)",
-            (video_id, insight_type, text, source_score),
+            "INSERT INTO insights (video_id, insight_type, text, source_score, repetition_count) VALUES (?, ?, ?, ?, ?)",
+            (video_id, insight_type, text, source_score, repetition_count),
         )
         conn.commit()
         return cur.lastrowid

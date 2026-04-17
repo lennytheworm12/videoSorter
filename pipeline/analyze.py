@@ -147,6 +147,11 @@ EXTRACTION_PROMPT = textwrap.dedent("""
     Return exactly this JSON structure. Use [] for any category with no insights found.
     No text before or after the JSON.
 
+    Each insight is an object with two fields:
+      "text"     — the insight as a complete standalone sentence
+      "emphasis" — how much the coach stressed this point:
+                   1 = mentioned once,  2 = mentioned a few times,  3 = repeatedly stressed
+
     {{
         "champion_identity": [],
         "game_mechanics": [],
@@ -325,13 +330,20 @@ def extract_insights_from_chunk(
         result_b = extract_insights_from_chunk(half_b, role, champion, description, _depth + 1)
         result = _merge_results(result_a, result_b)
 
-    # Post-process: correct champion name misspellings in every insight string
+    # Normalise each item to (text, emphasis) tuple.
+    # Handles both old string format and new {text, emphasis} object format.
     for key, items in result.items():
-        if isinstance(items, list):
-            result[key] = [
-                correct_names(item) if isinstance(item, str) else item
-                for item in items
-            ]
+        if not isinstance(items, list):
+            continue
+        normalised = []
+        for item in items:
+            if isinstance(item, str) and item.strip():
+                normalised.append((correct_names(item.strip()), 1))
+            elif isinstance(item, dict) and item.get("text", "").strip():
+                text = correct_names(item["text"].strip())
+                emphasis = int(item.get("emphasis", 1))
+                normalised.append((text, emphasis))
+        result[key] = normalised
     return result
 
 

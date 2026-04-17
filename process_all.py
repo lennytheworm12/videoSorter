@@ -120,17 +120,16 @@ def analyze_video(video: dict) -> tuple[int, int]:
         window_matrix = _embed_chunk_windows(chunk)
         chunk_total = 0
         for insight_type, items in result.items():
-            for item in items:
-                if isinstance(item, str) and item.strip():
-                    score = score_source_grounding(item, window_matrix)
-                    aggregated.setdefault(insight_type, []).append((item.strip(), score))
-                    chunk_total += 1
+            for text, emphasis in items:
+                score = score_source_grounding(text, window_matrix)
+                aggregated.setdefault(insight_type, []).append((text, score, emphasis))
+                chunk_total += 1
         print(f"embed: {time.time() - t_embed:.2f}s → {chunk_total} insights")
 
     total = flagged = 0
     for insight_type, items in aggregated.items():
-        for text, source_score in items:
-            insert_insight(video_id, insight_type, text, source_score)
+        for text, source_score, emphasis in items:
+            insert_insight(video_id, insight_type, text, source_score, repetition_count=emphasis)
             total += 1
             if source_score < 0.30:
                 flagged += 1
