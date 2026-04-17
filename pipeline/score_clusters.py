@@ -24,11 +24,12 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 from core.database import get_all_insights_with_embeddings, update_cluster_scores
 
 # Cosine similarity threshold to count an insight as a "cluster neighbour"
-SIMILARITY_THRESHOLD = 0.75
+# 0.70 catches paraphrased versions of the same advice across videos
+SIMILARITY_THRESHOLD = 0.70
 
 # Number of cross-video neighbours needed to reach full cluster confidence
-# e.g. 5 similar insights in other videos → cluster_score = 1.0
-MAX_NEIGHBOURS = 5
+# 3 is appropriate for partial datasets; raise to 5 once all roles are processed
+MAX_NEIGHBOURS = 3
 
 
 def compute_cluster_scores() -> None:
