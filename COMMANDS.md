@@ -50,6 +50,21 @@ uv run python -m pipeline.score_clusters
 
 ---
 
+## Maintenance
+
+```bash
+# Retry videos that failed transcription (may have been proxy/rate-limit errors)
+uv run python retry_no_transcript.py
+
+# Preview how many would be retried without actually running
+uv run python retry_no_transcript.py --dry-run
+
+# Retry a specific role only
+uv run python retry_no_transcript.py --role top
+```
+
+---
+
 ## Querying
 
 ```bash
@@ -78,3 +93,6 @@ uv run python -m retrieval.questions "your question" --top-k 20
 | `GOOGLE_API_KEY`      | Primary Gemini key (free tier or paid)                   |
 | `GOOGLE_CLOUD_API_KEY`| Fallback Gemini key — auto-used when primary hits quota  |
 | `LLM_MODEL`           | Override model (default: `gemini-3.1-flash-lite-preview`)|
+| `PROXY_LIST`          | Comma-separated proxies (`host:port:user:pass,...`)       |
+
+Proxy list can also be stored in `proxies.txt` (one per line) in the project root — takes priority over `PROXY_LIST`.
