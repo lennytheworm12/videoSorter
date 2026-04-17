@@ -66,22 +66,36 @@ if _GOOGLE_API_KEY:
         max_tokens: int | None = None,
         model: str | None = None,
     ) -> str:
+        import time as _time
         _model = model or _DEFAULT_MODEL
-        try:
-            return _generate(_client, _model, system, user, temperature, max_tokens)
-        except Exception as exc:
-            # 429 RESOURCE_EXHAUSTED — daily quota on primary key exhausted
-            exc_str = str(exc)
-            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
-                if _fallback_client:
-                    print(f"\n[llm] Primary key quota exhausted — switching to Google Cloud fallback key")
-                    return _generate(_fallback_client, _model, system, user, temperature, max_tokens)
-                else:
+        _503_delays = [10, 30, 60]  # retry on transient server overload
+
+        for attempt in range(len(_503_delays) + 1):
+            try:
+                return _generate(_client, _model, system, user, temperature, max_tokens)
+            except Exception as exc:
+                exc_str = str(exc)
+
+                # 503 UNAVAILABLE — Gemini overloaded, retry with backoff
+                if ("503" in exc_str or "UNAVAILABLE" in exc_str) and attempt < len(_503_delays):
+                    wait = _503_delays[attempt]
+                    print(f"\n[llm] Gemini 503 — retrying in {wait}s (attempt {attempt + 1})…", flush=True)
+                    _time.sleep(wait)
+                    continue
+
+                # 429 RESOURCE_EXHAUSTED — daily quota exhausted, try fallback key
+                if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+                    if _fallback_client:
+                        print(f"\n[llm] Primary key quota exhausted — switching to Google Cloud fallback key")
+                        return _generate(_fallback_client, _model, system, user, temperature, max_tokens)
                     raise RuntimeError(
                         "Primary Gemini key hit daily quota and no GOOGLE_CLOUD_API_KEY fallback is set.\n"
                         "Add GOOGLE_CLOUD_API_KEY to your .env to enable automatic failover."
                     ) from exc
-            raise
+
+                raise
+
+        raise RuntimeError("Gemini 503 persisted after all retries")
 
     BACKEND = "gemini"
     MODEL = _DEFAULT_MODEL
