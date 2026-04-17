@@ -13,6 +13,7 @@ import re
 import time
 import pathlib
 import yt_dlp
+from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import (
     TranscriptsDisabled,
@@ -21,8 +22,27 @@ from youtube_transcript_api._errors import (
 )
 from core.database import get_videos_by_status, set_status, set_transcription
 
+load_dotenv()
+
 SUBTITLE_DIR = pathlib.Path("subtitles")
 SUBTITLE_DIR.mkdir(exist_ok=True)
+
+# ── Webshare proxy config (optional) ─────────────────────────────────────────
+# Set WEBSHARE_PROXY_USERNAME and WEBSHARE_PROXY_PASSWORD in .env to route
+# all transcript requests through Webshare's rotating proxy pool.
+_PROXY_USER = os.environ.get("WEBSHARE_PROXY_USERNAME")
+_PROXY_PASS = os.environ.get("WEBSHARE_PROXY_PASSWORD")
+_PROXY_URL  = f"http://{_PROXY_USER}:{_PROXY_PASS}@proxy.webshare.io:80" if _PROXY_USER else None
+
+if _PROXY_URL:
+    from youtube_transcript_api.proxies import WebshareProxyConfig
+    _TRANSCRIPT_API_PROXY = WebshareProxyConfig(
+        proxy_username=_PROXY_USER,
+        proxy_password=_PROXY_PASS,
+    )
+    print(f"[transcribe] Webshare proxy enabled ({_PROXY_USER})")
+else:
+    _TRANSCRIPT_API_PROXY = None
 
 # Seconds to wait between every transcript fetch (avoids triggering rate limits)
 INTER_VIDEO_DELAY = 3
@@ -61,7 +81,7 @@ def fetch_via_transcript_api(video_id: str) -> str | None:
     """
     for attempt in range(len(RETRY_DELAYS) + 1):
         try:
-            api = YouTubeTranscriptApi()
+            api = YouTubeTranscriptApi(proxy_config=_TRANSCRIPT_API_PROXY)
             transcript_list = api.list(video_id)
 
             try:
@@ -100,7 +120,8 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
         "outtmpl": out_template,
         "quiet": True,
         "no_warnings": True,
-        "cookiefile": "cookies.txt",  # Netscape-format cookies exported from Chrome (WSL can't decrypt browser cookies directly)
+        "cookiefile": "cookies.txt",  # Netscape-format cookies exported from browser
+        **({"proxy": _PROXY_URL} if _PROXY_URL else {}),
     }
 
     for attempt in range(len(RETRY_DELAYS) + 1):
