@@ -100,7 +100,7 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
         "outtmpl": out_template,
         "quiet": True,
         "no_warnings": True,
-        "cookiesfrombrowser": ("chrome",),  # use local Chrome session to bypass IP blocks
+        "cookiefile": "cookies.txt",  # Netscape-format cookies exported from Chrome (WSL can't decrypt browser cookies directly)
     }
 
     for attempt in range(len(RETRY_DELAYS) + 1):
