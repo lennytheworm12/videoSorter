@@ -70,7 +70,9 @@ else:
     print("[transcribe] No proxy configured — direct connection")
 
 # Seconds to wait between every transcript fetch (avoids triggering rate limits)
-INTER_VIDEO_DELAY = 3
+# Override with TRANSCRIPT_DELAY env var. Defaults to 60s on direct connection,
+# 3s when a proxy is active (proxy IPs rotate so rate limits are less of a concern).
+INTER_VIDEO_DELAY = int(os.environ.get("TRANSCRIPT_DELAY", "3" if _PROXY_LIST else "60"))
 
 # On a 429 response, wait this many seconds before each retry attempt
 RETRY_DELAYS = [30, 60]  # two retries: 30s then 60s
