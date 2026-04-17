@@ -28,22 +28,40 @@ SUBTITLE_DIR = pathlib.Path("subtitles")
 SUBTITLE_DIR.mkdir(exist_ok=True)
 
 # ── Proxy config (optional) ───────────────────────────────────────────────────
-# Set PROXY_URL in .env to route all transcript requests through a proxy.
-# Format: http://username:password@host:port
-# Works with any provider (ProxyEmpire, Webshare, etc.)
-_PROXY_URL = os.environ.get("PROXY_URL")
+# Set PROXY_LIST in .env as a comma-separated list of proxies.
+# Accepts two formats:
+#   ProxyEmpire: host:port:username:password
+#   Standard:    http://username:password@host:port
+_proxy_index = 0
 
-if _PROXY_URL:
+def _parse_proxy(raw: str) -> str:
+    """Convert host:port:user:pass or standard URL to http://user:pass@host:port."""
+    raw = raw.strip()
+    if raw.startswith("http"):
+        return raw
+    parts = raw.split(":")
+    if len(parts) == 4:
+        host, port, user, password = parts
+        return f"http://{user}:{password}@{host}:{port}"
+    raise ValueError(f"Unrecognised proxy format: {raw}")
+
+_raw_list = os.environ.get("PROXY_LIST", "")
+_PROXY_LIST = [_parse_proxy(p) for p in _raw_list.split(",") if p.strip()]
+
+def _get_proxy_url() -> str | None:
+    """Return the next proxy URL in round-robin order."""
+    global _proxy_index
+    if not _PROXY_LIST:
+        return None
+    url = _PROXY_LIST[_proxy_index % len(_PROXY_LIST)]
+    _proxy_index += 1
+    return url
+
+if _PROXY_LIST:
     from youtube_transcript_api.proxies import GenericProxyConfig
-    _TRANSCRIPT_API_PROXY = GenericProxyConfig(
-        http_url=_PROXY_URL,
-        https_url=_PROXY_URL,
-    )
-    # Log host only, not credentials
-    _proxy_host = _PROXY_URL.split("@")[-1] if "@" in _PROXY_URL else _PROXY_URL
-    print(f"[transcribe] Proxy enabled ({_proxy_host})")
+    print(f"[transcribe] {len(_PROXY_LIST)} proxy(ies) loaded (rotating)")
 else:
-    _TRANSCRIPT_API_PROXY = None
+    print("[transcribe] No proxy configured — direct connection")
 
 # Seconds to wait between every transcript fetch (avoids triggering rate limits)
 INTER_VIDEO_DELAY = 3
@@ -82,7 +100,9 @@ def fetch_via_transcript_api(video_id: str) -> str | None:
     """
     for attempt in range(len(RETRY_DELAYS) + 1):
         try:
-            api = YouTubeTranscriptApi(proxy_config=_TRANSCRIPT_API_PROXY)
+            proxy_url = _get_proxy_url()
+            proxy_config = GenericProxyConfig(http_url=proxy_url, https_url=proxy_url) if proxy_url else None
+            api = YouTubeTranscriptApi(proxy_config=proxy_config)
             transcript_list = api.list(video_id)
 
             try:
@@ -122,7 +142,7 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
         "quiet": True,
         "no_warnings": True,
         "cookiefile": "cookies.txt",  # Netscape-format cookies exported from browser
-        **({"proxy": _PROXY_URL} if _PROXY_URL else {}),
+        **({"proxy": _get_proxy_url()} if _PROXY_LIST else {}),
     }
 
     for attempt in range(len(RETRY_DELAYS) + 1):
