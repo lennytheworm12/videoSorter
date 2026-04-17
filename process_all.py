@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import logging
+import random
 import sys
 import time
 
@@ -82,7 +83,8 @@ def transcribe_video(video: dict) -> bool:
 
     if transcript:
         set_transcription(video_id, transcript)
-        time.sleep(INTER_VIDEO_DELAY)
+        delay = random.uniform(INTER_VIDEO_DELAY, INTER_VIDEO_DELAY + 10)
+        time.sleep(delay)
         return True
     else:
         set_status(video_id, "no_transcript")
