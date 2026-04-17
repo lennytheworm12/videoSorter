@@ -175,8 +175,12 @@ def retrieve(
     fused_indices = _rrf_fuse([semantic_ranked, bm25_ranked])[:top_k]
 
     # ── 4. Apply confidence reranking ─────────────────────────────────────────
+    # Combined weight: cluster confidence + source grounding score
+    # source_score is a soft signal — low values down-weight but don't exclude
     confidences = np.array([m.get("confidence") or 0.5 for m in metadata])
-    fused_indices.sort(key=lambda i: (matrix[i] @ query_vec) * (0.5 + 0.5 * confidences[i]), reverse=True)
+    source_scores = np.array([m.get("source_score") or 0.5 for m in metadata])
+    combined = (0.6 * confidences + 0.4 * source_scores)
+    fused_indices.sort(key=lambda i: (matrix[i] @ query_vec) * (0.5 + 0.5 * float(combined[i])), reverse=True)
 
     results = []
     for i in fused_indices[:top_k]:
