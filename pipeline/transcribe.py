@@ -27,20 +27,21 @@ load_dotenv()
 SUBTITLE_DIR = pathlib.Path("subtitles")
 SUBTITLE_DIR.mkdir(exist_ok=True)
 
-# ── Webshare proxy config (optional) ─────────────────────────────────────────
-# Set WEBSHARE_PROXY_USERNAME and WEBSHARE_PROXY_PASSWORD in .env to route
-# all transcript requests through Webshare's rotating proxy pool.
-_PROXY_USER = os.environ.get("WEBSHARE_PROXY_USERNAME")
-_PROXY_PASS = os.environ.get("WEBSHARE_PROXY_PASSWORD")
-_PROXY_URL  = f"http://{_PROXY_USER}:{_PROXY_PASS}@proxy.webshare.io:80" if _PROXY_USER else None
+# ── Proxy config (optional) ───────────────────────────────────────────────────
+# Set PROXY_URL in .env to route all transcript requests through a proxy.
+# Format: http://username:password@host:port
+# Works with any provider (ProxyEmpire, Webshare, etc.)
+_PROXY_URL = os.environ.get("PROXY_URL")
 
 if _PROXY_URL:
-    from youtube_transcript_api.proxies import WebshareProxyConfig
-    _TRANSCRIPT_API_PROXY = WebshareProxyConfig(
-        proxy_username=_PROXY_USER,
-        proxy_password=_PROXY_PASS,
+    from youtube_transcript_api.proxies import GenericProxyConfig
+    _TRANSCRIPT_API_PROXY = GenericProxyConfig(
+        http_url=_PROXY_URL,
+        https_url=_PROXY_URL,
     )
-    print(f"[transcribe] Webshare proxy enabled ({_PROXY_USER})")
+    # Log host only, not credentials
+    _proxy_host = _PROXY_URL.split("@")[-1] if "@" in _PROXY_URL else _PROXY_URL
+    print(f"[transcribe] Proxy enabled ({_proxy_host})")
 else:
     _TRANSCRIPT_API_PROXY = None
 
