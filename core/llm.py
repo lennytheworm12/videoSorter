@@ -9,7 +9,7 @@ Environment variables:
     GOOGLE_API_KEY        — primary Gemini key (free tier or paid)
     GOOGLE_CLOUD_API_KEY  — fallback Gemini key (Google Cloud project key)
     LLM_MODEL             — model to use
-                            Gemini default : gemini-2.0-flash
+                            Gemini default : gemini-3.1-flash-lite-preview
                             Ollama default : gemma4:e2b
 """
 
@@ -33,7 +33,7 @@ if _GOOGLE_API_KEY:
     from google import genai as _genai
     from google.genai import types as _gtypes
 
-    _DEFAULT_MODEL = _LLM_MODEL or "gemini-2.0-flash"
+    _DEFAULT_MODEL = _LLM_MODEL or "gemini-3.1-flash-lite-preview"
 
     _client = _genai.Client(api_key=_GOOGLE_API_KEY)
     _fallback_client = _genai.Client(api_key=_GOOGLE_CLOUD_API_KEY) if _GOOGLE_CLOUD_API_KEY else None
