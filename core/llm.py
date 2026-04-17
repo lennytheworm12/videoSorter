@@ -2,12 +2,15 @@
 LLM abstraction layer.
 
 Uses Google Gemini when GOOGLE_API_KEY is set, falls back to Ollama for local dev.
+A second Gemini key (GOOGLE_CLOUD_API_KEY) is used as an automatic fallback when
+the primary key hits its daily quota (429 RESOURCE_EXHAUSTED).
 
 Environment variables:
-    GOOGLE_API_KEY  — enables Gemini (set this in .env)
-    LLM_MODEL       — model to use
-                      Gemini default : gemini-2.5-flash-preview-04-17
-                      Ollama default : gemma4:e2b
+    GOOGLE_API_KEY        — primary Gemini key (free tier or paid)
+    GOOGLE_CLOUD_API_KEY  — fallback Gemini key (Google Cloud project key)
+    LLM_MODEL             — model to use
+                            Gemini default : gemini-2.0-flash
+                            Ollama default : gemma4:e2b
 """
 
 import os
@@ -16,8 +19,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-_LLM_MODEL = os.environ.get("LLM_MODEL")
+_GOOGLE_API_KEY       = os.environ.get("GOOGLE_API_KEY")
+_GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_CLOUD_API_KEY")
+_LLM_MODEL            = os.environ.get("LLM_MODEL")
 
 # Suppress noisy SDK warnings
 logging.getLogger("google").setLevel(logging.ERROR)
@@ -29,23 +33,21 @@ if _GOOGLE_API_KEY:
     from google import genai as _genai
     from google.genai import types as _gtypes
 
-    _DEFAULT_MODEL = _LLM_MODEL or "gemini-2.5-flash"
+    _DEFAULT_MODEL = _LLM_MODEL or "gemini-2.0-flash"
+
     _client = _genai.Client(api_key=_GOOGLE_API_KEY)
+    _fallback_client = _genai.Client(api_key=_GOOGLE_CLOUD_API_KEY) if _GOOGLE_CLOUD_API_KEY else None
 
     # Query the model's actual output token limit at startup
     _model_info = _client.models.get(model=_DEFAULT_MODEL)
     _MAX_OUTPUT_TOKENS = _model_info.output_token_limit
-    print(f"[llm] Gemini backend: {_DEFAULT_MODEL} (max output tokens: {_MAX_OUTPUT_TOKENS:,})")
+    _fallback_label = "cloud key" if _fallback_client else "none"
+    print(f"[llm] Gemini backend: {_DEFAULT_MODEL} (max output tokens: {_MAX_OUTPUT_TOKENS:,}, fallback: {_fallback_label})")
 
-    def chat(
-        system: str,
-        user: str,
-        temperature: float = 0.1,
-        max_tokens: int | None = None,
-        model: str | None = None,
-    ) -> str:
-        response = _client.models.generate_content(
-            model=model or _DEFAULT_MODEL,
+
+    def _generate(client, model: str, system: str, user: str, temperature: float, max_tokens: int | None) -> str:
+        response = client.models.generate_content(
+            model=model,
             contents=user,
             config=_gtypes.GenerateContentConfig(
                 system_instruction=system,
@@ -55,6 +57,31 @@ if _GOOGLE_API_KEY:
             ),
         )
         return response.text.strip()
+
+
+    def chat(
+        system: str,
+        user: str,
+        temperature: float = 0.1,
+        max_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
+        _model = model or _DEFAULT_MODEL
+        try:
+            return _generate(_client, _model, system, user, temperature, max_tokens)
+        except Exception as exc:
+            # 429 RESOURCE_EXHAUSTED — daily quota on primary key exhausted
+            exc_str = str(exc)
+            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+                if _fallback_client:
+                    print(f"\n[llm] Primary key quota exhausted — switching to Google Cloud fallback key")
+                    return _generate(_fallback_client, _model, system, user, temperature, max_tokens)
+                else:
+                    raise RuntimeError(
+                        "Primary Gemini key hit daily quota and no GOOGLE_CLOUD_API_KEY fallback is set.\n"
+                        "Add GOOGLE_CLOUD_API_KEY to your .env to enable automatic failover."
+                    ) from exc
+            raise
 
     BACKEND = "gemini"
     MODEL = _DEFAULT_MODEL
