@@ -9,6 +9,8 @@ Safe to re-run — already-transcribed videos are skipped.
 """
 
 import os
+import re
+import time
 import pathlib
 import yt_dlp
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -22,37 +24,71 @@ from core.database import get_videos_by_status, set_status, set_transcription
 SUBTITLE_DIR = pathlib.Path("subtitles")
 SUBTITLE_DIR.mkdir(exist_ok=True)
 
+# Seconds to wait between every transcript fetch (avoids triggering rate limits)
+INTER_VIDEO_DELAY = 3
+
+# On a 429 response, wait this many seconds before each retry attempt
+RETRY_DELAYS = [30, 60]  # two retries: 30s then 60s
+
+
+def _is_rate_limited(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return "429" in msg or "too many requests" in msg or "ip" in msg and "block" in msg
+
+
+def _retry_sleep(attempt: int, exc: Exception) -> bool:
+    """
+    If the error looks like a rate limit and we have retries left, sleep and
+    return True. Otherwise return False (caller should give up).
+    """
+    if not _is_rate_limited(exc) or attempt >= len(RETRY_DELAYS):
+        return False
+    wait = RETRY_DELAYS[attempt]
+    # Parse suggested retry delay from YouTube error message if present
+    m = re.search(r"retry[^\d]*(\d+(?:\.\d+)?)\s*s", str(exc), re.IGNORECASE)
+    if m:
+        wait = max(wait, int(float(m.group(1))) + 2)
+    print(f"    [rate limit] waiting {wait}s before retry {attempt + 1}…", flush=True)
+    time.sleep(wait)
+    return True
+
 
 def fetch_via_transcript_api(video_id: str) -> str | None:
     """
     Pull auto-generated or manual captions from YouTube.
     Returns joined transcript string, or None if unavailable.
+    Retries up to len(RETRY_DELAYS) times on rate-limit errors.
     """
-    try:
-        api = YouTubeTranscriptApi()
-        transcript_list = api.list(video_id)
-
+    for attempt in range(len(RETRY_DELAYS) + 1):
         try:
-            transcript = transcript_list.find_manually_created_transcript(["en"])
-        except NoTranscriptFound:
-            transcript = transcript_list.find_generated_transcript(["en"])
+            api = YouTubeTranscriptApi()
+            transcript_list = api.list(video_id)
 
-        segments = transcript.fetch()
-        # Join all segments; each segment has 'text', 'start', 'duration'
-        text = " ".join(seg.text.strip() for seg in segments)
-        return text
+            try:
+                transcript = transcript_list.find_manually_created_transcript(["en"])
+            except NoTranscriptFound:
+                transcript = transcript_list.find_generated_transcript(["en"])
 
-    except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable) as e:
-        print(f"    [transcript api] unavailable: {e}")
-        return None
-    except Exception as e:
-        print(f"    [transcript api] unexpected error: {e}")
-        return None
+            segments = transcript.fetch()
+            text = " ".join(seg.text.strip() for seg in segments)
+            return text
+
+        except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable) as e:
+            print(f"    [transcript api] unavailable: {e}")
+            return None
+        except Exception as e:
+            if _retry_sleep(attempt, e):
+                continue
+            print(f"    [transcript api] unexpected error: {e}")
+            return None
+
+    return None
 
 
 def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
     """
     Fallback: download auto-subtitle .vtt file with yt-dlp and parse it.
+    Retries up to len(RETRY_DELAYS) times on rate-limit errors.
     """
     out_template = str(SUBTITLE_DIR / f"{video_id}.%(ext)s")
 
@@ -66,12 +102,16 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
         "no_warnings": True,
     }
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([video_url])
-    except Exception as e:
-        print(f"    [yt-dlp] download error: {e}")
-        return None
+    for attempt in range(len(RETRY_DELAYS) + 1):
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([video_url])
+            break
+        except Exception as e:
+            if _retry_sleep(attempt, e):
+                continue
+            print(f"    [yt-dlp] download error: {e}")
+            return None
 
     vtt_path = SUBTITLE_DIR / f"{video_id}.en.vtt"
     if not vtt_path.exists():

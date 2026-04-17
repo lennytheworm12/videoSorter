@@ -29,7 +29,7 @@ from core.database import (
     get_connection, get_videos_by_status,
     set_status, set_transcription, insert_insight,
 )
-from pipeline.transcribe import fetch_via_transcript_api, fetch_via_yt_dlp
+from pipeline.transcribe import fetch_via_transcript_api, fetch_via_yt_dlp, INTER_VIDEO_DELAY
 from pipeline.analyze import (
     extract_insights_from_chunk, chunk_transcript,
     _embed_chunk_windows, score_source_grounding,
@@ -82,6 +82,7 @@ def transcribe_video(video: dict) -> bool:
 
     if transcript:
         set_transcription(video_id, transcript)
+        time.sleep(INTER_VIDEO_DELAY)
         return True
     else:
         set_status(video_id, "no_transcript")
