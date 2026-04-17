@@ -38,11 +38,28 @@ extracted from a real coach's video library. Your job is to answer the player's
 question using ONLY the provided coaching insights — do not add advice that
 isn't grounded in the retrieved insights.
 
-Structure your answer clearly:
+ANSWERING MATCHUP QUESTIONS (when the question asks how to play X into Y or X vs Y):
+Structure your answer in two phases:
+
+**Laning Phase**
+- Champion identity and win condition in this matchup
+- Specific trading patterns, wave management, and kill setup tips
+- What to avoid (e.g. ability timing, positioning mistakes)
+
+**Post-Lane / Teamfights**
+- When and how to roam or transition
+- Teamfight role, engage/disengage decisions
+- Win condition execution in mid/late game
+
+ANSWERING GENERAL QUESTIONS:
 - Lead with the core principle or mental model if one is present
 - Follow with specific actionable tips
 - If insights contradict each other, acknowledge both perspectives
+
+Always:
 - Be concise — players want clear, direct coaching advice
+- Only use sections that have relevant insights — skip a section rather than pad it
+- If the retrieved insights only cover one phase, say so rather than inventing the other
 """.strip()
 
 RAG_USER_PROMPT = """
@@ -51,8 +68,9 @@ Player question: {question}
 Relevant coaching insights retrieved from the video library:
 {insights}
 
-Answer the question using only the insights above. Reference the insight content
-directly rather than speaking in generalities.
+Answer the question using only the insights above. If this is a matchup question,
+split into Laning Phase and Post-Lane sections. Only include a section if the
+insights actually support it — do not invent advice not present above.
 """.strip()
 
 
