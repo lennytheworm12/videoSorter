@@ -72,14 +72,21 @@ def embed_insights() -> None:
     print(f"Done — {len(ids)} insights embedded.")
 
 
+MIN_SOURCE_SCORE = 0.60  # insights below this are likely hallucinated or too vague
+
+
 def load_all_vectors(
     role: str | None = None,
     champion: str | None = None,
     insight_type: str | None = None,
+    min_source_score: float = MIN_SOURCE_SCORE,
 ) -> tuple[list[int], list[str], list[dict], np.ndarray]:
     """
     Load insight IDs, texts, metadata, and vectors from DB.
     Optional filters narrow the pool before returning.
+
+    Only returns insights with source_score >= min_source_score (default 0.60)
+    to filter out likely-hallucinated or vague extractions.
 
     Returns:
         ids       — list of insight row IDs
@@ -93,8 +100,9 @@ def load_all_vectors(
         FROM insights i
         JOIN videos v ON i.video_id = v.video_id
         WHERE i.embedding IS NOT NULL
+        AND (i.source_score IS NULL OR i.source_score >= ?)
     """
-    params = []
+    params: list = [min_source_score]
     if role:
         query += " AND v.role = ?"
         params.append(role)
