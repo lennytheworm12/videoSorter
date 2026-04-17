@@ -78,24 +78,38 @@ RETRY_DELAYS = [30, 60]  # two retries: 30s then 60s
 
 def _is_rate_limited(exc: Exception) -> bool:
     msg = str(exc).lower()
-    return "429" in msg or "too many requests" in msg or "ip" in msg and "block" in msg
+    return "429" in msg or "too many requests" in msg or ("ip" in msg and "block" in msg)
 
 
-def _retry_sleep(attempt: int, exc: Exception) -> bool:
+def _is_proxy_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(k in msg for k in ("502", "bad gateway", "proxyerror", "tunnel connection failed", "unable to connect to proxy"))
+
+
+def _should_retry(attempt: int, exc: Exception) -> bool:
     """
-    If the error looks like a rate limit and we have retries left, sleep and
-    return True. Otherwise return False (caller should give up).
+    Decide whether to retry and how long to wait.
+    - Proxy errors: cycle to next proxy immediately (no sleep)
+    - Rate limits: sleep before retrying
+    Returns True if the caller should retry, False to give up.
     """
-    if not _is_rate_limited(exc) or attempt >= len(RETRY_DELAYS):
+    if attempt >= len(RETRY_DELAYS):
         return False
-    wait = RETRY_DELAYS[attempt]
-    # Parse suggested retry delay from YouTube error message if present
-    m = re.search(r"retry[^\d]*(\d+(?:\.\d+)?)\s*s", str(exc), re.IGNORECASE)
-    if m:
-        wait = max(wait, int(float(m.group(1))) + 2)
-    print(f"    [rate limit] waiting {wait}s before retry {attempt + 1}…", flush=True)
-    time.sleep(wait)
-    return True
+
+    if _is_proxy_error(exc):
+        print(f"    [proxy error] cycling to next proxy (attempt {attempt + 1})…", flush=True)
+        return True  # _get_proxy_url() will advance the index on the next call
+
+    if _is_rate_limited(exc):
+        wait = RETRY_DELAYS[attempt]
+        m = re.search(r"retry[^\d]*(\d+(?:\.\d+)?)\s*s", str(exc), re.IGNORECASE)
+        if m:
+            wait = max(wait, int(float(m.group(1))) + 2)
+        print(f"    [rate limit] waiting {wait}s before retry {attempt + 1}…", flush=True)
+        time.sleep(wait)
+        return True
+
+    return False
 
 
 def fetch_via_transcript_api(video_id: str) -> str | None:
@@ -124,7 +138,7 @@ def fetch_via_transcript_api(video_id: str) -> str | None:
             print(f"    [transcript api] unavailable: {e}")
             return None
         except Exception as e:
-            if _retry_sleep(attempt, e):
+            if _should_retry(attempt, e):
                 continue
             print(f"    [transcript api] unexpected error: {e}")
             return None
@@ -139,7 +153,7 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
     """
     out_template = str(SUBTITLE_DIR / f"{video_id}.%(ext)s")
 
-    ydl_opts = {
+    base_opts = {
         "skip_download": True,
         "writeautomaticsub": True,
         "subtitleslangs": ["en"],
@@ -148,16 +162,16 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
         "quiet": True,
         "no_warnings": True,
         "cookiefile": "cookies.txt",  # Netscape-format cookies exported from browser
-        **({"proxy": _get_proxy_url()} if _PROXY_LIST else {}),
     }
 
     for attempt in range(len(RETRY_DELAYS) + 1):
         try:
+            ydl_opts = {**base_opts, **({"proxy": _get_proxy_url()} if _PROXY_LIST else {})}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([video_url])
             break
         except Exception as e:
-            if _retry_sleep(attempt, e):
+            if _should_retry(attempt, e):
                 continue
             print(f"    [yt-dlp] download error: {e}")
             return None
