@@ -45,8 +45,14 @@ def _parse_proxy(raw: str) -> str:
         return f"http://{user}:{password}@{host}:{port}"
     raise ValueError(f"Unrecognised proxy format: {raw}")
 
-_raw_list = os.environ.get("PROXY_LIST", "")
-_PROXY_LIST = [_parse_proxy(p) for p in _raw_list.split(",") if p.strip()]
+# Load from proxies.txt (one per line) or PROXY_LIST env var (comma-separated)
+_proxy_file = pathlib.Path("proxies.txt")
+if _proxy_file.exists():
+    _raw_entries = [l.strip() for l in _proxy_file.read_text().splitlines() if l.strip() and not l.startswith("#")]
+else:
+    _raw_entries = [p.strip() for p in os.environ.get("PROXY_LIST", "").split(",") if p.strip()]
+
+_PROXY_LIST = [_parse_proxy(p) for p in _raw_entries]
 
 def _get_proxy_url() -> str | None:
     """Return the next proxy URL in round-robin order."""
