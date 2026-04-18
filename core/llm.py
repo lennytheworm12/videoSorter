@@ -83,14 +83,23 @@ if _GOOGLE_API_KEY:
                     _time.sleep(wait)
                     continue
 
-                # 429 RESOURCE_EXHAUSTED — daily quota exhausted, try fallback key
+                # 429 RESOURCE_EXHAUSTED — rate limit or daily quota
                 if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+                    # Per-minute rate limit: extract retry delay and sleep
+                    if "Per" in exc_str and "Minute" in exc_str or "retryDelay" in exc_str:
+                        import re as _re
+                        delay_match = _re.search(r"retryDelay.*?(\d+)s", exc_str)
+                        wait = int(delay_match.group(1)) + 2 if delay_match else 60
+                        print(f"\n[llm] Rate limited — sleeping {wait}s…", flush=True)
+                        _time.sleep(wait)
+                        continue
+                    # Daily quota exhausted — try fallback key
                     if _fallback_client:
-                        print(f"\n[llm] Primary key quota exhausted — switching to Google Cloud fallback key")
+                        print(f"\n[llm] Primary key quota exhausted — switching to fallback key")
                         return _generate(_fallback_client, _model, system, user, temperature, max_tokens)
                     raise RuntimeError(
-                        "Primary Gemini key hit daily quota and no GOOGLE_CLOUD_API_KEY fallback is set.\n"
-                        "Add GOOGLE_CLOUD_API_KEY to your .env to enable automatic failover."
+                        "Primary Gemini key hit daily quota and no fallback key is set.\n"
+                        "Add GOOGLE_API_KEY_TWO to your .env to enable automatic failover."
                     ) from exc
 
                 raise

@@ -41,9 +41,10 @@ MAX_NEIGHBORS = 5
 
 def _init_tables() -> None:
     with get_connection() as conn:
-        # Drop old role-keyed tables so we can recreate role-agnostic versions
-        conn.execute("DROP TABLE IF EXISTS champion_vectors")
-        conn.execute("DROP TABLE IF EXISTS crossref_insights")
+        # Migrate old role-keyed champion_vectors if it exists
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(champion_vectors)").fetchall()}
+        if cols and "role" in cols:
+            conn.execute("DROP TABLE champion_vectors")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS champion_vectors (
                 champion   TEXT PRIMARY KEY,
@@ -53,6 +54,10 @@ def _init_tables() -> None:
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        # Migrate old role-keyed crossref_insights if it exists
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(crossref_insights)").fetchall()}
+        if cols and "role" in cols:
+            conn.execute("DROP TABLE crossref_insights")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS crossref_insights (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
