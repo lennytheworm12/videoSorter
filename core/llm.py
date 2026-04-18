@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _GOOGLE_API_KEY       = os.environ.get("GOOGLE_API_KEY")
-_GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_CLOUD_API_KEY")
+_GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_API_KEY_TWO") or os.environ.get("GOOGLE_CLOUD_API_KEY")
 _LLM_MODEL            = os.environ.get("LLM_MODEL")
 
 # Suppress noisy SDK warnings
