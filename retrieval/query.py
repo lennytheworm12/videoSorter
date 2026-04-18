@@ -70,6 +70,13 @@ provided insights. Synthesize the interaction — if A wants short trades and B
 wants extended fights, conclude that A should take short trades. Do not invent
 advice not grounded in the insights.
 
+CRITICAL — ability attribution: The insights are grouped by champion. Any
+[ability_windows] insight listed under "{champion_a}" describes {champion_a}'s
+own abilities. Any [ability_windows] insight listed under "{champion_b}"
+describes {champion_b}'s own abilities. Never attribute an ability mechanic to
+the wrong champion. If an ability_windows insight says "your Q does X", that
+"your" refers to the champion whose section it appears in.
+
 Structure your answer:
 
 **Laning Phase**
@@ -87,10 +94,10 @@ Only include a section if the insights support it.
 MATCHUP_USER = """
 Player question: {question}
 
-Insights about {champion_a}: {note_a}
+=== {champion_a} insights === {note_a}
 {insights_a}
 
-Insights about {champion_b}: {note_b}
+=== {champion_b} insights === {note_b}
 {insights_b}
 
 Using the insights above, explain how {champion_a} should play against {champion_b}.
@@ -516,7 +523,12 @@ def _format_insights(insights: list[dict]) -> str:
             "archetype": " [archetype]",
             "ability_enrichment": " [ability]",
         }.get(r.get("retrieval_layer", ""), "")
-        lines.append(f"  - [{r['insight_type']}{layer_tag}] {r['text']}")
+        # Explicitly label the champion on ability_windows rows so the LLM
+        # cannot mistake which champion's ability is being described.
+        champ_tag = ""
+        if r.get("insight_type") == "ability_windows" and r.get("champion"):
+            champ_tag = f" | {r['champion']}'s ability"
+        lines.append(f"  - [{r['insight_type']}{layer_tag}{champ_tag}] {r['text']}")
     return "\n".join(lines)
 
 
