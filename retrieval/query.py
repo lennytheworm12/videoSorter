@@ -204,8 +204,8 @@ def retrieve(
     # When a specific champion is queried, blend in generalizable insights from
     # same-archetype champions to fill coverage gaps.
     # Only fires when champion is known and the crossref table has data.
-    if champion and role:
-        _blend_archetype_insights(results, question, champion, role, top_k)
+    if champion:
+        _blend_archetype_insights(results, question, champion, top_k)
 
     return results
 
@@ -214,7 +214,6 @@ def _blend_archetype_insights(
     results: list[dict],
     question: str,
     champion: str,
-    role: str,
     top_k: int,
 ) -> None:
     """
@@ -224,7 +223,7 @@ def _blend_archetype_insights(
     already covered, sorted by transfer_score. This ensures direct evidence
     always ranks first, archetype insights supplement rather than displace.
     """
-    archetype_hits = get_archetype_insights(champion, role, top_k=top_k)
+    archetype_hits = get_archetype_insights(champion, top_k=top_k)
     if not archetype_hits:
         return
 

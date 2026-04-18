@@ -4,14 +4,18 @@ Champion cross-reference pipeline.
 Builds a knowledge bridge so insights from champion X can inform questions
 about champion Y in the same archetype, even if no direct video exists for Y.
 
+Champion similarity is role-agnostic: Braum played ADC is still an engage
+tank and should match Leona/Nautilus regardless of role. Each champion gets
+one vector (all champion_identity insights pooled) and one archetype.
+
 Three steps:
-  1. Champion vectors — mean-pool champion_identity embeddings per champion
-  2. KNN within archetypes — cosine similarity to rank archetype peers
+  1. Champion vectors — mean-pool ALL champion_identity embeddings per champion
+  2. KNN within archetypes — cosine similarity to rank archetype peers (no role gate)
   3. Insight generalization — Gemini labels each champion_identity insight as
      'specific' (stay with this champion) or 'generalizable' (transfer to archetype)
 
 Output stored in two new DB tables:
-  champion_vectors   — one row per (champion, role) with mean-pooled embedding
+  champion_vectors   — one row per champion with mean-pooled embedding
   crossref_insights  — generalizable insights tagged with their archetype
 
 Usage:
@@ -37,14 +41,16 @@ MAX_NEIGHBORS = 5
 
 def _init_tables() -> None:
     with get_connection() as conn:
+        # Drop old role-keyed tables so we can recreate role-agnostic versions
+        conn.execute("DROP TABLE IF EXISTS champion_vectors")
+        conn.execute("DROP TABLE IF EXISTS crossref_insights")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS champion_vectors (
-                champion   TEXT NOT NULL,
-                role       TEXT NOT NULL,
+                champion   TEXT PRIMARY KEY,
+                archetype  TEXT,
                 vector     BLOB NOT NULL,
                 n_insights INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT (datetime('now')),
-                PRIMARY KEY (champion, role)
+                created_at TEXT DEFAULT (datetime('now'))
             )
         """)
         conn.execute("""
@@ -52,7 +58,6 @@ def _init_tables() -> None:
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 insight_id   INTEGER NOT NULL REFERENCES insights(id),
                 champion     TEXT NOT NULL,
-                role         TEXT NOT NULL,
                 archetype    TEXT NOT NULL,
                 scope        TEXT NOT NULL,  -- 'specific' or 'generalizable'
                 created_at   TEXT DEFAULT (datetime('now'))
@@ -63,14 +68,14 @@ def _init_tables() -> None:
 
 # ── Step 1: Champion vectors ──────────────────────────────────────────────────
 
-def build_champion_vectors() -> dict[tuple[str, str], np.ndarray]:
+def build_champion_vectors() -> dict[str, np.ndarray]:
     """
-    Mean-pool all champion_identity insight embeddings per (champion, role).
-    Returns dict mapping (champion, role) → normalised mean vector.
+    Mean-pool ALL champion_identity insight embeddings per champion (role-agnostic).
+    Returns dict mapping champion → normalised mean vector.
     """
     with get_connection() as conn:
         rows = conn.execute("""
-            SELECT i.embedding, v.champion, v.role
+            SELECT i.embedding, v.champion
             FROM insights i
             JOIN videos v ON i.video_id = v.video_id
             WHERE i.insight_type = 'champion_identity'
@@ -82,33 +87,39 @@ def build_champion_vectors() -> dict[tuple[str, str], np.ndarray]:
         print("  No champion_identity embeddings found — run embed.py first.")
         return {}
 
-    # Group vectors by (champion, role)
-    groups: dict[tuple[str, str], list[np.ndarray]] = {}
+    # Group vectors by champion (ignore role)
+    groups: dict[str, list[np.ndarray]] = {}
     for row in rows:
-        key = (row["champion"], row["role"])
         vec = np.frombuffer(row["embedding"], dtype=np.float32)
-        groups.setdefault(key, []).append(vec)
+        groups.setdefault(row["champion"], []).append(vec)
+
+    # Load archetype map (champion → archetype, role-agnostic: pick first match)
+    with get_connection() as conn:
+        arch_rows = conn.execute(
+            "SELECT champion, archetype FROM champion_archetypes"
+        ).fetchall()
+    archetype_map: dict[str, str] = {}
+    for r in arch_rows:
+        archetype_map.setdefault(r["champion"].lower(), r["archetype"])
 
     # Mean-pool and normalise
-    champion_vectors: dict[tuple[str, str], np.ndarray] = {}
+    champion_vectors: dict[str, np.ndarray] = {}
     upserts = []
-    for (champion, role), vecs in groups.items():
+    for champion, vecs in groups.items():
         mean_vec = np.mean(vecs, axis=0).astype(np.float32)
         norm = np.linalg.norm(mean_vec)
         if norm > 0:
             mean_vec /= norm
-        champion_vectors[(champion, role)] = mean_vec
-        upserts.append((
-            champion, role,
-            mean_vec.tobytes(),
-            len(vecs),
-        ))
+        champion_vectors[champion] = mean_vec
+        archetype = archetype_map.get(champion.lower())
+        upserts.append((champion, archetype, mean_vec.tobytes(), len(vecs)))
 
     with get_connection() as conn:
         conn.executemany("""
-            INSERT INTO champion_vectors (champion, role, vector, n_insights)
+            INSERT INTO champion_vectors (champion, archetype, vector, n_insights)
             VALUES (?, ?, ?, ?)
-            ON CONFLICT(champion, role) DO UPDATE SET
+            ON CONFLICT(champion) DO UPDATE SET
+                archetype  = excluded.archetype,
                 vector     = excluded.vector,
                 n_insights = excluded.n_insights
         """, upserts)
@@ -118,71 +129,69 @@ def build_champion_vectors() -> dict[tuple[str, str], np.ndarray]:
     return champion_vectors
 
 
-def load_champion_vectors() -> dict[tuple[str, str], np.ndarray]:
+def load_champion_vectors() -> dict[str, np.ndarray]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT champion, role, vector FROM champion_vectors"
+            "SELECT champion, vector FROM champion_vectors"
         ).fetchall()
     return {
-        (r["champion"], r["role"]): np.frombuffer(r["vector"], dtype=np.float32)
+        r["champion"]: np.frombuffer(r["vector"], dtype=np.float32)
         for r in rows
     }
 
 
 # ── Step 2: KNN within archetypes ─────────────────────────────────────────────
 
-def compute_archetype_neighbors() -> dict[tuple[str, str], list[dict]]:
+def compute_archetype_neighbors() -> dict[str, list[dict]]:
     """
-    For each (champion, role) with a vector, find the most similar champions
-    in the same archetype ranked by cosine similarity.
+    For each champion with a vector, find the most similar champions
+    in the same archetype ranked by cosine similarity (role-agnostic).
 
-    Returns dict mapping (champion, role) → list of neighbor dicts:
-        {champion, role, archetype, similarity}
+    Returns dict mapping champion → list of neighbor dicts:
+        {champion, archetype, similarity}
     """
     vectors = load_champion_vectors()
     if not vectors:
         print("  No champion vectors found — run --vectors first.")
         return {}
 
-    # Load archetype memberships
+    # Load archetype per champion (role-agnostic: first entry wins)
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT champion, role, archetype FROM champion_archetypes"
+            "SELECT champion, archetype FROM champion_archetypes"
         ).fetchall()
-    archetype_map: dict[tuple[str, str], str] = {
-        (r["champion"], r["role"]): r["archetype"] for r in rows
-    }
+    archetype_map: dict[str, str] = {}
+    for r in rows:
+        archetype_map.setdefault(r["champion"].lower(), r["archetype"])
 
-    neighbors: dict[tuple[str, str], list[dict]] = {}
+    neighbors: dict[str, list[dict]] = {}
 
-    for (champ, role), vec in vectors.items():
-        archetype = archetype_map.get((champ, role))
+    for champ, vec in vectors.items():
+        archetype = archetype_map.get(champ.lower())
         if not archetype:
             continue
 
-        # Find all same-archetype champions that also have vectors
+        # Find all same-archetype champions that also have vectors (no role gate)
         peers = [
-            (c, r, v)
-            for (c, r), v in vectors.items()
-            if r == role
-            and archetype_map.get((c, r)) == archetype
-            and (c, r) != (champ, role)
+            (c, v)
+            for c, v in vectors.items()
+            if archetype_map.get(c.lower()) == archetype
+            and c.lower() != champ.lower()
         ]
 
         if not peers:
-            neighbors[(champ, role)] = []
+            neighbors[champ] = []
             continue
 
-        # Cosine similarity (vectors are normalised)
         scored = sorted(
-            [(c, r, float(vec @ v)) for c, r, v in peers],
-            key=lambda x: x[2],
+            [(c, float(vec @ v)) for c, v in peers],
+            key=lambda x: x[1],
             reverse=True,
         )
 
-        neighbors[(champ, role)] = [
-            {"champion": c, "role": r, "archetype": archetype, "similarity": round(sim, 4)}
-            for c, r, sim in scored
+        neighbors[champ] = [
+            {"champion": c, "archetype": archetype, "similarity": round(sim, 4)}
+            for c, sim in scored
             if sim >= KNN_THRESHOLD
         ][:MAX_NEIGHBORS]
 
@@ -227,15 +236,15 @@ def generalize_insights(dry_run: bool = False) -> None:
             ).fetchall()
         }
 
-    # Load champion_identity insights with archetype info
+    # Load champion_identity insights with archetype info (role-agnostic: first match)
     with get_connection() as conn:
         rows = conn.execute("""
-            SELECT i.id, i.text, v.champion, v.role, ca.archetype
+            SELECT i.id, i.text, v.champion, v.role,
+                   (SELECT ca.archetype FROM champion_archetypes ca
+                    WHERE LOWER(ca.champion) = LOWER(v.champion)
+                    LIMIT 1) AS archetype
             FROM insights i
             JOIN videos v ON i.video_id = v.video_id
-            JOIN champion_archetypes ca
-              ON LOWER(v.champion) = LOWER(ca.champion)
-              AND v.role = ca.role
             WHERE i.insight_type = 'champion_identity'
               AND v.champion IS NOT NULL
         """).fetchall()
@@ -260,12 +269,12 @@ def generalize_insights(dry_run: bool = False) -> None:
         with get_connection() as conn:
             conn.executemany("""
                 INSERT OR IGNORE INTO crossref_insights
-                    (insight_id, champion, role, archetype, scope)
-                VALUES (?, ?, ?, ?, ?)
+                    (insight_id, champion, archetype, scope)
+                VALUES (?, ?, ?, ?)
             """, b)
             conn.commit()
         total_saved += len(b)
-        total_gen += sum(1 for _, _, _, _, s in b if s == "generalizable")
+        total_gen += sum(1 for _, _, _, s in b if s == "generalizable")
 
     for i, row in enumerate(pending, 1):
         prompt = GENERALIZE_PROMPT.format(
@@ -289,7 +298,7 @@ def generalize_insights(dry_run: bool = False) -> None:
             scope = "specific"
 
         batch.append((
-            row["id"], row["champion"], row["role"], row["archetype"], scope
+            row["id"], row["champion"], row["archetype"] or "unknown", scope
         ))
 
         if len(batch) >= BATCH_SIZE:
@@ -316,9 +325,9 @@ def print_status() -> None:
         ).fetchone()[0]
 
         top_archetypes = conn.execute("""
-            SELECT archetype, role, COUNT(*) as n
+            SELECT archetype, COUNT(*) as n
             FROM crossref_insights WHERE scope = 'generalizable'
-            GROUP BY archetype, role ORDER BY n DESC LIMIT 10
+            GROUP BY archetype ORDER BY n DESC LIMIT 10
         """).fetchall()
 
     print(f"\nChampion vectors:  {n_vectors}")
@@ -326,7 +335,7 @@ def print_status() -> None:
     if top_archetypes:
         print("Top generalizable archetypes:")
         for r in top_archetypes:
-            print(f"  {r['role']:<10} {r['archetype']:<25} {r['n']} insights")
+            print(f"  {r['archetype']:<25} {r['n']} insights")
     print()
 
 
@@ -334,20 +343,21 @@ def print_status() -> None:
 
 def get_archetype_insights(
     champion: str,
-    role: str,
+    role: str | None = None,
     top_k: int = 10,
 ) -> list[dict]:
     """
     Return generalizable insights from same-archetype champions,
-    ranked by (similarity × confidence).
+    ranked by (similarity × confidence). Role-agnostic: Braum ADC
+    still matches Leona/Nautilus because they share the Warden archetype.
 
     Used by query.py as the layer-2 archetype fallback.
     """
-    # Get this champion's archetype
+    # Get this champion's archetype (role-agnostic: first match)
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT archetype FROM champion_archetypes WHERE LOWER(champion) = LOWER(?) AND role = ?",
-            (champion, role),
+            "SELECT archetype FROM champion_archetypes WHERE LOWER(champion) = LOWER(?) LIMIT 1",
+            (champion,),
         ).fetchone()
     if not row:
         return []
@@ -355,7 +365,13 @@ def get_archetype_insights(
 
     # Load champion vectors for similarity scoring
     vectors = load_champion_vectors()
-    query_vec = vectors.get((champion, role))
+    query_vec = vectors.get(champion)
+    if query_vec is None:
+        # Try case-insensitive lookup
+        for k, v in vectors.items():
+            if k.lower() == champion.lower():
+                query_vec = v
+                break
 
     with get_connection() as conn:
         rows = conn.execute("""
@@ -364,8 +380,7 @@ def get_archetype_insights(
                    cv.vector
             FROM crossref_insights ci
             JOIN insights i ON ci.insight_id = i.id
-            LEFT JOIN champion_vectors cv
-              ON LOWER(cv.champion) = LOWER(ci.champion) AND cv.role = ci.role
+            LEFT JOIN champion_vectors cv ON LOWER(cv.champion) = LOWER(ci.champion)
             WHERE ci.archetype = ?
               AND ci.scope = 'generalizable'
               AND LOWER(ci.champion) != LOWER(?)
