@@ -41,7 +41,8 @@ uv run python process_all.py --status
 # 2. Build champion archetype map (run once, re-run after new champions added)
 uv run python -m pipeline.champion_archetypes
 uv run python -m pipeline.champion_archetypes --status   # show table
-uv run python -m pipeline.champion_archetypes --fill-gaps # only Gemini fill-in
+uv run python -m pipeline.champion_archetypes --fill-gaps # only Gemini fill-in for champions in videos DB
+uv run python -m pipeline.champion_archetypes --fill-all  # seed ALL Data Dragon champions (empty buckets)
 
 # 3. Embed all analyzed insights into vectors
 uv run python -m pipeline.embed

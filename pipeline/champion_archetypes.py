@@ -82,7 +82,7 @@ EMPIRICAL: list[tuple[str, str, str]] = [
     ("Tristana",   "adc", "Short-Range Mobile"),
     ("Nilah",      "adc", "Anti-Melee"),
     ("Xayah",      "adc", "Anti-Melee"),
-    ("Yumira",     "adc", "Anti-Melee"),
+    ("Yunara",     "adc", "Anti-Melee"),
     ("Corki",      "adc", "Anti-Melee"),
     ("Sivir",      "adc", "Anti-Melee"),
     ("Smolder",    "adc", "Anti-Melee"),
@@ -280,6 +280,17 @@ def get_uncovered_champions() -> list[tuple[str, str]]:
     ]
 
 
+def get_all_uncovered_champions() -> list[str]:
+    """
+    Return champion names from Data Dragon that have NO entry in
+    champion_archetypes at all (across any role).
+    Used by --fill-all to seed the full roster as empty buckets.
+    """
+    covered_names = {name.lower() for name, _ in get_covered()}
+    all_names = load_champion_names()
+    return [n for n in all_names if n.lower() not in covered_names]
+
+
 # ── Gemini fill-in ────────────────────────────────────────────────────────────
 
 FILL_SYSTEM = """
@@ -295,6 +306,63 @@ ARCHETYPES_BY_ROLE = {
     "jungle":  ["Farming", "Assassin", "Ult-Tank", "Fighter", "Heavy-Fighter", "Diver", "Slippery", "Team-Assassin"],
     "top":     ["Ranged", "Duelist", "Unique", "True_Tank"],
 }
+
+
+FILL_ALL_SYSTEM = """
+You are a League of Legends expert. Given a champion name, return their primary
+role and archetype using the classification system below.
+
+Roles: top, jungle, mid, adc, support
+Archetypes by role:
+  top:     Ranged, Duelist, Unique, True_Tank
+  jungle:  Farming, Assassin, Ult-Tank, Fighter, Heavy-Fighter, Diver, Slippery, Team-Assassin
+  mid:     Melee Assassin, True Mage, Ranged Assassin, Anti-Assassin, Battle Mage, Anti-Melee, Yasuo
+  adc:     Poke, Long-Range Immobile, Short-Range Mobile, Anti-Melee
+  support: Warden, Playmaker, Mage, Enchanter, Cat
+
+Return valid JSON only — no markdown, no explanation.
+""".strip()
+
+
+def fill_all_with_llm(champion_names: list[str]) -> list[tuple[str, str, str, str]]:
+    """
+    Ask Gemini to classify each champion by primary role + archetype.
+    Used to seed the full Data Dragon roster as empty buckets.
+    Returns list of (champion, role, archetype, 'inferred') tuples.
+    """
+    if not champion_names:
+        return []
+
+    results = []
+    for i, champion in enumerate(champion_names, 1):
+        prompt = f"""
+Champion: {champion}
+
+What is this champion's primary role and archetype?
+Return JSON: {{"role": "<role>", "archetype": "<archetype>"}}
+""".strip()
+
+        try:
+            raw = llm_chat(system=FILL_ALL_SYSTEM, user=prompt, temperature=0.0)
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            data = json.loads(raw.strip())
+            role = data["role"].lower()
+            archetype = data["archetype"]
+            if role not in ARCHETYPES_BY_ROLE:
+                print(f"  [skip] {champion}: unknown role '{role}'")
+                continue
+            if archetype not in ARCHETYPES_BY_ROLE[role]:
+                print(f"  [skip] {champion}: unknown archetype '{archetype}' for {role}")
+                continue
+            results.append((champion, role, archetype, "inferred"))
+            print(f"  [{i}/{len(champion_names)}] {champion} ({role}) → {archetype}")
+        except Exception as e:
+            print(f"  [error] {champion}: {e}")
+
+    return results
 
 
 def fill_gaps_with_llm(pairs: list[tuple[str, str]]) -> list[tuple[str, str, str, str]]:
@@ -365,8 +433,9 @@ def print_status() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Populate champion archetypes table")
-    parser.add_argument("--status", action="store_true", help="Show current table and exit")
-    parser.add_argument("--fill-gaps", action="store_true", help="Only run Gemini fill-in for uncovered champions")
+    parser.add_argument("--status",    action="store_true", help="Show current table and exit")
+    parser.add_argument("--fill-gaps", action="store_true", help="Only run Gemini fill-in for uncovered video champions")
+    parser.add_argument("--fill-all",  action="store_true", help="Seed ALL Data Dragon champions (creates empty buckets)")
     args = parser.parse_args()
 
     init_db()
@@ -375,26 +444,40 @@ def main() -> None:
         print_status()
         return
 
-    if not args.fill_gaps:
+    if not args.fill_gaps and not args.fill_all:
         # Load empirical data
         rows = [(c, r, a, "empirical") for c, r, a in EMPIRICAL]
         print(f"Loading {len(rows)} empirical entries from blog data…")
         upsert_archetypes(rows)
         print("Done.")
 
-    # Fill gaps for champions in our videos DB
-    gaps = get_uncovered_champions()
-    if gaps:
-        print(f"\n{len(gaps)} champion/role pair(s) in videos DB not covered by blog data:")
-        for c, r in gaps:
-            print(f"  {c} ({r})")
-        print("\nAsking Gemini to classify…")
-        inferred = fill_gaps_with_llm(gaps)
-        if inferred:
-            upsert_archetypes(inferred)
-            print(f"\n{len(inferred)} inferred entries added.")
+    if args.fill_all:
+        missing = get_all_uncovered_champions()
+        if missing:
+            print(f"\n{len(missing)} champion(s) from Data Dragon not yet in archetypes table:")
+            for n in missing:
+                print(f"  {n}")
+            print("\nAsking Gemini to classify primary role + archetype…")
+            inferred = fill_all_with_llm(missing)
+            if inferred:
+                upsert_archetypes(inferred)
+                print(f"\n{len(inferred)} entries added.")
+        else:
+            print("\nAll Data Dragon champions already have archetype entries.")
     else:
-        print("\nNo gaps — all champions in videos DB are covered.")
+        # Fill gaps for champions in our videos DB
+        gaps = get_uncovered_champions()
+        if gaps:
+            print(f"\n{len(gaps)} champion/role pair(s) in videos DB not covered by blog data:")
+            for c, r in gaps:
+                print(f"  {c} ({r})")
+            print("\nAsking Gemini to classify…")
+            inferred = fill_gaps_with_llm(gaps)
+            if inferred:
+                upsert_archetypes(inferred)
+                print(f"\n{len(inferred)} inferred entries added.")
+        else:
+            print("\nNo gaps — all champions in videos DB are covered.")
 
     print_status()
 
