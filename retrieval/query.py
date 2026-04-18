@@ -95,6 +95,8 @@ Insights about {champion_b}: {note_b}
 
 Using the insights above, explain how {champion_a} should play against {champion_b}.
 If a side only has archetype data, reason from the shared playstyle — do not refuse to answer.
+If stat context is provided below, factor it into your answer (e.g. range mismatch changes
+safe farming distance; low base HP/armor increases early burst windows).
 """.strip()
 
 SYNERGY_SYSTEM = """
@@ -417,6 +419,58 @@ def retrieve_duo(
     return insights_a, insights_b
 
 
+def _fetch_stat_notes(champion: str, top_n: int = 3) -> list[str]:
+    """Pull the most extreme pre-computed stat anomaly notes for a champion."""
+    from core.database import get_connection
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT note FROM champion_stat_notes
+            WHERE champion = ?
+            ORDER BY ABS(z_score) DESC
+            LIMIT ?
+            """,
+            (champion, top_n)
+        ).fetchall()
+    return [r["note"] for r in rows]
+
+
+def _range_matchup_note(champion_a: str, champion_b: str) -> str | None:
+    """
+    Compare attack ranges of two champions and return a situational note
+    only when the gap is significant (≥100 units). This is computed at query
+    time since low range is only meaningful relative to the opponent.
+    """
+    from core.database import get_connection
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT champion, attack_range FROM champion_stats WHERE champion IN (?, ?)",
+            (champion_a, champion_b)
+        ).fetchall()
+
+    ranges = {r["champion"]: r["attack_range"] for r in rows if r["attack_range"]}
+    ra = ranges.get(champion_a)
+    rb = ranges.get(champion_b)
+    if ra is None or rb is None:
+        return None
+
+    diff = rb - ra  # positive = B has more range
+    if abs(diff) < 100:
+        return None  # not significant enough to call out
+
+    longer = champion_b if diff > 0 else champion_a
+    shorter = champion_a if diff > 0 else champion_b
+    gap = abs(int(diff))
+    longer_range = int(rb if diff > 0 else ra)
+    shorter_range = int(ra if diff > 0 else rb)
+
+    return (
+        f"Range mismatch: {longer} ({longer_range}) has {gap} more range than "
+        f"{shorter} ({shorter_range}) — {shorter} must play closer to trade, "
+        f"giving {longer} the poke/auto advantage at all times."
+    )
+
+
 def _archetype_fallback(champion: str, top_k: int) -> list[dict]:
     """
     When a champion has no direct video coverage, pull generalizable insights
@@ -503,15 +557,62 @@ def answer(
         + f"] {r['text']}"
         for i, r in enumerate(insights)
     )
+
+    # If a single champion is mentioned in the question, attach their stat notes
+    detected_champ = champion or (intent.get("a") if intent.get("type") == "general" else None)
+    if not detected_champ:
+        # Try to find any champion mentioned (reuse intent lookup)
+        q_norm = _normalize(question)
+        lookup = _get_champion_lookup()
+        for name_key in sorted(lookup, key=len, reverse=True):
+            m = re.search(r'\b' + re.escape(name_key) + r'\b', q_norm)
+            if m:
+                detected_champ = lookup[name_key]
+                break
+
+    stat_block = ""
+    if detected_champ:
+        stat_ctx = _stat_context_block(detected_champ)
+        if stat_ctx:
+            stat_block = f"\n\nStat context (factor this into your answer if relevant):\n{stat_ctx}"
+
     generated = llm_chat(
         system=GENERAL_SYSTEM,
-        user=GENERAL_USER.format(question=question, insights=formatted),
+        user=GENERAL_USER.format(question=question, insights=formatted) + stat_block,
         temperature=0.2,
     )
 
     if show_sources:
         generated += _sources_block(insights)
     return generated
+
+
+def _stat_context_block(champion_a: str, champion_b: str | None = None) -> str:
+    """
+    Build a stat context block for the prompt. Includes:
+    - Pre-computed anomaly notes for each champion (HP, armor, scaling edges)
+    - Query-time range matchup note (only when gap ≥ 100 units)
+    """
+    lines = []
+
+    notes_a = _fetch_stat_notes(champion_a)
+    if notes_a:
+        lines.append(f"Stat context for {champion_a}:")
+        for n in notes_a:
+            lines.append(f"  • {n}")
+
+    if champion_b:
+        notes_b = _fetch_stat_notes(champion_b)
+        if notes_b:
+            lines.append(f"Stat context for {champion_b}:")
+            for n in notes_b:
+                lines.append(f"  • {n}")
+
+        range_note = _range_matchup_note(champion_a, champion_b)
+        if range_note:
+            lines.append(f"  • {range_note}")
+
+    return "\n".join(lines)
 
 
 def _answer_duo(
@@ -536,20 +637,24 @@ def _answer_duo(
     a_note = _coverage_note(insights_a, a)
     b_note = _coverage_note(insights_b, b)
 
+    # Stat context: pre-computed anomalies + query-time range comparison
+    stat_ctx = _stat_context_block(a, b)
+    stat_block = f"\nStat context:\n{stat_ctx}\n" if stat_ctx else ""
+
     if mode == "matchup":
         system = MATCHUP_SYSTEM.format(champion_a=a, champion_b=b)
         user = MATCHUP_USER.format(
             question=question, champion_a=a, champion_b=b,
             insights_a=fmt_a, insights_b=fmt_b,
             note_a=a_note, note_b=b_note,
-        )
+        ) + stat_block
     else:
         system = SYNERGY_SYSTEM.format(champion_a=a, champion_b=b)
         user = SYNERGY_USER.format(
             question=question, champion_a=a, champion_b=b,
             insights_a=fmt_a, insights_b=fmt_b,
             note_a=a_note, note_b=b_note,
-        )
+        ) + stat_block
 
     generated = llm_chat(system=system, user=user, temperature=0.2)
 

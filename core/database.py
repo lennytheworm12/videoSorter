@@ -87,6 +87,29 @@ def init_db() -> None:
             )
         """)
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS champion_stats (
+                champion       TEXT PRIMARY KEY,
+                hp             REAL, hp_level      REAL,
+                armor          REAL, armor_level   REAL,
+                mr             REAL, mr_level      REAL,
+                attack_range   REAL,
+                attack_damage  REAL, ad_level      REAL,
+                attack_speed   REAL, as_level      REAL,
+                movespeed      REAL,
+                scraped_at     TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS champion_stat_notes (
+                champion         TEXT NOT NULL,
+                stat_key         TEXT NOT NULL,
+                note             TEXT NOT NULL,
+                z_score          REAL NOT NULL,
+                comparison_group TEXT NOT NULL,
+                PRIMARY KEY (champion, stat_key)
+            )
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS eval_queries (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 question        TEXT NOT NULL,
