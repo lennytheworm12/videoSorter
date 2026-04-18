@@ -20,17 +20,18 @@ DDRAGON_CHAMPIONS = "https://ddragon.leagueoflegends.com/cdn/{version}/data/en_U
 # Key = lowercase canonical name, value = list of known bad transcriptions.
 KNOWN_ERRORS: dict[str, list[str]] = {
     "malzahar":       ["malahar", "malazar", "malasar", "malazhar", "malzar"],
+    "karthus":        ["karfus", "carthus", "karthas"],
     "skarner":        ["scarner", "skarn", "scarner"],
-    "cassiopeia":     ["casiopeia", "casio peia", "cassio peia"],
+    "cassiopeia":     ["casiopeia", "casio peia", "cassio peia", "cassio"],
     "sejuani":        ["sejauni", "sejuani", "swani", "sejwani"],
     "aatrox":         ["atrox", "aatrocks", "a trox"],
     "azir":           ["azeer", "azer", "a zeer"],
     "bel'veth":       ["bel veth", "belveth", "belvef", "bel vef"],
     "cho'gath":       ["chogath", "cho gath", "chogat", "cho gat"],
-    "dr. mundo":      ["dr mundo", "doctor mundo"],
+    "dr. mundo":      ["dr mundo", "doctor mundo", "mundo"],
     "fiddlesticks":   ["fiddle sticks", "fiddlestick"],
     "gragas":         ["gragus", "gragis"],
-    "jarvan iv":      ["jarvan 4", "jarvan the fourth"],
+    "jarvan iv":      ["jarvan 4", "jarvan the fourth", "jarvan"],
     "k'sante":        ["ksante", "k sante", "k'sant"],
     "kai'sa":         ["kaisa", "kai sa", "kaysa"],
     "kha'zix":        ["khazix", "kha zix", "kazix"],
@@ -42,7 +43,7 @@ KNOWN_ERRORS: dict[str, list[str]] = {
     "rek'sai":        ["reksai", "rek sai", "rec sai"],
     "renata glasc":   ["renata glasc", "renata"],
     "tahm kench":     ["tam kench", "tahm ken", "tom kench"],
-    "twisted fate":   ["twisted faith", "twist of fate"],
+    "twisted fate":   ["twisted faith", "twist of fate", "tf"],
     "vel'koz":        ["velkoz", "vel koz", "vel cos"],
     "wukong":         ["wu kong", "monkey king"],
     "xin zhao":       ["xin jo", "xin zao", "shin zhao"],
@@ -164,6 +165,61 @@ def get_all_champion_names() -> list[str]:
 def champion_names_for_prompt() -> str:
     """Return a compact string of all champion names for injection into prompts."""
     return ", ".join(load_champion_names())
+
+
+@lru_cache(maxsize=1)
+def _build_title_patterns() -> list[tuple[re.Pattern, str]]:
+    """
+    Build (pattern, canonical) pairs for extracting champion names from video titles.
+    Includes all canonical names + their known variants, longest first.
+    """
+    names = load_champion_names()
+    entries: list[tuple[str, str]] = []
+
+    for canonical in names:
+        entries.append((canonical, canonical))
+        for variant in _name_variants(canonical):
+            entries.append((variant, canonical))
+        for bad in KNOWN_ERRORS.get(canonical.lower(), []):
+            entries.append((bad, canonical))
+
+    seen: set[str] = set()
+    deduped: list[tuple[str, str]] = []
+    for raw, good in sorted(entries, key=lambda x: -len(x[0])):
+        low = raw.lower()
+        if low not in seen and low != good.lower():
+            seen.add(low)
+            deduped.append((raw, good))
+        elif low == good.lower() and low not in seen:
+            seen.add(low)
+            deduped.append((raw, good))
+
+    compiled = []
+    for raw, good in deduped:
+        try:
+            pat = re.compile(r"\b" + re.escape(raw) + r"\b", re.IGNORECASE)
+            compiled.append((pat, good))
+        except re.error:
+            pass
+    return compiled
+
+
+def extract_champion_from_title(title: str) -> str | None:
+    """
+    Find the first champion name mentioned in a video title.
+    Returns the canonical name (e.g. "Kai'Sa") or None if not found.
+
+    Examples:
+        "Platinum 2 Kaisa ADC Coaching"   → "Kai'Sa"
+        "Master Cassiopeia vs Zed"         → "Cassiopeia"
+        "General wave management tips"     → None
+    """
+    if not title:
+        return None
+    for pattern, canonical in _build_title_patterns():
+        if pattern.search(title):
+            return canonical
+    return None
 
 
 if __name__ == "__main__":

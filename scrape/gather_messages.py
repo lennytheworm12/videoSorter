@@ -4,6 +4,7 @@ import re
 import time
 from playwright.sync_api import BrowserContext, Page
 from core.database import insert_video, insert_pending_description
+from core.champions import extract_champion_from_title
 
 # Matches the full YouTube URL including all query params (stops at whitespace)
 # Group 1 = full URL, used for stripping from description text
@@ -97,6 +98,7 @@ def go_through_channel(context: BrowserContext, channel_url: str, role: str) -> 
             if youtube_url:
                 video_id = extract_video_id(youtube_url)
                 if video_id:
+                    champion = extract_champion_from_title(description)
                     insert_video(
                         video_id=video_id,
                         video_url=youtube_url,
@@ -104,6 +106,7 @@ def go_through_channel(context: BrowserContext, channel_url: str, role: str) -> 
                         message_timestamp=timestamp or "",
                         video_title=description,
                         description=description,
+                        champion=champion,
                     )
                     saved += 1
                     print(f"  [saved] {video_id} | {description or '(no desc)'}")

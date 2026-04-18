@@ -65,10 +65,51 @@ def init_db() -> None:
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS champion_archetypes (
-                champion   TEXT PRIMARY KEY,
+                champion   TEXT NOT NULL,
+                role       TEXT NOT NULL,
                 archetype  TEXT NOT NULL,
                 source     TEXT DEFAULT 'empirical',
-                created_at TEXT DEFAULT (datetime('now'))
+                created_at TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (champion, role)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS champion_abilities (
+                champion      TEXT NOT NULL,
+                ability_slot  TEXT NOT NULL,
+                name          TEXT,
+                description   TEXT,
+                cooldown      TEXT,
+                range         TEXT,
+                cost          TEXT,
+                properties    TEXT,
+                PRIMARY KEY (champion, ability_slot)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS eval_queries (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                question        TEXT NOT NULL,
+                expected_answer TEXT,
+                notes           TEXT,
+                created_at      TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS eval_ratings (
+                id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+                query_id              INTEGER REFERENCES eval_queries(id),
+                question              TEXT NOT NULL,
+                intent_type           TEXT,
+                champion_a            TEXT,
+                champion_b            TEXT,
+                answer_good           INTEGER NOT NULL,  -- 1=good, 0=bad
+                confidence_aligned    INTEGER NOT NULL,  -- 1=aligned, 0=misaligned
+                retrieved_insight_ids TEXT,
+                generated_answer      TEXT,
+                retrieval_method      TEXT DEFAULT 'rrf',
+                shown_order           INTEGER,
+                rated_at              TEXT DEFAULT (datetime('now'))
             )
         """)
         conn.commit()
