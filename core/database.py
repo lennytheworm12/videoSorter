@@ -65,12 +65,10 @@ def init_db() -> None:
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS champion_archetypes (
-                champion    TEXT NOT NULL,
-                role        TEXT NOT NULL,
-                archetype   TEXT NOT NULL,
-                source      TEXT DEFAULT 'empirical',
-                created_at  TEXT DEFAULT (datetime('now')),
-                PRIMARY KEY (champion, role)
+                champion   TEXT PRIMARY KEY,
+                archetype  TEXT NOT NULL,
+                source     TEXT DEFAULT 'empirical',
+                created_at TEXT DEFAULT (datetime('now'))
             )
         """)
         conn.commit()

@@ -1,14 +1,20 @@
 """
 Populate champion_archetypes table from empirical blog data + Gemini fill-in.
 
+One archetype per champion — role is not stored. A champion's playstyle identity
+(e.g. Braum = Warden) is what matters for cross-referencing, regardless of what
+role they happen to be played in a given video.
+
 Data sources:
   - machineloling.com Season 16 encyclopedia (8.6M diamond+ games, empirical)
-  - Gemini fills in any champion in our DB not covered by the blog data
+    Multi-role champions keep their primary/most-played role archetype.
+  - Gemini fills in any champion not covered by the blog data
 
 Usage:
     python -m pipeline.champion_archetypes              # populate / refresh
     python -m pipeline.champion_archetypes --status     # show current table
-    python -m pipeline.champion_archetypes --fill-gaps  # only run Gemini fill-in
+    python -m pipeline.champion_archetypes --fill-gaps  # only fill uncovered champions in videos DB
+    python -m pipeline.champion_archetypes --fill-all   # seed ALL Data Dragon champions
 """
 
 import argparse
@@ -17,231 +23,247 @@ from core.database import get_connection, init_db
 from core.champions import load_champion_names
 from core.llm import chat as llm_chat
 
-# ── Empirical data from machineloling.com Season 16 encyclopedia ──────────────
-# Source: 8.6M diamond+ games, WR-corrected deltas, Ward's hierarchical clustering
+# ── Empirical data from machineloling.com Season 16 ──────────────────────────
+# One entry per champion — primary role archetype chosen for multi-role champs.
 
-EMPIRICAL: list[tuple[str, str, str]] = [
-    # (champion, role, archetype)
+EMPIRICAL: list[tuple[str, str]] = [
+    # (champion, archetype)
 
     # SUPPORT
-    ("Braum",      "support", "Warden"),
-    ("Taric",      "support", "Warden"),
-    ("Alistar",    "support", "Warden"),
-    ("Rell",       "support", "Warden"),
-    ("Rakan",      "support", "Warden"),
-    ("Leona",      "support", "Warden"),
-    ("Nautilus",   "support", "Playmaker"),
-    ("Blitzcrank", "support", "Playmaker"),
-    ("Pyke",       "support", "Playmaker"),
-    ("Tahm Kench", "support", "Playmaker"),
-    ("Thresh",     "support", "Playmaker"),
-    ("Maokai",     "support", "Playmaker"),
-    ("Poppy",      "support", "Playmaker"),
-    ("Pantheon",   "support", "Playmaker"),
-    ("Elise",      "support", "Playmaker"),
-    ("Morgana",    "support", "Mage"),
-    ("Brand",      "support", "Mage"),
-    ("Neeko",      "support", "Mage"),
-    ("Swain",      "support", "Mage"),
-    ("Zyra",       "support", "Mage"),
-    ("Mel",        "support", "Mage"),
-    ("Xerath",     "support", "Mage"),
-    ("Lux",        "support", "Mage"),
-    ("Vel'Koz",    "support", "Mage"),
-    ("Yuumi",      "support", "Cat"),
-    ("Senna",      "support", "Enchanter"),
-    ("Seraphine",  "support", "Enchanter"),
-    ("Karma",      "support", "Enchanter"),
-    ("Bard",       "support", "Enchanter"),
-    ("Zilean",     "support", "Enchanter"),
-    ("Lulu",       "support", "Enchanter"),
-    ("Nami",       "support", "Enchanter"),
-    ("Janna",      "support", "Enchanter"),
-    ("Sona",       "support", "Enchanter"),
-    ("Milio",      "support", "Enchanter"),
-    ("Soraka",     "support", "Enchanter"),
+    ("Braum",        "Warden"),
+    ("Taric",        "Warden"),
+    ("Alistar",      "Warden"),
+    ("Rell",         "Warden"),
+    ("Rakan",        "Warden"),
+    ("Leona",        "Warden"),
+    ("Nautilus",     "Playmaker"),
+    ("Blitzcrank",   "Playmaker"),
+    ("Pyke",         "Playmaker"),
+    ("Tahm Kench",   "Playmaker"),
+    ("Thresh",       "Playmaker"),
+    ("Maokai",       "Playmaker"),
+    ("Poppy",        "Playmaker"),
+    ("Pantheon",     "Playmaker"),
+    ("Elise",        "Assassin"),       # primary: jungle Assassin
+    ("Morgana",      "Mage"),
+    ("Brand",        "Mage"),
+    ("Neeko",        "Mage"),
+    ("Swain",        "Mage"),
+    ("Zyra",         "Mage"),
+    ("Mel",          "Battle Mage"),    # primary: mid
+    ("Xerath",       "True Mage"),      # primary: mid
+    ("Lux",          "Mage"),
+    ("Vel'Koz",      "Mage"),
+    ("Yuumi",        "Cat"),
+    ("Senna",        "Enchanter"),
+    ("Seraphine",    "Enchanter"),
+    ("Karma",        "Enchanter"),
+    ("Bard",         "Enchanter"),
+    ("Zilean",       "Enchanter"),
+    ("Lulu",         "Enchanter"),
+    ("Nami",         "Enchanter"),
+    ("Janna",        "Enchanter"),
+    ("Sona",         "Enchanter"),
+    ("Milio",        "Enchanter"),
+    ("Soraka",       "Enchanter"),
 
     # ADC
-    ("Ziggs",      "adc", "Poke"),
-    ("Ezreal",     "adc", "Poke"),
-    ("Jhin",       "adc", "Poke"),
-    ("Miss Fortune","adc", "Long-Range Immobile"),
-    ("Ashe",       "adc", "Long-Range Immobile"),
-    ("Varus",      "adc", "Long-Range Immobile"),
-    ("Draven",     "adc", "Long-Range Immobile"),
-    ("Kog'Maw",    "adc", "Long-Range Immobile"),
-    ("Jinx",       "adc", "Long-Range Immobile"),
-    ("Caitlyn",    "adc", "Long-Range Immobile"),
-    ("Aphelios",   "adc", "Long-Range Immobile"),
-    ("Twitch",     "adc", "Short-Range Mobile"),
-    ("Samira",     "adc", "Short-Range Mobile"),
-    ("Kai'Sa",     "adc", "Short-Range Mobile"),
-    ("Vayne",      "adc", "Short-Range Mobile"),
-    ("Zeri",       "adc", "Short-Range Mobile"),
-    ("Lucian",     "adc", "Short-Range Mobile"),
-    ("Tristana",   "adc", "Short-Range Mobile"),
-    ("Nilah",      "adc", "Anti-Melee"),
-    ("Xayah",      "adc", "Anti-Melee"),
-    ("Yunara",     "adc", "Anti-Melee"),
-    ("Corki",      "adc", "Anti-Melee"),
-    ("Sivir",      "adc", "Anti-Melee"),
-    ("Smolder",    "adc", "Anti-Melee"),
-    ("Swain",      "adc", "Anti-Melee"),
+    ("Ziggs",        "Poke"),
+    ("Ezreal",       "Poke"),
+    ("Jhin",         "Poke"),
+    ("Miss Fortune", "Long-Range Immobile"),
+    ("Ashe",         "Long-Range Immobile"),
+    ("Varus",        "Long-Range Immobile"),
+    ("Draven",       "Long-Range Immobile"),
+    ("Kog'Maw",      "Long-Range Immobile"),
+    ("Jinx",         "Long-Range Immobile"),
+    ("Caitlyn",      "Long-Range Immobile"),
+    ("Aphelios",     "Long-Range Immobile"),
+    ("Twitch",       "Short-Range Mobile"),
+    ("Samira",       "Short-Range Mobile"),
+    ("Kai'Sa",       "Short-Range Mobile"),
+    ("Vayne",        "Short-Range Mobile"),
+    ("Zeri",         "Short-Range Mobile"),
+    ("Lucian",       "Short-Range Mobile"),
+    ("Tristana",     "Short-Range Mobile"),
+    ("Nilah",        "Anti-Melee"),
+    ("Xayah",        "Anti-Melee"),
+    ("Yunara",       "Anti-Melee"),
+    ("Corki",        "Anti-Melee"),
+    ("Sivir",        "Anti-Melee"),
+    ("Smolder",      "Anti-Melee"),
 
     # MID
-    ("Yasuo",        "mid", "Yasuo"),
-    ("Naafiri",      "mid", "Melee Assassin"),
-    ("Zed",          "mid", "Melee Assassin"),
-    ("Qiyana",       "mid", "Melee Assassin"),
-    ("Talon",        "mid", "Melee Assassin"),
-    ("Yone",         "mid", "Melee Assassin"),
-    ("Irelia",       "mid", "Melee Assassin"),
-    ("Katarina",     "mid", "Melee Assassin"),
-    ("Akshan",       "mid", "Melee Assassin"),
-    ("Kassadin",     "mid", "Melee Assassin"),
-    ("Akali",        "mid", "Melee Assassin"),
-    ("Diana",        "mid", "Melee Assassin"),
-    ("Fizz",         "mid", "Melee Assassin"),
-    ("Ekko",         "mid", "Melee Assassin"),
-    ("Xerath",       "mid", "True Mage"),
-    ("Aurelion Sol", "mid", "True Mage"),
-    ("Veigar",       "mid", "True Mage"),
-    ("Taliyah",      "mid", "True Mage"),
-    ("Syndra",       "mid", "True Mage"),
-    ("Lux",          "mid", "True Mage"),
-    ("Hwei",         "mid", "True Mage"),
-    ("Vel'Koz",      "mid", "True Mage"),
-    ("Ahri",         "mid", "Ranged Assassin"),
-    ("Aurora",       "mid", "Ranged Assassin"),
-    ("LeBlanc",      "mid", "Ranged Assassin"),
-    ("Zoe",          "mid", "Ranged Assassin"),
-    ("Lissandra",    "mid", "Anti-Assassin"),
-    ("Vex",          "mid", "Anti-Assassin"),
-    ("Twisted Fate", "mid", "Anti-Assassin"),
-    ("Malzahar",     "mid", "Anti-Assassin"),
-    ("Mel",          "mid", "Battle Mage"),
-    ("Ryze",         "mid", "Battle Mage"),
-    ("Vladimir",     "mid", "Battle Mage"),
-    ("Cassiopeia",   "mid", "Battle Mage"),
-    ("Viktor",       "mid", "Battle Mage"),
-    ("Orianna",      "mid", "Battle Mage"),
-    ("Anivia",       "mid", "Battle Mage"),
-    ("Azir",         "mid", "Battle Mage"),
-    ("Sylas",        "mid", "Anti-Melee"),
-    ("Galio",        "mid", "Anti-Melee"),
+    ("Yasuo",        "Yasuo"),
+    ("Naafiri",      "Melee Assassin"),
+    ("Zed",          "Melee Assassin"),
+    ("Qiyana",       "Melee Assassin"),
+    ("Talon",        "Melee Assassin"),
+    ("Yone",         "Melee Assassin"),
+    ("Irelia",       "Melee Assassin"),
+    ("Katarina",     "Melee Assassin"),
+    ("Akshan",       "Melee Assassin"),
+    ("Kassadin",     "Melee Assassin"),
+    ("Akali",        "Melee Assassin"),
+    ("Diana",        "Melee Assassin"),
+    ("Fizz",         "Melee Assassin"),
+    ("Ekko",         "Melee Assassin"),
+    ("Aurelion Sol", "True Mage"),
+    ("Veigar",       "True Mage"),
+    ("Taliyah",      "True Mage"),
+    ("Syndra",       "True Mage"),
+    ("Hwei",         "True Mage"),
+    ("Ahri",         "Ranged Assassin"),
+    ("Aurora",       "Ranged Assassin"),
+    ("LeBlanc",      "Ranged Assassin"),
+    ("Zoe",          "Ranged Assassin"),
+    ("Lissandra",    "Anti-Assassin"),
+    ("Vex",          "Anti-Assassin"),
+    ("Twisted Fate", "Anti-Assassin"),
+    ("Malzahar",     "Anti-Assassin"),
+    ("Ryze",         "Battle Mage"),
+    ("Vladimir",     "Battle Mage"),
+    ("Cassiopeia",   "Battle Mage"),
+    ("Viktor",       "Battle Mage"),
+    ("Orianna",      "Battle Mage"),
+    ("Anivia",       "Battle Mage"),
+    ("Azir",         "Battle Mage"),
+    ("Sylas",        "Anti-Melee"),
+    ("Galio",        "Anti-Melee"),
 
     # JUNGLE
-    ("Zed",       "jungle", "Farming"),
-    ("Kindred",   "jungle", "Farming"),
-    ("Jayce",     "jungle", "Farming"),
-    ("Graves",    "jungle", "Farming"),
-    ("Karthus",   "jungle", "Farming"),
-    ("Taliyah",   "jungle", "Farming"),
-    ("Rengar",    "jungle", "Assassin"),
-    ("Nidalee",   "jungle", "Assassin"),
-    ("Talon",     "jungle", "Assassin"),
-    ("Fiddlesticks", "jungle", "Assassin"),
-    ("Shaco",     "jungle", "Assassin"),
-    ("Elise",     "jungle", "Assassin"),
-    ("Kha'Zix",   "jungle", "Assassin"),
-    ("Qiyana",    "jungle", "Assassin"),
-    ("Sejuani",   "jungle", "Ult-Tank"),
-    ("Malphite",  "jungle", "Ult-Tank"),
-    ("Rammus",    "jungle", "Ult-Tank"),
-    ("Nunu",      "jungle", "Ult-Tank"),
-    ("Amumu",     "jungle", "Ult-Tank"),
-    ("Lee Sin",   "jungle", "Fighter"),
-    ("Rek'Sai",   "jungle", "Fighter"),
-    ("Vi",        "jungle", "Fighter"),
-    ("Briar",     "jungle", "Fighter"),
-    ("Warwick",   "jungle", "Fighter"),
-    ("Wukong",    "jungle", "Heavy-Fighter"),
-    ("Zac",       "jungle", "Heavy-Fighter"),
-    ("Jax",       "jungle", "Heavy-Fighter"),
-    ("Volibear",  "jungle", "Heavy-Fighter"),
-    ("Zaahen",    "jungle", "Heavy-Fighter"),
-    ("Dr. Mundo", "jungle", "Diver"),
-    ("Nocturne",  "jungle", "Diver"),
-    ("Xin Zhao",  "jungle", "Diver"),
-    ("Jarvan IV", "jungle", "Diver"),
-    ("Diana",     "jungle", "Diver"),
-    ("Hecarim",   "jungle", "Diver"),
-    ("Ivern",     "jungle", "Slippery"),
-    ("Ekko",      "jungle", "Slippery"),
-    ("Lillia",    "jungle", "Slippery"),
-    ("Gwen",      "jungle", "Slippery"),
-    ("Sylas",     "jungle", "Slippery"),
-    ("Udyr",      "jungle", "Slippery"),
-    ("Viego",     "jungle", "Team-Assassin"),
-    ("Master Yi", "jungle", "Team-Assassin"),
-    ("Ambessa",   "jungle", "Team-Assassin"),
-    ("Kayn",      "jungle", "Team-Assassin"),
-    ("Naafiri",   "jungle", "Team-Assassin"),
-    ("Bel'Veth",  "jungle", "Team-Assassin"),
+    ("Kindred",      "Farming"),
+    ("Jayce",        "Farming"),
+    ("Graves",       "Farming"),
+    ("Karthus",      "Farming"),
+    ("Rengar",       "Assassin"),
+    ("Nidalee",      "Assassin"),
+    ("Fiddlesticks", "Assassin"),
+    ("Shaco",        "Assassin"),
+    ("Kha'Zix",      "Assassin"),
+    ("Sejuani",      "Ult-Tank"),
+    ("Malphite",     "Ult-Tank"),
+    ("Rammus",       "Ult-Tank"),
+    ("Nunu & Willump","Ult-Tank"),
+    ("Amumu",        "Ult-Tank"),
+    ("Lee Sin",      "Fighter"),
+    ("Rek'Sai",      "Fighter"),
+    ("Vi",           "Fighter"),
+    ("Briar",        "Fighter"),
+    ("Warwick",      "Fighter"),
+    ("Wukong",       "Heavy-Fighter"),
+    ("Zac",          "Heavy-Fighter"),
+    ("Jax",          "Heavy-Fighter"),
+    ("Volibear",     "Heavy-Fighter"),
+    ("Zaahen",       "Heavy-Fighter"),
+    ("Dr. Mundo",    "Diver"),
+    ("Nocturne",     "Diver"),
+    ("Xin Zhao",     "Diver"),
+    ("Jarvan IV",    "Diver"),
+    ("Hecarim",      "Diver"),
+    ("Ivern",        "Slippery"),
+    ("Lillia",       "Slippery"),
+    ("Gwen",         "Slippery"),
+    ("Udyr",         "Slippery"),
+    ("Viego",        "Team-Assassin"),
+    ("Master Yi",    "Team-Assassin"),
+    ("Ambessa",      "Team-Assassin"),
+    ("Kayn",         "Team-Assassin"),
+    ("Bel'Veth",     "Team-Assassin"),
 
-    # TOP (from correlation matrix image)
-    ("Varus",      "top", "Ranged"),
-    ("Teemo",      "top", "Ranged"),
-    ("Kennen",     "top", "Ranged"),
-    ("Vladimir",   "top", "Ranged"),
-    ("Akali",      "top", "Ranged"),
-    ("Jayce",      "top", "Ranged"),
-    ("Ryze",       "top", "Ranged"),
-    ("Rumble",     "top", "Ranged"),
-    ("Gnar",       "top", "Ranged"),
-    ("Gragas",     "top", "Ranged"),
-    ("Pantheon",   "top", "Ranged"),
-    ("Kayle",      "top", "Ranged"),
-    ("Vayne",      "top", "Ranged"),
-    ("Riven",      "top", "Duelist"),
-    ("Fiora",      "top", "Duelist"),
-    ("Ambessa",    "top", "Duelist"),
-    ("Yone",       "top", "Duelist"),
-    ("Irelia",     "top", "Duelist"),
-    ("Yasuo",      "top", "Duelist"),
-    ("Gwen",       "top", "Duelist"),
-    ("Yorick",     "top", "Duelist"),
-    ("Gangplank",  "top", "Unique"),
-    ("Olaf",       "top", "Unique"),
-    ("Jax",        "top", "Unique"),
-    ("Volibear",   "top", "Unique"),
-    ("Warwick",    "top", "Unique"),
-    ("Garen",      "top", "Unique"),
-    ("Camille",    "top", "Unique"),
-    ("Poppy",      "top", "Unique"),
-    ("Nasus",      "top", "Unique"),
-    ("Urgot",      "top", "Unique"),
-    ("Tahm Kench", "top", "Unique"),
-    ("Cho'Gath",   "top", "Unique"),
-    ("Singed",     "top", "Unique"),
-    ("Renekton",   "top", "Unique"),
-    ("Illaoi",     "top", "Unique"),
-    ("K'Sante",    "top", "Unique"),
-    ("Shen",       "top", "Unique"),
-    ("Tryndamere", "top", "Unique"),
-    ("Aatrox",     "top", "Unique"),
-    ("Kled",       "top", "Unique"),
-    ("Mordekaiser","top", "Unique"),
-    ("Darius",     "top", "Unique"),
-    ("Zaahen",     "top", "Unique"),
-    ("Sett",       "top", "Unique"),
-    ("Malphite",   "top", "True_Tank"),
-    ("Dr. Mundo",  "top", "True_Tank"),
-    ("Ornn",       "top", "True_Tank"),
-    ("Sion",       "top", "True_Tank"),
+    # TOP
+    ("Teemo",        "Ranged"),
+    ("Kennen",       "Ranged"),
+    ("Jayce",        "Ranged"),          # top Ranged (jungle Farming kept above, upsert handles dedup)
+    ("Rumble",       "Ranged"),
+    ("Gnar",         "Ranged"),
+    ("Gragas",       "Ranged"),
+    ("Kayle",        "Ranged"),
+    ("Riven",        "Duelist"),
+    ("Fiora",        "Duelist"),
+    ("Yorick",       "Duelist"),
+    ("Gangplank",    "Unique"),
+    ("Olaf",         "Unique"),
+    ("Garen",        "Unique"),
+    ("Camille",      "Unique"),
+    ("Nasus",        "Unique"),
+    ("Urgot",        "Unique"),
+    ("Cho'Gath",     "Unique"),
+    ("Singed",       "Unique"),
+    ("Renekton",     "Unique"),
+    ("Illaoi",       "Unique"),
+    ("K'Sante",      "Unique"),
+    ("Shen",         "Unique"),
+    ("Tryndamere",   "Unique"),
+    ("Aatrox",       "Unique"),
+    ("Kled",         "Unique"),
+    ("Mordekaiser",  "Unique"),
+    ("Darius",       "Unique"),
+    ("Sett",         "Unique"),
+    ("Ornn",         "True_Tank"),
+    ("Sion",         "True_Tank"),
+]
+
+# All valid archetypes (role-agnostic pool for Gemini fill-in)
+ALL_ARCHETYPES = [
+    "Warden", "Playmaker", "Mage", "Enchanter", "Cat",
+    "Poke", "Long-Range Immobile", "Short-Range Mobile", "Anti-Melee",
+    "Melee Assassin", "True Mage", "Ranged Assassin", "Anti-Assassin",
+    "Battle Mage", "Yasuo",
+    "Farming", "Assassin", "Ult-Tank", "Fighter", "Heavy-Fighter",
+    "Diver", "Slippery", "Team-Assassin",
+    "Ranged", "Duelist", "Unique", "True_Tank",
 ]
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
-def upsert_archetypes(rows: list[tuple[str, str, str, str]]) -> None:
-    """Insert or replace (champion, role, archetype, source) rows."""
+def _migrate_if_needed() -> None:
+    """Migrate old (champion, role) schema to single-entry (champion) schema."""
+    with get_connection() as conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(champion_archetypes)").fetchall()}
+        if "role" not in cols:
+            return  # already migrated
+
+        print("  Migrating champion_archetypes to role-agnostic schema…")
+        # Collapse to one row per champion: prefer empirical, then first entry
+        rows = conn.execute("""
+            SELECT champion, archetype, source
+            FROM champion_archetypes
+            ORDER BY CASE source WHEN 'empirical' THEN 0 ELSE 1 END, champion
+        """).fetchall()
+
+        seen: dict[str, tuple[str, str]] = {}
+        for r in rows:
+            key = r["champion"].lower()
+            if key not in seen:
+                seen[key] = (r["champion"], r["archetype"], r["source"])
+
+        conn.execute("DROP TABLE champion_archetypes")
+        conn.execute("""
+            CREATE TABLE champion_archetypes (
+                champion   TEXT PRIMARY KEY,
+                archetype  TEXT NOT NULL,
+                source     TEXT DEFAULT 'empirical',
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.executemany(
+            "INSERT INTO champion_archetypes (champion, archetype, source) VALUES (?, ?, ?)",
+            [(c, a, s) for c, a, s in seen.values()]
+        )
+        conn.commit()
+        print(f"  Migrated {len(seen)} champions.")
+
+
+def upsert_archetypes(rows: list[tuple[str, str, str]]) -> None:
+    """Insert or update (champion, archetype, source) rows."""
     with get_connection() as conn:
         conn.executemany(
             """
-            INSERT INTO champion_archetypes (champion, role, archetype, source)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(champion, role) DO UPDATE SET
+            INSERT INTO champion_archetypes (champion, archetype, source)
+            VALUES (?, ?, ?)
+            ON CONFLICT(champion) DO UPDATE SET
                 archetype = excluded.archetype,
                 source    = excluded.source
             """,
@@ -250,141 +272,53 @@ def upsert_archetypes(rows: list[tuple[str, str, str, str]]) -> None:
         conn.commit()
 
 
-def get_covered() -> set[tuple[str, str]]:
-    """Return set of (champion, role) pairs already in the table."""
+def get_covered() -> set[str]:
+    """Return set of champion names already in the table."""
     with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT champion, role FROM champion_archetypes"
-        ).fetchall()
-    return {(r["champion"], r["role"]) for r in rows}
+        rows = conn.execute("SELECT champion FROM champion_archetypes").fetchall()
+    return {r["champion"].lower() for r in rows}
 
 
-def get_uncovered_champions() -> list[tuple[str, str]]:
-    """
-    Return (champion, role) pairs that appear in our videos DB
-    but have no archetype entry yet.
-    """
+def get_uncovered_champions() -> list[str]:
+    """Return champion names that appear in our videos DB but have no archetype entry."""
     covered = get_covered()
     with get_connection() as conn:
         rows = conn.execute(
-            """
-            SELECT DISTINCT v.champion, v.role
-            FROM videos v
-            WHERE v.champion IS NOT NULL AND v.champion != ''
-            """
+            "SELECT DISTINCT champion FROM videos WHERE champion IS NOT NULL AND champion != ''"
         ).fetchall()
-    return [
-        (r["champion"], r["role"])
-        for r in rows
-        if (r["champion"], r["role"]) not in covered
-    ]
+    return [r["champion"] for r in rows if r["champion"].lower() not in covered]
 
 
 def get_all_uncovered_champions() -> list[str]:
-    """
-    Return champion names from Data Dragon that have NO entry in
-    champion_archetypes at all (across any role).
-    Used by --fill-all to seed the full roster as empty buckets.
-    """
-    covered_names = {name.lower() for name, _ in get_covered()}
-    all_names = load_champion_names()
-    return [n for n in all_names if n.lower() not in covered_names]
+    """Return champion names from Data Dragon not yet in the archetypes table."""
+    covered = get_covered()
+    return [n for n in load_champion_names() if n.lower() not in covered]
 
 
 # ── Gemini fill-in ────────────────────────────────────────────────────────────
 
 FILL_SYSTEM = """
-You are a League of Legends expert. Given a champion and their role,
-classify them into the most appropriate archetype from the provided list.
-Return valid JSON only — no markdown, no explanation.
-""".strip()
-
-ARCHETYPES_BY_ROLE = {
-    "support": ["Warden", "Playmaker", "Mage", "Enchanter", "Cat"],
-    "adc":     ["Poke", "Long-Range Immobile", "Short-Range Mobile", "Anti-Melee"],
-    "mid":     ["Melee Assassin", "True Mage", "Ranged Assassin", "Anti-Assassin", "Battle Mage", "Anti-Melee", "Yasuo"],
-    "jungle":  ["Farming", "Assassin", "Ult-Tank", "Fighter", "Heavy-Fighter", "Diver", "Slippery", "Team-Assassin"],
-    "top":     ["Ranged", "Duelist", "Unique", "True_Tank"],
-}
-
-
-FILL_ALL_SYSTEM = """
-You are a League of Legends expert. Given a champion name, return their primary
-role and archetype using the classification system below.
-
-Roles: top, jungle, mid, adc, support
-Archetypes by role:
-  top:     Ranged, Duelist, Unique, True_Tank
-  jungle:  Farming, Assassin, Ult-Tank, Fighter, Heavy-Fighter, Diver, Slippery, Team-Assassin
-  mid:     Melee Assassin, True Mage, Ranged Assassin, Anti-Assassin, Battle Mage, Anti-Melee, Yasuo
-  adc:     Poke, Long-Range Immobile, Short-Range Mobile, Anti-Melee
-  support: Warden, Playmaker, Mage, Enchanter, Cat
-
-Return valid JSON only — no markdown, no explanation.
+You are a League of Legends expert. Given a champion name, classify them into
+their primary playstyle archetype. Return valid JSON only — no markdown, no explanation.
 """.strip()
 
 
-def fill_all_with_llm(champion_names: list[str]) -> list[tuple[str, str, str, str]]:
+def fill_with_llm(champion_names: list[str]) -> list[tuple[str, str, str]]:
     """
-    Ask Gemini to classify each champion by primary role + archetype.
-    Used to seed the full Data Dragon roster as empty buckets.
-    Returns list of (champion, role, archetype, 'inferred') tuples.
+    Ask Gemini to classify each champion by archetype (role-agnostic).
+    Returns list of (champion, archetype, 'inferred') tuples.
     """
     if not champion_names:
         return []
 
+    archetypes_str = ", ".join(ALL_ARCHETYPES)
     results = []
     for i, champion in enumerate(champion_names, 1):
         prompt = f"""
 Champion: {champion}
+Available archetypes: {archetypes_str}
 
-What is this champion's primary role and archetype?
-Return JSON: {{"role": "<role>", "archetype": "<archetype>"}}
-""".strip()
-
-        try:
-            raw = llm_chat(system=FILL_ALL_SYSTEM, user=prompt, temperature=0.0)
-            if raw.startswith("```"):
-                raw = raw.split("```", 2)[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            data = json.loads(raw.strip())
-            role = data["role"].lower()
-            archetype = data["archetype"]
-            if role not in ARCHETYPES_BY_ROLE:
-                print(f"  [skip] {champion}: unknown role '{role}'")
-                continue
-            if archetype not in ARCHETYPES_BY_ROLE[role]:
-                print(f"  [skip] {champion}: unknown archetype '{archetype}' for {role}")
-                continue
-            results.append((champion, role, archetype, "inferred"))
-            print(f"  [{i}/{len(champion_names)}] {champion} ({role}) → {archetype}")
-        except Exception as e:
-            print(f"  [error] {champion}: {e}")
-
-    return results
-
-
-def fill_gaps_with_llm(pairs: list[tuple[str, str]]) -> list[tuple[str, str, str, str]]:
-    """
-    Ask Gemini to classify each (champion, role) pair not covered by blog data.
-    Returns list of (champion, role, archetype, 'inferred') tuples.
-    """
-    if not pairs:
-        return []
-
-    results = []
-    for champion, role in pairs:
-        archetypes = ARCHETYPES_BY_ROLE.get(role, [])
-        if not archetypes:
-            print(f"  [skip] unknown role '{role}' for {champion}")
-            continue
-
-        prompt = f"""
-Champion: {champion}
-Role: {role}
-Available archetypes: {', '.join(archetypes)}
-
+What is this champion's primary playstyle archetype?
 Return JSON: {{"archetype": "<one of the archetypes above>"}}
 """.strip()
 
@@ -396,88 +330,68 @@ Return JSON: {{"archetype": "<one of the archetypes above>"}}
                     raw = raw[4:]
             data = json.loads(raw.strip())
             archetype = data["archetype"]
-            results.append((champion, role, archetype, "inferred"))
-            print(f"  {champion} ({role}) → {archetype}")
+            if archetype not in ALL_ARCHETYPES:
+                print(f"  [skip] {champion}: unknown archetype '{archetype}'")
+                continue
+            results.append((champion, archetype, "inferred"))
+            print(f"  [{i}/{len(champion_names)}] {champion} → {archetype}")
         except Exception as e:
-            print(f"  [error] {champion} ({role}): {e}")
+            print(f"  [error] {champion}: {e}")
 
     return results
 
 
-# ── main ──────────────────────────────────────────────────────────────────────
+# ── Status ────────────────────────────────────────────────────────────────────
 
 def print_status() -> None:
     with get_connection() as conn:
         rows = conn.execute(
-            """
-            SELECT role, archetype, source, COUNT(*) as n
-            FROM champion_archetypes
-            GROUP BY role, archetype, source
-            ORDER BY role, archetype
-            """
+            "SELECT archetype, source, COUNT(*) as n FROM champion_archetypes GROUP BY archetype, source ORDER BY archetype"
         ).fetchall()
-        total = conn.execute(
-            "SELECT COUNT(*) FROM champion_archetypes"
-        ).fetchone()[0]
+        total = conn.execute("SELECT COUNT(*) FROM champion_archetypes").fetchone()[0]
 
-    print(f"\nChampion archetypes: {total} total\n")
-    current_role = None
+    print(f"\nChampion archetypes: {total} unique champions\n")
     for r in rows:
-        if r["role"] != current_role:
-            current_role = r["role"]
-            print(f"  {current_role.upper()}")
         tag = "" if r["source"] == "empirical" else " (inferred)"
-        print(f"    {r['archetype']:<25} {r['n']:>3} champions{tag}")
+        print(f"  {r['archetype']:<25} {r['n']:>3} champions{tag}")
     print()
 
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Populate champion archetypes table")
     parser.add_argument("--status",    action="store_true", help="Show current table and exit")
-    parser.add_argument("--fill-gaps", action="store_true", help="Only run Gemini fill-in for uncovered video champions")
-    parser.add_argument("--fill-all",  action="store_true", help="Seed ALL Data Dragon champions (creates empty buckets)")
+    parser.add_argument("--fill-gaps", action="store_true", help="Only fill champions in videos DB not yet covered")
+    parser.add_argument("--fill-all",  action="store_true", help="Seed ALL Data Dragon champions")
     args = parser.parse_args()
 
     init_db()
+    _migrate_if_needed()
 
     if args.status:
         print_status()
         return
 
     if not args.fill_gaps and not args.fill_all:
-        # Load empirical data
-        rows = [(c, r, a, "empirical") for c, r, a in EMPIRICAL]
-        print(f"Loading {len(rows)} empirical entries from blog data…")
+        rows = [(c, a, "empirical") for c, a in EMPIRICAL]
+        print(f"Loading {len(rows)} empirical entries…")
         upsert_archetypes(rows)
         print("Done.")
 
-    if args.fill_all:
-        missing = get_all_uncovered_champions()
-        if missing:
-            print(f"\n{len(missing)} champion(s) from Data Dragon not yet in archetypes table:")
-            for n in missing:
-                print(f"  {n}")
-            print("\nAsking Gemini to classify primary role + archetype…")
-            inferred = fill_all_with_llm(missing)
-            if inferred:
-                upsert_archetypes(inferred)
-                print(f"\n{len(inferred)} entries added.")
-        else:
-            print("\nAll Data Dragon champions already have archetype entries.")
+    missing = get_all_uncovered_champions() if args.fill_all else get_uncovered_champions()
+    if missing:
+        label = "Data Dragon" if args.fill_all else "videos DB"
+        print(f"\n{len(missing)} champion(s) from {label} not yet classified:")
+        for n in missing:
+            print(f"  {n}")
+        print("\nAsking Gemini to classify…")
+        inferred = fill_with_llm(missing)
+        if inferred:
+            upsert_archetypes(inferred)
+            print(f"\n{len(inferred)} entries added.")
     else:
-        # Fill gaps for champions in our videos DB
-        gaps = get_uncovered_champions()
-        if gaps:
-            print(f"\n{len(gaps)} champion/role pair(s) in videos DB not covered by blog data:")
-            for c, r in gaps:
-                print(f"  {c} ({r})")
-            print("\nAsking Gemini to classify…")
-            inferred = fill_gaps_with_llm(gaps)
-            if inferred:
-                upsert_archetypes(inferred)
-                print(f"\n{len(inferred)} inferred entries added.")
-        else:
-            print("\nNo gaps — all champions in videos DB are covered.")
+        print("\nAll champions covered.")
 
     print_status()
 
