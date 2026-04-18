@@ -63,6 +63,16 @@ def init_db() -> None:
                 message_timestamp TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS champion_archetypes (
+                champion    TEXT NOT NULL,
+                role        TEXT NOT NULL,
+                archetype   TEXT NOT NULL,
+                source      TEXT DEFAULT 'empirical',
+                created_at  TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (champion, role)
+            )
+        """)
         conn.commit()
 
 

@@ -38,7 +38,12 @@ uv run python process_all.py --video VIDEO_ID
 # Print counts by role and status, then exit
 uv run python process_all.py --status
 
-# 2. Embed all analyzed insights into vectors
+# 2. Build champion archetype map (run once, re-run after new champions added)
+uv run python -m pipeline.champion_archetypes
+uv run python -m pipeline.champion_archetypes --status   # show table
+uv run python -m pipeline.champion_archetypes --fill-gaps # only Gemini fill-in
+
+# 3. Embed all analyzed insights into vectors
 uv run python -m pipeline.embed
 
 # 3. Deduplicate similar insights within each video
