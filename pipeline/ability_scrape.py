@@ -20,6 +20,7 @@ from core.champions import load_champion_names
 
 DDRAGON_VERSIONS = "https://ddragon.leagueoflegends.com/api/versions.json"
 DDRAGON_CHAMPION = "https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion/{key}.json"
+DDRAGON_CHAMPIONS = "https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
 
 
 # ── Property synonym dictionary ───────────────────────────────────────────────
@@ -125,17 +126,20 @@ def _get_latest_version() -> str:
         return json.loads(r.read())[0]
 
 
+def _build_name_key_map(version: str) -> dict[str, str]:
+    """Fetch champion list and return {canonical_name: ddragon_key} mapping."""
+    url = DDRAGON_CHAMPIONS.format(version=version)
+    with urllib.request.urlopen(url, timeout=10) as r:
+        data = json.loads(r.read())
+    return {v["name"]: champ_id for champ_id, v in data["data"].items()}
+
+
 def _fetch_champion_data(version: str, key: str) -> dict:
-    """Fetch full champion JSON from Data Dragon. key = Data Dragon key (e.g. 'KaiSa')."""
+    """Fetch full champion JSON from Data Dragon. key = Data Dragon key (e.g. 'Kaisa')."""
     url = DDRAGON_CHAMPION.format(version=version, key=key)
     with urllib.request.urlopen(url, timeout=10) as r:
         data = json.loads(r.read())
     return data["data"][key]
-
-
-def _ddragon_key(champion_name: str) -> str:
-    """Convert canonical name to Data Dragon key (no spaces/apostrophes)."""
-    return re.sub(r"[^a-zA-Z0-9]", "", champion_name).replace(" ", "")
 
 
 def _format_values(vals) -> str:
@@ -149,12 +153,12 @@ def _format_values(vals) -> str:
     return str(vals)
 
 
-def scrape_champion(version: str, champion: str) -> list[tuple]:
+def scrape_champion(version: str, champion: str, name_key_map: dict[str, str] | None = None) -> list[tuple]:
     """
     Pull ability data for one champion and return rows ready for DB insert.
     Returns list of (champion, slot, name, description, cooldown, range, cost, properties_json)
     """
-    key = _ddragon_key(champion)
+    key = (name_key_map or {}).get(champion) or re.sub(r"[^a-zA-Z0-9]", "", champion)
     try:
         data = _fetch_champion_data(version, key)
     except Exception as e:
@@ -257,6 +261,8 @@ def main() -> None:
     version = _get_latest_version()
     print(f"Version: {version}")
 
+    name_key_map = _build_name_key_map(version)
+
     if args.champion:
         champions = [args.champion]
     else:
@@ -266,7 +272,7 @@ def main() -> None:
     total_rows = 0
     errors = 0
     for i, champion in enumerate(champions, 1):
-        rows = scrape_champion(version, champion)
+        rows = scrape_champion(version, champion, name_key_map)
         if rows:
             upsert_abilities(rows)
             total_rows += len(rows)
