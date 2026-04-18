@@ -250,7 +250,23 @@ def generalize_insights(dry_run: bool = False) -> None:
         print("  [dry-run] skipping LLM calls.")
         return
 
-    inserts = []
+    BATCH_SIZE = 50
+    batch: list[tuple] = []
+    total_saved = 0
+    total_gen = 0
+
+    def _flush(b: list[tuple]) -> None:
+        nonlocal total_saved, total_gen
+        with get_connection() as conn:
+            conn.executemany("""
+                INSERT OR IGNORE INTO crossref_insights
+                    (insight_id, champion, role, archetype, scope)
+                VALUES (?, ?, ?, ?, ?)
+            """, b)
+            conn.commit()
+        total_saved += len(b)
+        total_gen += sum(1 for _, _, _, _, s in b if s == "generalizable")
+
     for i, row in enumerate(pending, 1):
         prompt = GENERALIZE_PROMPT.format(
             champion=row["champion"],
@@ -272,23 +288,21 @@ def generalize_insights(dry_run: bool = False) -> None:
             print(f"    [error] insight {row['id']}: {e}")
             scope = "specific"
 
-        inserts.append((
+        batch.append((
             row["id"], row["champion"], row["role"], row["archetype"], scope
         ))
 
-        if i % 20 == 0:
-            print(f"    {i}/{len(pending)} labeled…")
+        if len(batch) >= BATCH_SIZE:
+            _flush(batch)
+            batch = []
 
-    with get_connection() as conn:
-        conn.executemany("""
-            INSERT OR IGNORE INTO crossref_insights
-                (insight_id, champion, role, archetype, scope)
-            VALUES (?, ?, ?, ?, ?)
-        """, inserts)
-        conn.commit()
+        if i % 50 == 0:
+            print(f"    {i}/{len(pending)} labeled… ({total_gen} generalizable so far)")
 
-    generalizable = sum(1 for _, _, _, _, s in inserts if s == "generalizable")
-    print(f"  Done — {generalizable}/{len(inserts)} labeled generalizable.")
+    if batch:
+        _flush(batch)
+
+    print(f"  Done — {total_gen}/{total_saved} labeled generalizable.")
 
 
 # ── Status ────────────────────────────────────────────────────────────────────

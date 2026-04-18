@@ -51,6 +51,13 @@ uv run python -m pipeline.consolidate
 
 # 4. Score insight clusters and compute final confidence weights
 uv run python -m pipeline.score_clusters
+
+# 5. Build champion cross-reference (archetype-based layer-2 retrieval)
+uv run python -m pipeline.champion_crossref              # full run (vectors + generalize)
+uv run python -m pipeline.champion_crossref --status     # show coverage
+uv run python -m pipeline.champion_crossref --vectors    # only build champion vectors
+uv run python -m pipeline.champion_crossref --generalize # only label generalizable insights
+uv run python -m pipeline.champion_crossref --dry-run    # skip LLM calls (test run)
 ```
 
 ---

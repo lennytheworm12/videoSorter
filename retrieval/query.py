@@ -26,6 +26,7 @@ logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 from pipeline.embed import load_all_vectors
+from pipeline.champion_crossref import get_archetype_insights
 from core.llm import chat as llm_chat
 
 MODEL_NAME = "all-MiniLM-L6-v2"
@@ -137,15 +138,20 @@ def retrieve(
     Embed the question and return the top_k most relevant insights using RRF
     over semantic (cosine) and keyword (BM25) search.
 
+    Layer 1: direct video insights for this champion (or all if no champion filter).
+    Layer 2: archetype fallback — generalizable insights from same-archetype champions,
+             blended in when the champion has sparse direct coverage.
+
     Optional filters (role, champion, insight_type) narrow the pool first.
 
     Returns a list of dicts:
-        text         — the insight string
-        insight_type — category (principles, laning_tips, etc.)
-        role         — which role channel it came from
-        champion     — champion the video was about (if known)
-        score        — cosine similarity (for reference)
-        confidence   — confidence weight from score_clusters
+        text             — the insight string
+        insight_type     — category (principles, laning_tips, etc.)
+        role             — which role channel it came from
+        champion         — champion the video was about (if known)
+        score            — cosine similarity (for reference)
+        confidence       — confidence weight from score_clusters
+        retrieval_layer  — 'direct' or 'archetype'
     """
     ids, texts, metadata, matrix = load_all_vectors(
         role=role,
@@ -191,9 +197,59 @@ def retrieve(
             "champion": metadata[i]["champion"],
             "score": round(float(cosine_scores[i]), 4),
             "confidence": round(float(confidences[i]), 4),
+            "retrieval_layer": "direct",
         })
 
+    # ── 5. Archetype fallback (layer 2) ───────────────────────────────────────
+    # When a specific champion is queried, blend in generalizable insights from
+    # same-archetype champions to fill coverage gaps.
+    # Only fires when champion is known and the crossref table has data.
+    if champion and role:
+        _blend_archetype_insights(results, question, champion, role, top_k)
+
     return results
+
+
+def _blend_archetype_insights(
+    results: list[dict],
+    question: str,
+    champion: str,
+    role: str,
+    top_k: int,
+) -> None:
+    """
+    Fetch generalizable archetype insights and blend them into `results` in-place.
+
+    Strategy: fill up to top_k slots; archetype insights only fill slots not
+    already covered, sorted by transfer_score. This ensures direct evidence
+    always ranks first, archetype insights supplement rather than displace.
+    """
+    archetype_hits = get_archetype_insights(champion, role, top_k=top_k)
+    if not archetype_hits:
+        return
+
+    existing_texts = {r["text"] for r in results}
+    additions = [
+        {
+            "text": h["text"],
+            "insight_type": h["insight_type"],
+            "role": role,
+            "champion": h["source_champion"],
+            "score": round(h["similarity"], 4),
+            "confidence": round(h["confidence"], 4),
+            "retrieval_layer": "archetype",
+        }
+        for h in archetype_hits
+        if h["text"] not in existing_texts
+    ]
+
+    if not additions:
+        return
+
+    # Slots available after direct results
+    slots = max(0, top_k - len(results))
+    if slots > 0:
+        results.extend(additions[:slots])
 
 
 def answer(
@@ -228,7 +284,9 @@ def answer(
 
     if show_sources:
         sources = "\n\n---\nSources retrieved:\n" + "\n".join(
-            f"  [{r['score']:.2f} | conf {r['confidence']:.2f}] ({r['insight_type']}) {r['text'][:100]}{'...' if len(r['text']) > 100 else ''}"
+            f"  [{r['score']:.2f} | conf {r['confidence']:.2f}] ({r['insight_type']}"
+            + (f" | {r.get('retrieval_layer', 'direct')}" if r.get("retrieval_layer") == "archetype" else "")
+            + f") {r['text'][:100]}{'...' if len(r['text']) > 100 else ''}"
             for r in insights
         )
         return generated + sources
@@ -262,7 +320,8 @@ def main() -> None:
         results = retrieve(question, role=args.role, champion=args.champion,
                            insight_type=args.insight_type, top_k=args.top_k)
         for i, r in enumerate(results):
-            print(f"[{r['score']:.3f} | conf {r['confidence']:.2f}] ({r['insight_type']}) {r['text']}")
+            layer = f" | {r['retrieval_layer']}" if r.get("retrieval_layer") == "archetype" else ""
+            print(f"[{r['score']:.3f} | conf {r['confidence']:.2f}{layer}] ({r['insight_type']}) {r['text']}")
         return
 
     result = answer(question, role=args.role, champion=args.champion,
