@@ -43,7 +43,7 @@ ROLE_PATTERNS: list[tuple[str, list[str]]] = [
 ]
 
 MIN_DURATION_S = 5 * 60    # 5 minutes
-MAX_DURATION_S = 3 * 3600  # 3 hours — beyond this it's a stream/marathon, not a guide
+MAX_DURATION_S = 6 * 3600  # 6 hours
 SEARCH_FETCH = 30         # fetch more candidates so sort-by-duration has a good pool
 
 
