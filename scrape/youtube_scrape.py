@@ -100,9 +100,13 @@ def _champion_primary_role(champion: str) -> str:
     return "unknown"
 
 
-def _has_guide_keyword(title: str) -> bool:
+def _has_guide_keyword(title: str) -> tuple[bool, str]:
+    """Returns (matched, keyword_that_matched). Empty string if no match."""
     t = title.lower()
-    return any(kw in t for kw in GUIDE_KEYWORDS)
+    for kw in GUIDE_KEYWORDS:
+        if kw in t:
+            return True, kw
+    return False, ""
 
 
 def _get_existing_ids() -> set[str]:
@@ -153,8 +157,10 @@ def filter_results(
             continue
         if v["duration"] and v["duration"] > MAX_DURATION_S:
             continue
-        if not _has_guide_keyword(v["title"]):
+        matched, kw = _has_guide_keyword(v["title"])
+        if not matched:
             continue
+        v["_matched_kw"] = kw
         kept.append(v)
     # Longest videos first — educational deep-dives over short clips
     kept.sort(key=lambda v: v["duration"] or 0, reverse=True)
@@ -185,7 +191,8 @@ def scrape_champion(champion: str, limit: int = 10, dry_run: bool = False) -> in
     for v in filtered:
         role = _detect_role_from_title(v["title"]) or primary_role
         dur_str = f"{v['duration']//60}m" if v["duration"] else "?m"
-        print(f"  [{'dry' if dry_run else 'save'}] {v['video_id']} | {dur_str} | {v['title'][:70]}")
+        kw_tag = f" [{v.get('_matched_kw', '?')}]"
+        print(f"  [{'dry' if dry_run else 'save'}] {v['video_id']} | {dur_str}{kw_tag} | {v['title'][:80]}")
         if not dry_run:
             insert_video(
                 video_id=v["video_id"],
