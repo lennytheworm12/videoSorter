@@ -152,11 +152,11 @@ def scrape_champion(champion: str, limit: int = 10, dry_run: bool = False) -> in
     Returns the number of new rows inserted (or would-be inserted in dry_run).
     """
     existing = _get_existing_ids()
-    query = f"league of legends {champion} guide"
+    primary_role = _champion_primary_role(champion)
+    role_term = primary_role if primary_role != "unknown" else ""
+    query = f"league of legends {champion} {role_term} guide".strip()
     results = search_youtube(query)
     filtered = filter_results(results, existing, limit)
-
-    primary_role = _champion_primary_role(champion)
 
     inserted = 0
     for v in filtered:
