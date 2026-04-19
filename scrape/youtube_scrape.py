@@ -18,6 +18,7 @@ Usage:
 import os
 import re
 import time
+import random
 import argparse
 import yt_dlp
 
@@ -198,8 +199,10 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=5, help="Max videos per champion (default 5)")
     parser.add_argument("--dry-run", action="store_true", help="Preview without inserting")
     parser.add_argument("--status", action="store_true", help="Show DB counts and exit")
-    parser.add_argument("--delay", type=float, default=45.0,
-                        help="Seconds to sleep between champions (default 45)")
+    parser.add_argument("--delay-min", type=float, default=45.0,
+                        help="Min seconds to sleep between champions (default 45)")
+    parser.add_argument("--delay-max", type=float, default=60.0,
+                        help="Max seconds to sleep between champions (default 60)")
     parser.add_argument("--skip-done", action="store_true",
                         help="Skip champions that already have >= limit videos in the DB")
     args = parser.parse_args()
@@ -228,7 +231,9 @@ def main() -> None:
         n = scrape_champion(champion, limit=args.limit, dry_run=args.dry_run)
         total += n
         if not args.dry_run and i < len(champions):
-            time.sleep(args.delay)
+            delay = random.uniform(args.delay_min, args.delay_max)
+            print(f"  Waiting {delay:.1f}s…")
+            time.sleep(delay)
 
     action = "would insert" if args.dry_run else "inserted"
     print(f"\nDone — {action} {total} videos across {len(champions)} champion(s). ({skipped} skipped)")
