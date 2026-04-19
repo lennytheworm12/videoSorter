@@ -42,7 +42,8 @@ ROLE_PATTERNS: list[tuple[str, list[str]]] = [
     ("support", ["support", "supp ", "sup guide"]),
 ]
 
-MIN_DURATION_S = 5 * 60   # 5 minutes
+MIN_DURATION_S = 5 * 60    # 5 minutes
+MAX_DURATION_S = 3 * 3600  # 3 hours — beyond this it's a stream/marathon, not a guide
 SEARCH_FETCH = 30         # fetch more candidates so sort-by-duration has a good pool
 
 
@@ -129,6 +130,8 @@ def filter_results(
         if v["video_id"] in existing_ids:
             continue
         if v["duration"] and v["duration"] < MIN_DURATION_S:
+            continue
+        if v["duration"] and v["duration"] > MAX_DURATION_S:
             continue
         if not _has_guide_keyword(v["title"]):
             continue
