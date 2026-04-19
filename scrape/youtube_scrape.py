@@ -30,8 +30,8 @@ from core.champions import load_champion_names
 
 GUIDE_KEYWORDS = {
     "guide", "how to play", "tips", "tutorial", "educational",
-    "breakdown", "beginners", "beginner", "learn", "master",
-    "climb", "ranked", "build", "runes",
+    "breakdown", "beginners", "beginner", "learn", "climb",
+    "unranked to", "indepth", "in-depth", "masterclass",
 }
 
 ROLE_PATTERNS: list[tuple[str, list[str]]] = [
