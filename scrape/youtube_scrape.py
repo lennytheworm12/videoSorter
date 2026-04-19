@@ -43,7 +43,7 @@ ROLE_PATTERNS: list[tuple[str, list[str]]] = [
 ]
 
 MIN_DURATION_S = 5 * 60   # 5 minutes
-SEARCH_FETCH = 20         # fetch more than needed to allow for filtering
+SEARCH_FETCH = 30         # fetch more candidates so sort-by-duration has a good pool
 
 
 def _detect_role_from_title(title: str) -> str | None:
@@ -123,19 +123,19 @@ def filter_results(
     existing_ids: set[str],
     limit: int,
 ) -> list[dict]:
+    """Filter by duration and keywords, then sort longest-first."""
     kept = []
     for v in results:
         if v["video_id"] in existing_ids:
             continue
-        # Skip very short videos; duration=0 means unknown — let it through
         if v["duration"] and v["duration"] < MIN_DURATION_S:
             continue
         if not _has_guide_keyword(v["title"]):
             continue
         kept.append(v)
-        if len(kept) >= limit:
-            break
-    return kept
+    # Longest videos first — educational deep-dives over short clips
+    kept.sort(key=lambda v: v["duration"] or 0, reverse=True)
+    return kept[:limit]
 
 
 def _champion_video_count(champion: str) -> int:
