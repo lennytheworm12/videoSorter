@@ -11,6 +11,7 @@ Safe to re-run — already-transcribed videos are skipped.
 import os
 import re
 import time
+import random
 import pathlib
 import yt_dlp
 from dotenv import load_dotenv
@@ -69,10 +70,10 @@ if _PROXY_LIST:
 else:
     print("[transcribe] No proxy configured — direct connection")
 
-# Seconds to wait between every transcript fetch (avoids triggering rate limits)
-# Override with TRANSCRIPT_DELAY env var. Defaults to 60s on direct connection,
-# 3s when a proxy is active (proxy IPs rotate so rate limits are less of a concern).
-INTER_VIDEO_DELAY = int(os.environ.get("TRANSCRIPT_DELAY", "3" if _PROXY_LIST else "60"))
+# Random delay range between transcript fetches to avoid rate limiting.
+# Override with TRANSCRIPT_DELAY_MIN / TRANSCRIPT_DELAY_MAX env vars.
+INTER_VIDEO_DELAY_MIN = int(os.environ.get("TRANSCRIPT_DELAY_MIN", "40"))
+INTER_VIDEO_DELAY_MAX = int(os.environ.get("TRANSCRIPT_DELAY_MAX", "60"))
 
 # On a 429 response, wait this many seconds before each retry attempt
 RETRY_DELAYS = [30, 60]  # two retries: 30s then 60s
@@ -117,13 +118,18 @@ def _should_retry(attempt: int, exc: Exception) -> bool:
 def fetch_via_transcript_api(video_id: str) -> str | None:
     """
     Pull auto-generated or manual captions from YouTube.
-    Returns joined transcript string, or None if unavailable.
+    Always tries direct connection first; falls back to proxy on rate limit.
     Retries up to len(RETRY_DELAYS) times on rate-limit errors.
     """
     for attempt in range(len(RETRY_DELAYS) + 1):
         try:
-            proxy_url = _get_proxy_url()
-            proxy_config = GenericProxyConfig(http_url=proxy_url, https_url=proxy_url) if proxy_url else None
+            # First attempt: always try direct (no proxy) to save proxy quota.
+            # Subsequent attempts after a rate limit: use rotating proxy.
+            if attempt == 0:
+                proxy_config = None
+            else:
+                proxy_url = _get_proxy_url()
+                proxy_config = GenericProxyConfig(http_url=proxy_url, https_url=proxy_url) if proxy_url else None
             api = YouTubeTranscriptApi(proxy_config=proxy_config)
             transcript_list = api.list(video_id)
 
@@ -245,6 +251,10 @@ def run() -> None:
             set_status(video_id, "no_transcript")
             print("  No transcript available, skipping.")
             failed += 1
+
+        delay = random.uniform(INTER_VIDEO_DELAY_MIN, INTER_VIDEO_DELAY_MAX)
+        print(f"  Waiting {delay:.1f}s…")
+        time.sleep(delay)
 
     print(f"\nDone. {ok} transcribed, {failed} skipped (no captions).")
 
