@@ -202,10 +202,10 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=5, help="Max videos per champion (default 5)")
     parser.add_argument("--dry-run", action="store_true", help="Preview without inserting")
     parser.add_argument("--status", action="store_true", help="Show DB counts and exit")
-    parser.add_argument("--delay-min", type=float, default=45.0,
-                        help="Min seconds to sleep between champions (default 45)")
-    parser.add_argument("--delay-max", type=float, default=60.0,
-                        help="Max seconds to sleep between champions (default 60)")
+    parser.add_argument("--delay-min", type=float, default=3.0,
+                        help="Min seconds to sleep between champions (default 3)")
+    parser.add_argument("--delay-max", type=float, default=6.0,
+                        help="Max seconds to sleep between champions (default 6)")
     parser.add_argument("--skip-done", action="store_true",
                         help="Skip champions that already have >= limit videos in the DB")
     args = parser.parse_args()
