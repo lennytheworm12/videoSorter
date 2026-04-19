@@ -231,7 +231,8 @@ def run() -> None:
         if not video_url or role == "ability_enrichment":
             continue
 
-        print(f"\n[{role}] {video_id}")
+        title = video["video_title"] or video_id
+        print(f"\n[{role}] {title[:80]}")
 
         # Try YouTube transcript API first (fast, no download)
         print("  Trying YouTube transcript API…")

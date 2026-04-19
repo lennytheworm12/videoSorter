@@ -56,13 +56,15 @@ def _detect_role_from_title(title: str) -> str | None:
 
 
 def _champion_primary_role(champion: str) -> str:
-    """Return the champion's most-used role from video data, fallback archetype."""
+    """Return the champion's most-used role, reading archetypes from main videos.db."""
+    import sqlite3
+    # Check guide_test.db video counts first
     with get_connection() as conn:
         row = conn.execute(
             """
             SELECT role, COUNT(*) AS cnt
             FROM videos
-            WHERE champion = ? AND role NOT IN ('ability_enrichment')
+            WHERE champion = ? AND role NOT IN ('ability_enrichment', 'unknown')
             GROUP BY role
             ORDER BY cnt DESC
             LIMIT 1
@@ -71,12 +73,30 @@ def _champion_primary_role(champion: str) -> str:
         ).fetchone()
         if row:
             return row["role"]
-        row = conn.execute(
-            "SELECT role FROM champion_archetypes WHERE champion = ? LIMIT 1",
+
+    # Fall back to main videos.db for archetypes (guide_test.db won't have them)
+    try:
+        main_conn = sqlite3.connect("videos.db")
+        main_conn.row_factory = sqlite3.Row
+        row = main_conn.execute(
+            """
+            SELECT role, COUNT(*) AS cnt FROM videos
+            WHERE champion = ? AND role NOT IN ('ability_enrichment')
+            GROUP BY role ORDER BY cnt DESC LIMIT 1
+            """,
             (champion,)
         ).fetchone()
+        if not row:
+            row = main_conn.execute(
+                "SELECT role FROM champion_archetypes WHERE champion = ? LIMIT 1",
+                (champion,)
+            ).fetchone()
+        main_conn.close()
         if row:
             return row["role"]
+    except Exception:
+        pass
+
     return "unknown"
 
 
