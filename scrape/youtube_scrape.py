@@ -1,0 +1,240 @@
+"""
+Search YouTube for champion guide videos and insert them as pending rows.
+
+Uses yt-dlp for search (already installed) — no browser automation needed.
+Searches "league of legends {champion} guide", filters by title keywords and
+duration > 5 minutes, and inserts up to --limit videos per champion.
+
+Chunking note: transcripts are stored as-is. pipeline/guide_analyze.py splits
+them into 1-hour windows at analysis time so long guides don't dilute context.
+
+Usage:
+    uv run python -m scrape.youtube_scrape --champion Aatrox   # single champion
+    uv run python -m scrape.youtube_scrape                      # all A→Z
+    uv run python -m scrape.youtube_scrape --limit 10           # videos per champion
+    uv run python -m scrape.youtube_scrape --status             # show DB counts
+"""
+
+import os
+import re
+import time
+import argparse
+import yt_dlp
+
+# Write to isolated test DB until guide prompts are validated
+os.environ.setdefault("DB_PATH", "guide_test.db")
+
+from core.database import get_connection, insert_video, init_db
+from core.champions import load_champion_names
+
+GUIDE_KEYWORDS = {
+    "guide", "how to play", "tips", "tutorial", "educational",
+    "breakdown", "beginners", "beginner", "learn", "master",
+    "climb", "ranked", "build", "runes",
+}
+
+ROLE_PATTERNS: list[tuple[str, list[str]]] = [
+    ("top",     ["top lane", "top laner", "toplane", " top ", "toplaner"]),
+    ("jungle",  ["jungle", "jungler", " jg ", "jg guide"]),
+    ("mid",     ["mid lane", "mid laner", "midlane", " mid ", "midlaner"]),
+    ("adc",     ["adc", "bot lane", "bot laner", "marksman", "carry"]),
+    ("support", ["support", "supp ", "sup guide"]),
+]
+
+MIN_DURATION_S = 5 * 60   # 5 minutes
+SEARCH_FETCH = 20         # fetch more than needed to allow for filtering
+
+
+def _detect_role_from_title(title: str) -> str | None:
+    t = title.lower()
+    for role, patterns in ROLE_PATTERNS:
+        if any(p in t for p in patterns):
+            return role
+    return None
+
+
+def _champion_primary_role(champion: str) -> str:
+    """Return the champion's most-used role from video data, fallback archetype."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT role, COUNT(*) AS cnt
+            FROM videos
+            WHERE champion = ? AND role NOT IN ('ability_enrichment')
+            GROUP BY role
+            ORDER BY cnt DESC
+            LIMIT 1
+            """,
+            (champion,)
+        ).fetchone()
+        if row:
+            return row["role"]
+        row = conn.execute(
+            "SELECT role FROM champion_archetypes WHERE champion = ? LIMIT 1",
+            (champion,)
+        ).fetchone()
+        if row:
+            return row["role"]
+    return "unknown"
+
+
+def _has_guide_keyword(title: str) -> bool:
+    t = title.lower()
+    return any(kw in t for kw in GUIDE_KEYWORDS)
+
+
+def _get_existing_ids() -> set[str]:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT video_id FROM videos").fetchall()
+    return {r["video_id"] for r in rows}
+
+
+def search_youtube(query: str, n: int = SEARCH_FETCH) -> list[dict]:
+    """
+    Run a YouTube search via yt-dlp and return basic metadata dicts.
+    Each dict: {video_id, title, duration, url}
+    """
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": True,
+        "skip_download": True,
+    }
+    results = []
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(f"ytsearch{n}:{query}", download=False)
+        if not info or "entries" not in info:
+            return []
+        for entry in (info["entries"] or []):
+            if not entry or not entry.get("id"):
+                continue
+            results.append({
+                "video_id": entry["id"],
+                "title":    entry.get("title", ""),
+                "duration": entry.get("duration") or 0,
+                "url":      f"https://www.youtube.com/watch?v={entry['id']}",
+            })
+    return results
+
+
+def filter_results(
+    results: list[dict],
+    existing_ids: set[str],
+    limit: int,
+) -> list[dict]:
+    kept = []
+    for v in results:
+        if v["video_id"] in existing_ids:
+            continue
+        # Skip very short videos; duration=0 means unknown — let it through
+        if v["duration"] and v["duration"] < MIN_DURATION_S:
+            continue
+        if not _has_guide_keyword(v["title"]):
+            continue
+        kept.append(v)
+        if len(kept) >= limit:
+            break
+    return kept
+
+
+def _champion_video_count(champion: str) -> int:
+    with get_connection() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM videos WHERE champion = ? AND source = 'youtube_guide'",
+            (champion,)
+        ).fetchone()[0]
+
+
+def scrape_champion(champion: str, limit: int = 10, dry_run: bool = False) -> int:
+    """
+    Search, filter, and insert guide videos for one champion.
+    Returns the number of new rows inserted (or would-be inserted in dry_run).
+    """
+    existing = _get_existing_ids()
+    query = f"league of legends {champion} guide"
+    results = search_youtube(query)
+    filtered = filter_results(results, existing, limit)
+
+    primary_role = _champion_primary_role(champion)
+
+    inserted = 0
+    for v in filtered:
+        role = _detect_role_from_title(v["title"]) or primary_role
+        dur_str = f"{v['duration']//60}m" if v["duration"] else "?m"
+        print(f"  [{'dry' if dry_run else 'save'}] {v['video_id']} | {dur_str} | {v['title'][:70]}")
+        if not dry_run:
+            insert_video(
+                video_id=v["video_id"],
+                video_url=v["url"],
+                role=role,
+                message_timestamp="",
+                video_title=v["title"],
+                description=v["title"],
+                champion=champion,
+                source="youtube_guide",
+            )
+        inserted += 1
+
+    return inserted
+
+
+def print_status() -> None:
+    with get_connection() as conn:
+        n_videos = conn.execute(
+            "SELECT COUNT(*) FROM videos WHERE source = 'youtube_guide'"
+        ).fetchone()[0]
+        n_champs = conn.execute(
+            "SELECT COUNT(DISTINCT champion) FROM videos WHERE source = 'youtube_guide'"
+        ).fetchone()[0]
+        n_pending = conn.execute(
+            "SELECT COUNT(*) FROM videos WHERE source = 'youtube_guide' AND status = 'pending'"
+        ).fetchone()[0]
+    print(f"\nyoutube_guide: {n_videos} videos across {n_champs} champions ({n_pending} pending transcription)\n")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Scrape YouTube guide videos per champion")
+    parser.add_argument("--champion", help="Single champion to scrape")
+    parser.add_argument("--limit", type=int, default=5, help="Max videos per champion (default 5)")
+    parser.add_argument("--dry-run", action="store_true", help="Preview without inserting")
+    parser.add_argument("--status", action="store_true", help="Show DB counts and exit")
+    parser.add_argument("--delay", type=float, default=45.0,
+                        help="Seconds to sleep between champions (default 45)")
+    parser.add_argument("--skip-done", action="store_true",
+                        help="Skip champions that already have >= limit videos in the DB")
+    args = parser.parse_args()
+
+    init_db()
+
+    if args.status:
+        print_status()
+        return
+
+    if args.champion:
+        champions = [args.champion]
+    else:
+        champions = sorted(load_champion_names())
+
+    skipped = total = 0
+    for i, champion in enumerate(champions, 1):
+        if args.skip_done and not args.dry_run:
+            existing_count = _champion_video_count(champion)
+            if existing_count >= args.limit:
+                print(f"\n[{i}/{len(champions)}] {champion} — skip ({existing_count} already)")
+                skipped += 1
+                continue
+
+        print(f"\n[{i}/{len(champions)}] {champion}")
+        n = scrape_champion(champion, limit=args.limit, dry_run=args.dry_run)
+        total += n
+        if not args.dry_run and i < len(champions):
+            time.sleep(args.delay)
+
+    action = "would insert" if args.dry_run else "inserted"
+    print(f"\nDone — {action} {total} videos across {len(champions)} champion(s). ({skipped} skipped)")
+    if not args.dry_run:
+        print_status()
+
+
+if __name__ == "__main__":
+    main()

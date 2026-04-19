@@ -1,0 +1,75 @@
+
+=== ability_windows ===
+  - The W (Infernal Chains) pull window: When the target is dragged back to the center, they are briefly locked in a displacement animation; use this exact moment to guarantee the sweet-spot hit of the Q3 (The Darkin Blade) for maximum burst damage.
+  - E (Umbral Dash) animation cancel: You can cast E during the wind-up of any Q cast to reposition the hitbox mid-swing; use this to catch enemies who attempt to sidestep the sweet-spot zones, effectively turning a missed Q into a hit.
+  - W (Infernal Chains) vulnerability window: The ability has a long cooldown (20-12s). If you miss your W, you lose your primary setup for landing the full Q combo; play defensively for the next 10+ seconds as you lack the CC to prevent enemies from simply walking out of your Q sweet spots.
+  - R (World Ender) fear window: The initial fear from R can be used to interrupt channeled abilities (like Teleport or high-value ultimates); time your R activation to overlap with an enemy's channel to force a cancellation and gain a massive tempo advantage.
+  - P (Deathbringer Stance) trade window: Your passive auto-attack deals max health damage and heals you; always weave this auto-attack between Q casts rather than at the end of a combo to maximize your sustain during the trade and reset the cooldown faster through ability usage.
+  - E (Umbral Dash) mobility window: Because E is your only dash, using it aggressively to close the gap leaves you vulnerable to ganks or counter-engage; against champions with high-impact skillshots (like Ahri E or Lux Q), hold your E specifically to dodge their CC rather than using it to initiate.
+  - Q (The Darkin Blade) cooldown window: At early ranks, the 14s cooldown is your primary window of weakness. If you commit all three Q casts and fail to secure a kill or force a summoner spell, you are effectively a 'sitting duck' for the duration of the cooldown; retreat immediately if the enemy survives the full rotation.
+
+=== champion_identity ===
+  - Aatrox functions primarily as a caster who relies on ability rotations and resets rather than sustained auto-attacking, making items that rely on Sheen procs less efficient. (score=0.49) [rep=3]
+  - Aatrox is a champion that relies on finding flanks, proxying waves, and split pushing, as he lacks reliable poke, engage, or disengage tools. (score=0.49) [rep=2]
+
+=== champion_mechanics ===
+  - Aatrox's Q abilities are designed to secure Comet hits, making Arcane Comet and Scorch a superior rune choice in ranged matchups. (score=0.68) [rep=2]
+  - You can fake an engage by clicking forward to bait enemy flashes or defensive cooldowns even when your primary abilities are on short cooldowns. (score=0.54) [rep=2]
+  - Aatrox can use his E to disengage from trades or to dodge enemy abilities, which is crucial for surviving difficult early game matchups. (score=0.50) [rep=2]
+
+=== game_mechanics ===
+  - Avoid using an excessively large minimap as it obscures vision of important areas like the tribush and does not inherently improve map awareness. (score=0.66) [rep=3]
+
+=== general_advice ===
+  - Communicate with your team by pinging your intent to dive; your teammates often won't realize a dive is possible unless you suggest it. (score=0.67) [rep=2]
+  - Stop using the excuse that you 'usually' play correctly when you make a mistake; owning your errors is the only way to improve when you are not being coached. (score=0.65) [rep=3]
+  - Do not blindly imitate high-ELO players without understanding the context of their item starts and decision-making. (score=0.40)
+
+=== itemization ===
+  - Black Cleaver is often superior to Sundered Sky against high-armor targets because it provides better stats and armor penetration for a lower price. (score=0.64) [rep=2]
+  - Trinity Force is generally suboptimal on Aatrox because he does not auto-attack enough to maximize Sheen procs compared to the value of Goredrinker or lethality-based armor penetration builds. (score=0.62) [rep=3]
+  - Against tanky opponents, prioritize armor penetration items like Black Cleaver and Eclipse over Trinity Force to maximize your damage and healing. (score=0.61) [rep=2]
+  - Eclipse is a core item for Aatrox, but you must decide between Black Cleaver and Sundered Sky for your second item based on whether you need armor penetration against tanks. (score=0.59) [rep=3]
+  - When building Jak'Sho, The Protean, play slowly and cautiously because you are not truly tanky until the item's passive fully stacks. (score=0.48) [rep=2]
+
+=== laning_tips ===
+  - If you are being frozen on, do not stay in the lane to collect one wave; instead, look to overload another lane with your team to force a play. (score=0.71) [rep=2]
+  - When you have a slow-pushing wave, use the opportunity to trade aggressively; if the enemy refuses to trade, crash the wave to force them to farm under tower, then look to dive. (score=0.68) [rep=2]
+  - In difficult early matchups, your goal is to let the wave push into you so you can farm safely under your tower. (score=0.66) [rep=3]
+  - Use proxy farming to bait the enemy jungler or to create tempo when your own jungler is invading the enemy top-side jungle. (score=0.65) [rep=2]
+  - When you have a level or item advantage, play aggressively to contest every creep and force the enemy to choose between losing farm or taking damage. (score=0.62) [rep=2]
+  - If you are forced to recall and Teleport back to lane at the third wave every game, you are creating unnecessary volatility and losing your ability to impact the map later. (score=0.61) [rep=2]
+  - Avoid hitting minions unnecessarily when you want the wave to push toward you, as this keeps the wave in a neutral position where you are vulnerable. (score=0.60) [rep=3]
+  - If you are forced to take a bad trade level one, ensure it results in the wave pushing toward your tower so you can stabilize the lane. (score=0.60) [rep=2]
+  - Against ranged champions like Quinn, Teemo, or Kennen, you must start Doran's Shield and take Second Wind to survive the lane phase. (score=0.60) [rep=3]
+
+=== macro_advice ===
+  - When you have a deep wave, use the time to take enemy jungle camps or recall for items rather than standing still to poke the enemy laner. (score=0.70) [rep=3]
+  - Use your Teleport to force objectives like Baron when the enemy team is disadvantaged, rather than saving it only to catch waves. (score=0.63) [rep=2]
+  - If you are ahead and the enemy top laner is freezing, use your lead to dive the bot lane with your jungler rather than forcing a play in a frozen top lane. (score=0.60) [rep=2]
+  - When your team has a poke advantage, group and siege rather than split pushing, as split pushing allows the enemy to engage on your immobile teammates. (score=0.60) [rep=2]
+  - Always press Tab to check your jungler's strength and items; this information determines whether you should help them in an invade or play for your own lane. (score=0.59) [rep=2]
+
+=== matchup_advice ===
+  - Against Garen, you should focus on farming well and trading only when you can do so without losing CS, as he is a champion who punishes mistakes severely. (score=0.67)
+  - Against Rumble, stack magic resist and focus on disengaging every trade to keep the matchup playable. (score=0.64)
+  - When playing against Tryndamere, fight him inside your own minion wave to force him to take creep aggro. (score=0.58) [rep=2]
+  - Aatrox is generally weak in the early levels against champions like Riven, Jax, and Quinn, so you must play to survive until you gain levels and cooldown reduction. (score=0.57) [rep=2]
+  - Against Tryndamere, avoid leashing level one as it often leads to being cheesed or losing control of the wave early. (score=0.53) [rep=2]
+
+=== principles ===
+  - When you are ahead, your decisions must either get yourself further ahead or get your team ahead; wasting time by grouping without a clear purpose loses your lead. (score=0.73) [rep=2]
+  - Map awareness is a conscious mental habit of telling yourself to check the minimap, not a result of having a larger UI element. (score=0.73) [rep=2]
+  - Top lane is heavily influenced by jungle presence; you should actively look to turn 1v1s into 2v2s when your jungler is invading or fighting nearby. (score=0.72) [rep=3]
+  - If you know a move is bad, do not follow your teammates into it; let them make the mistake alone rather than throwing your own lead by joining them. (score=0.66) [rep=3]
+  - When you are weak-sided, you must keep the wave closer to your tower to avoid being dived or ganked. (score=0.63) [rep=2]
+  - You must always consider what the enemy needs to do to farm, as you can manipulate their positioning by crashing waves to force them into disadvantageous trades. (score=0.62) [rep=2]
+  - Avoid taking unnecessary risks in side lanes when you are already ahead; focus on consistent macro play like taking camps and pushing waves to maintain your lead. (score=0.54) [rep=2]
+
+=== teamfight_tips ===
+  - When your team has a poke composition, play to peel and prevent the enemy from following up on their engage rather than mindlessly running into their backline. (score=0.64) [rep=2]
+  - In team fights, identify who has the engage and who has the disengage; if the enemy has superior disengage, avoid forcing a 5v5 brawl. (score=0.61) [rep=2]
+
+=== vision_control ===
+  - Ward the enemy jungle camps when you have lane priority to track the enemy jungler and enable your own jungler's invades. (score=0.66) [rep=2]
+  - If you plan to play the first three waves aggressively, place a ward at 1:30 to protect yourself from early jungle ganks. (score=0.65)

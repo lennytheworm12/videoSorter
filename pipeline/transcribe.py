@@ -220,6 +220,11 @@ def run() -> None:
         video_id = video["video_id"]
         video_url = video["video_url"]
         role = video["role"]
+
+        # Skip synthetic rows (ability enrichment, etc.) that have no real URL
+        if not video_url or role == "ability_enrichment":
+            continue
+
         print(f"\n[{role}] {video_id}")
 
         # Try YouTube transcript API first (fast, no download)

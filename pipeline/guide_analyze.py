@@ -1,0 +1,353 @@
+"""
+LLM analysis for YouTube guide videos (source='youtube_guide').
+
+Key differences from analyze.py (coaching sessions):
+  - No coach/student role filtering — presenter speaks directly to viewer
+  - Skip intro/outro fluff, sponsor reads, "like and subscribe" calls
+  - Chunks long transcripts into ~1-hour windows before each LLM call so a
+    2-hour guide doesn't dilute a 20-minute one — insights are aggregated across
+    all chunks and the dedup/repetition system handles cross-chunk overlap
+
+Usage:
+    uv run python -m pipeline.guide_analyze               # all youtube_guide videos
+    uv run python -m pipeline.guide_analyze --champion Aatrox
+    uv run python -m pipeline.guide_analyze --dry-run     # print insights, don't save
+"""
+
+import os
+import json
+import time
+import textwrap
+import argparse
+import numpy as np
+import torch
+from sentence_transformers import SentenceTransformer
+
+# Write to isolated test DB until guide prompts are validated
+os.environ.setdefault("DB_PATH", "guide_test.db")
+
+from core.database import get_connection, set_status, insert_insight, init_db
+from core.champions import correct_names, champion_names_for_prompt
+from core.llm import chat as llm_chat, BACKEND
+
+EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
+_WINDOW_WORDS  = 40
+_WINDOW_STRIDE = 20
+
+# ~130 wpm speaking rate × 60 min = 7800; use 9000 to give a comfortable buffer
+WORDS_PER_HOUR = 9_000
+
+SYSTEM_PROMPT = textwrap.dedent("""
+    You are an expert League of Legends analyst extracting actionable insights
+    from YouTube guide and educational videos.
+
+    SOURCE FILTERING — critical:
+    These videos are solo presentations or educational gameplay breakdowns —
+    there is no coach/student dynamic. The presenter is speaking directly to the
+    viewer. Extract insights from any deliberate educational content.
+
+    SKIP entirely:
+      - Channel intros/outros ("welcome back", "don't forget to subscribe", "smash like")
+      - Sponsor reads and promotional segments
+      - Generic hype ("this champion is broken right now", "you NEED to play this")
+      - Play-by-play narration with no educational content ("okay so here I walk up")
+      - Obvious/baseline tips any player would know ("last hit minions for gold")
+
+    TRANSCRIPT CONTEXT:
+    Auto-generated captions — no punctuation, champion/item names often misspelled.
+    Always output the correct LoL name (e.g. "kaisa" → "Kai'Sa", "khazix" → "Kha'Zix").
+
+    INSIGHT CATEGORIES — definitions:
+
+    champion_identity: This champion's unique strategic role, win conditions, power
+    spikes, and what differentiates it from others. Must be specific to this champion.
+
+    game_mechanics: ONLY advice about the game client — keybindings, settings, camera,
+    mouse hardware. Almost always []. Do NOT put in-game decisions here.
+
+    principles: Broad strategic mental models — wave theory, matchup archetypes,
+    resource trading — that the video explicitly frames as general rules.
+
+    laning_tips: Specific laning-phase decisions — wave management, trading patterns,
+    positioning, recall timing. Champion-context is fine.
+
+    champion_mechanics: How to use this champion's abilities — combos, sequencing,
+    cooldown management, power spike windows, ability-specific interactions.
+
+    matchup_advice: How to play against a specific champion or class. Must include
+    both the condition (what the enemy does) and the adjustment required.
+
+    macro_advice: Post-laning — roaming, objectives, side lane, Teleport decisions,
+    win condition execution.
+
+    teamfight_tips: Positioning, target selection, engage/disengage, ability usage
+    in team fights or skirmishes.
+
+    vision_control: Ward placement, when to ward, contesting enemy vision.
+
+    itemization: Item choices, build order, summoner spells with reasoning.
+
+    general_advice: Mindset and broadly applicable advice that doesn't fit above.
+    Keep sparse.
+
+    OUTPUT RULES:
+    1. Return valid JSON only. No markdown fences, no text outside the JSON.
+    2. Empty category = [] — never write a string.
+    3. Each insight must be a complete standalone sentence, immediately applicable.
+    4. Use correct LoL spelling for all names.
+    5. Do not invent advice not present in the transcript.
+    6. Prefer depth over breadth: one specific insight beats three vague ones.
+
+    PHRASING RULES — critical for cross-video consistency:
+    7. Write every insight as a second-person coaching instruction ("Use Q when...",
+       "Avoid trading before...", "Build X against...") — not as a video observation
+       ("the player uses Q", "in this clip he builds").
+    8. Use canonical references: ability slots (Q, W, E, R), level numbers (level 5,
+       level 6), item full names (Serylda's Grudge, not "that slow item").
+    9. State the WHY concisely in the same sentence: "Avoid Q3 in lane unless you
+       will secure damage — using all three charges puts Q on a 24s cooldown instead
+       of 9s." A reason makes semantically similar tips from different videos cluster
+       together naturally.
+    10. Do not anchor to the specific video: no "as shown here", "in this game",
+        "the streamer", or time references. The insight should read identically
+        whether extracted from a 10-minute or 2-hour video.
+""").strip()
+
+EXTRACTION_PROMPT = textwrap.dedent("""
+    Extract actionable insights from this League of Legends guide video transcript.
+
+    Video info:
+    - Champion: {champion}
+    - Role: {role}
+    - Title: {title}
+    - Hour chunk: {chunk_label}
+
+    Transcript (auto-generated captions):
+    ---
+    {transcript_chunk}
+    ---
+
+    Return exactly this JSON structure. Use [] for categories with no insights.
+    Each insight is an object: {{"text": "...", "emphasis": 1|2|3}}
+    (1=mentioned once, 2=a few times, 3=repeatedly stressed)
+
+    Remember: write insights as second-person coaching instructions with the WHY
+    included. "Use Q when the enemy commits to a last-hit animation — they cannot
+    dodge during that window" not "the player uses Q on CS timing".
+
+    {{
+        "champion_identity": [],
+        "game_mechanics": [],
+        "principles": [],
+        "laning_tips": [],
+        "champion_mechanics": [],
+        "matchup_advice": [],
+        "macro_advice": [],
+        "teamfight_tips": [],
+        "vision_control": [],
+        "itemization": [],
+        "general_advice": []
+    }}
+""").strip()
+
+
+_embed_model: SentenceTransformer | None = None
+_EMBED_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def _get_embed_model() -> SentenceTransformer:
+    global _embed_model
+    if _embed_model is None:
+        _embed_model = SentenceTransformer(EMBED_MODEL_NAME, device=_EMBED_DEVICE)
+    return _embed_model
+
+
+def _embed_chunk_windows(chunk: str) -> np.ndarray:
+    words = chunk.split()
+    windows = [
+        " ".join(words[i: i + _WINDOW_WORDS])
+        for i in range(0, max(1, len(words) - _WINDOW_WORDS + 1), _WINDOW_STRIDE)
+    ]
+    if not windows:
+        windows = [chunk[:500]]
+    model = _get_embed_model()
+    return model.encode(windows, convert_to_numpy=True, normalize_embeddings=True)
+
+
+def score_source_grounding(insight_text: str, window_matrix: np.ndarray) -> float:
+    model = _get_embed_model()
+    vec = model.encode(insight_text, convert_to_numpy=True, normalize_embeddings=True)
+    return float((window_matrix @ vec).max())
+
+
+def chunk_by_hour(transcript: str) -> list[str]:
+    """Split a transcript into ~1-hour word windows."""
+    words = transcript.split()
+    chunks = []
+    for i in range(0, len(words), WORDS_PER_HOUR):
+        chunk = " ".join(words[i: i + WORDS_PER_HOUR])
+        if chunk.strip():
+            chunks.append(chunk)
+    return chunks or [transcript]
+
+
+def _call_llm(chunk: str, champion: str, role: str, title: str, chunk_label: str) -> dict:
+    prompt = EXTRACTION_PROMPT.format(
+        champion=champion or "unknown",
+        role=role or "unknown",
+        title=title or "",
+        chunk_label=chunk_label,
+        transcript_chunk=chunk,
+    )
+    system = SYSTEM_PROMPT + "\n\nFULL CHAMPION LIST:\n" + champion_names_for_prompt()
+
+    t0 = time.time()
+    raw = llm_chat(system=system, user=prompt, temperature=0.1, max_tokens=4096)
+    print(f"      [{BACKEND}] {time.time() - t0:.1f}s | {len(chunk.split()):,} words in", end=" ")
+
+    if raw.startswith("```"):
+        raw = raw.split("```", 2)[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip()
+
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        import re
+        m = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            try:
+                result = json.loads(m.group(0))
+            except Exception:
+                result = {}
+        else:
+            result = {}
+
+    # Normalise items to (text, emphasis) tuples
+    for key, items in result.items():
+        if not isinstance(items, list):
+            result[key] = []
+            continue
+        normalised = []
+        for item in items:
+            if isinstance(item, str) and item.strip():
+                normalised.append((correct_names(item.strip()), 1))
+            elif isinstance(item, dict) and item.get("text", "").strip():
+                text = correct_names(item["text"].strip())
+                emphasis = int(item.get("emphasis", 1))
+                normalised.append((text, emphasis))
+        result[key] = normalised
+
+    return result
+
+
+def _already_analyzed(video_id: str) -> bool:
+    with get_connection() as conn:
+        return conn.execute(
+            "SELECT 1 FROM insights WHERE video_id = ? LIMIT 1", (video_id,)
+        ).fetchone() is not None
+
+
+def _get_pending_guide_videos(champion: str | None = None) -> list:
+    with get_connection() as conn:
+        if champion:
+            return conn.execute(
+                """
+                SELECT * FROM videos
+                WHERE source = 'youtube_guide' AND status = 'transcribed'
+                  AND champion = ?
+                ORDER BY champion, video_id
+                """,
+                (champion,)
+            ).fetchall()
+        return conn.execute(
+            """
+            SELECT * FROM videos
+            WHERE source = 'youtube_guide' AND status = 'transcribed'
+            ORDER BY champion, video_id
+            """
+        ).fetchall()
+
+
+def analyze_video(video: dict, dry_run: bool = False) -> int:
+    """Analyze one guide video. Returns number of insights saved (or found in dry_run)."""
+    video_id = video["video_id"]
+    champion  = video["champion"] or "unknown"
+    role      = video["role"] or "unknown"
+    title     = video["video_title"] or ""
+    transcript = video["transcription"] or ""
+
+    chunks = chunk_by_hour(transcript)
+    total_words = len(transcript.split())
+    print(f"  {total_words:,} words → {len(chunks)} hour-chunk(s)")
+
+    aggregated: dict[str, list] = {}
+
+    for i, chunk in enumerate(chunks):
+        chunk_label = f"hour {i + 1} of {len(chunks)}"
+        print(f"  Analyzing {chunk_label}…", end=" ", flush=True)
+        result = _call_llm(chunk, champion, role, title, chunk_label)
+
+        window_matrix = _embed_chunk_windows(chunk)
+        n_this_chunk = 0
+        for insight_type, items in result.items():
+            aggregated.setdefault(insight_type, [])
+            for text, emphasis in items:
+                score = score_source_grounding(text, window_matrix)
+                aggregated[insight_type].append((text, emphasis, score))
+                n_this_chunk += 1
+        print(f"→ {n_this_chunk} insights")
+
+    total = 0
+    for insight_type, items in aggregated.items():
+        for text, emphasis, source_score in items:
+            if not text.strip():
+                continue
+            if dry_run:
+                print(f"    [{insight_type}] {text}")
+            else:
+                insert_insight(video_id, insight_type, text.strip(), source_score, repetition_count=emphasis)
+            total += 1
+
+    if not dry_run:
+        set_status(video_id, "analyzed")
+
+    return total
+
+
+def run(champion: str | None = None, dry_run: bool = False) -> None:
+    videos = _get_pending_guide_videos(champion)
+    print(f"Guide videos to analyze: {len(videos)}")
+
+    for video in videos:
+        video_id = video["video_id"]
+        champ    = video["champion"] or "?"
+
+        if _already_analyzed(video_id):
+            print(f"[skip] {video_id} already analyzed")
+            set_status(video_id, "analyzed")
+            continue
+
+        print(f"\n[{champ}] {video_id} | {(video['video_title'] or '')[:60]}")
+        try:
+            n = analyze_video(dict(video), dry_run=dry_run)
+            print(f"  → {n} insights {'(dry-run, not saved)' if dry_run else 'saved'}")
+        except Exception as e:
+            print(f"  [error] {e}")
+            if not dry_run:
+                set_status(video_id, "error")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Analyze YouTube guide videos")
+    parser.add_argument("--champion", help="Only analyze videos for this champion")
+    parser.add_argument("--dry-run", action="store_true", help="Print insights, don't save")
+    args = parser.parse_args()
+
+    init_db()
+    run(champion=args.champion, dry_run=args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

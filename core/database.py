@@ -1,10 +1,14 @@
 """SQLite database setup and insert/query helpers for videoSorter."""
 
+import os
 import sqlite3
 import pathlib
 from typing import Optional
 
-DB_PATH = pathlib.Path("videos.db")
+# Override with DB_PATH env var to target a different database file.
+# Used by the YouTube guide pipeline (guide_test.db) to avoid mixing
+# unvalidated guide insights with the main coaching dataset.
+DB_PATH = pathlib.Path(os.environ.get("DB_PATH", "videos.db"))
 
 
 def get_connection() -> sqlite3.Connection:
@@ -53,6 +57,13 @@ def init_db() -> None:
         ]:
             try:
                 conn.execute(f"ALTER TABLE insights ADD COLUMN {col} {typedef}")
+            except Exception:
+                pass
+        for col, typedef in [
+            ("source", "TEXT DEFAULT 'discord'"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE videos ADD COLUMN {col} {typedef}")
             except Exception:
                 pass  # column already exists
         conn.execute("""
@@ -147,16 +158,17 @@ def insert_video(
     description: Optional[str] = None,
     champion: Optional[str] = None,
     rank: Optional[str] = None,
+    source: str = "discord",
 ) -> None:
     """Insert a video row, ignoring duplicates (same video_id)."""
     with get_connection() as conn:
         conn.execute(
             """
             INSERT OR IGNORE INTO videos
-                (video_id, video_url, video_title, description, role, champion, rank, message_timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (video_id, video_url, video_title, description, role, champion, rank, message_timestamp, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (video_id, video_url, video_title, description, role, champion, rank, message_timestamp),
+            (video_id, video_url, video_title, description, role, champion, rank, message_timestamp, source),
         )
         conn.commit()
 
