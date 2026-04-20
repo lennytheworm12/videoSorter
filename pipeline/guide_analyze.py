@@ -17,6 +17,7 @@ Usage:
 import os
 import json
 import time
+import random
 import textwrap
 import argparse
 import numpy as np
@@ -52,6 +53,9 @@ SYSTEM_PROMPT = textwrap.dedent("""
       - Generic hype ("this champion is broken right now", "you NEED to play this")
       - Play-by-play narration with no educational content ("okay so here I walk up")
       - Obvious/baseline tips any player would know ("last hit minions for gold")
+      - Patch-specific or seasonal content: current meta picks, item tier lists, "right
+        now X is broken", rune page recommendations tied to a patch, anything that will
+        be wrong next season. We want evergreen fundamentals only.
 
     TRANSCRIPT CONTEXT:
     Auto-generated captions — no punctuation, champion/item names often misspelled.
@@ -85,7 +89,11 @@ SYSTEM_PROMPT = textwrap.dedent("""
 
     vision_control: Ward placement, when to ward, contesting enemy vision.
 
-    itemization: Item choices, build order, summoner spells with reasoning.
+    itemization: ONLY timeless build reasoning tied to a champion identity or matchup
+    condition — e.g. "Rush Serylda's Grudge against tanks because the slow enables
+    follow-up R". Skip specific starter items, rune pages, patch-tier-list picks, or
+    anything prefaced with "right now" / "this season" / "currently". If the reasoning
+    would be wrong next patch, do not include it.
 
     general_advice: Mindset and broadly applicable advice that doesn't fit above.
     Keep sparse.
@@ -111,6 +119,9 @@ SYSTEM_PROMPT = textwrap.dedent("""
     10. Do not anchor to the specific video: no "as shown here", "in this game",
         "the streamer", or time references. The insight should read identically
         whether extracted from a 10-minute or 2-hour video.
+    11. Evergreen over current: if an insight would be invalidated by a balance patch
+        or season reset, discard it. Prioritise champion identity, mechanics, and
+        decision-making patterns that hold across patches.
 """).strip()
 
 EXTRACTION_PROMPT = textwrap.dedent("""
@@ -134,6 +145,10 @@ EXTRACTION_PROMPT = textwrap.dedent("""
     Remember: write insights as second-person coaching instructions with the WHY
     included. "Use Q when the enemy commits to a last-hit animation — they cannot
     dodge during that window" not "the player uses Q on CS timing".
+
+    Evergreen only: skip patch-specific builds, meta picks, seasonal tier lists, and
+    anything prefaced with "right now" or "this season". Champion mechanics, identity,
+    and decision-making patterns that hold across patches are the priority.
 
     {{
         "champion_identity": [],
@@ -181,13 +196,59 @@ def score_source_grounding(insight_text: str, window_matrix: np.ndarray) -> floa
 
 
 def chunk_by_hour(transcript: str) -> list[str]:
-    """Split a transcript into ~1-hour word windows."""
+    """
+    Split a transcript into ~1-hour chunks, breaking at the last sentence-ending
+    punctuation (. ! ?) within 500 words of the target size. Falls back to a
+    hard word-count split if no punctuation is found. Each chunk overlaps the
+    previous by 150 words so context isn't lost at boundaries.
+    """
+    import re as _re
+
+    OVERLAP  = 150   # words of overlap between chunks
+    SCAN     = 500   # words before target to search for a sentence end
+    MIN_STEP = WORDS_PER_HOUR - SCAN  # minimum words advanced per chunk (~8500)
+
     words = transcript.split()
-    chunks = []
-    for i in range(0, len(words), WORDS_PER_HOUR):
-        chunk = " ".join(words[i: i + WORDS_PER_HOUR])
-        if chunk.strip():
-            chunks.append(chunk)
+    total = len(words)
+    if total <= WORDS_PER_HOUR:
+        return [transcript]
+
+    chunks: list[str] = []
+    start = 0
+    while start < total:
+        target = min(start + WORDS_PER_HOUR, total)
+
+        if target < total:
+            # Scan the last SCAN words before the target for a sentence boundary
+            scan_from = target - SCAN
+            window = " ".join(words[scan_from:target])
+            matches = list(_re.finditer(r'[.!?]', window))
+            if matches:
+                # Walk words in the window to find which word index the match lands on
+                char_pos = matches[-1].start()
+                running = 0
+                split_offset = len(words[scan_from:target]) - 1  # fallback: end of window
+                for wi, w in enumerate(words[scan_from:target]):
+                    running += len(w) + 1
+                    if running > char_pos:
+                        split_offset = wi
+                        break
+                candidate = scan_from + split_offset + 1
+                # Only accept if it keeps us making meaningful forward progress
+                target = candidate if candidate >= start + MIN_STEP else target
+
+        chunks.append(" ".join(words[start:target]))
+
+        # Advance by (chunk size - overlap), but always move forward
+        next_start = target - OVERLAP
+        start = next_start if next_start > start else target
+
+    # Absorb a trivially small tail chunk into the previous one
+    MIN_CHUNK = OVERLAP * 3  # anything under ~450 words isn't worth a separate LLM call
+    if len(chunks) > 1 and len(chunks[-1].split()) < MIN_CHUNK:
+        chunks[-2] = chunks[-2] + " " + chunks[-1]
+        chunks.pop()
+
     return chunks or [transcript]
 
 
@@ -333,19 +394,55 @@ def run(champion: str | None = None, dry_run: bool = False) -> None:
         try:
             n = analyze_video(dict(video), dry_run=dry_run)
             print(f"  → {n} insights {'(dry-run, not saved)' if dry_run else 'saved'}")
+            delay = random.uniform(3.0, 5.0)
+            print(f"  Waiting {delay:.1f}s…")
+            time.sleep(delay)
         except Exception as e:
             print(f"  [error] {e}")
             if not dry_run:
                 set_status(video_id, "error")
 
 
+def _reset_for_reanalysis(champion: str | None) -> None:
+    """Delete existing insights and reset status to transcribed so run() picks them up."""
+    with get_connection() as conn:
+        if champion:
+            video_ids = [r["video_id"] for r in conn.execute(
+                "SELECT video_id FROM videos WHERE source='youtube_guide' AND champion=?",
+                (champion,)
+            ).fetchall()]
+        else:
+            video_ids = [r["video_id"] for r in conn.execute(
+                "SELECT video_id FROM videos WHERE source='youtube_guide'"
+            ).fetchall()]
+
+        if not video_ids:
+            return
+
+        placeholders = ",".join("?" * len(video_ids))
+        n_insights = conn.execute(
+            f"DELETE FROM insights WHERE video_id IN ({placeholders})", video_ids
+        ).rowcount
+        conn.execute(
+            f"UPDATE videos SET status='transcribed' WHERE video_id IN ({placeholders})",
+            video_ids
+        )
+        conn.commit()
+    label = champion or "all champions"
+    print(f"Reset {len(video_ids)} video(s) for {label} ({n_insights} insights deleted)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze YouTube guide videos")
     parser.add_argument("--champion", help="Only analyze videos for this champion")
     parser.add_argument("--dry-run", action="store_true", help="Print insights, don't save")
+    parser.add_argument("--reanalyze", action="store_true",
+                        help="Delete existing insights and re-run (use with --champion or alone for all)")
     args = parser.parse_args()
 
     init_db()
+    if args.reanalyze:
+        _reset_for_reanalysis(args.champion)
     run(champion=args.champion, dry_run=args.dry_run)
 
 

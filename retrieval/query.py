@@ -304,9 +304,15 @@ def retrieve(
 
     confidences = np.array([m.get("confidence") or 0.5 for m in metadata])
     source_scores = np.array([m.get("source_score") or 0.5 for m in metadata])
+    # Discord coaching sessions carry higher trust — real coach/student interactions
+    # are more signal-dense than scraped YouTube guides, so boost them at ranking time.
+    source_weights = np.array([
+        1.35 if m.get("source") == "discord" else 1.0
+        for m in metadata
+    ])
     combined = (0.6 * confidences + 0.4 * source_scores)
     fused_indices.sort(
-        key=lambda i: (matrix[i] @ query_vec) * (0.5 + 0.5 * float(combined[i])),
+        key=lambda i: (matrix[i] @ query_vec) * (0.5 + 0.5 * float(combined[i])) * float(source_weights[i]),
         reverse=True,
     )
 
@@ -317,6 +323,7 @@ def retrieve(
             "insight_type": metadata[i]["insight_type"],
             "role": metadata[i]["role"],
             "champion": metadata[i]["champion"],
+            "source": metadata[i].get("source", "discord"),
             "score": round(float(cosine_scores[i]), 4),
             "confidence": round(float(confidences[i]), 4),
             "retrieval_layer": "direct",

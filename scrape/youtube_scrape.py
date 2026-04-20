@@ -55,49 +55,81 @@ def _detect_role_from_title(title: str) -> str | None:
     return None
 
 
-def _champion_primary_role(champion: str) -> str:
-    """Return the champion's most-used role, reading archetypes from main videos.db."""
+def _champion_valid_roles(champion: str) -> set[str]:
+    """Return a set of valid roles for a champion (primary + secondary if present)."""
     import sqlite3
+    roles: list[str] = []
+
     # Check guide_test.db video counts first
     with get_connection() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT role, COUNT(*) AS cnt
             FROM videos
             WHERE champion = ? AND role NOT IN ('ability_enrichment', 'unknown')
             GROUP BY role
             ORDER BY cnt DESC
-            LIMIT 1
+            LIMIT 2
             """,
             (champion,)
-        ).fetchone()
-        if row:
-            return row["role"]
+        ).fetchall()
+        if rows:
+            roles = [r["role"] for r in rows]
 
-    # Fall back to main videos.db for archetypes (guide_test.db won't have them)
-    try:
-        main_conn = sqlite3.connect("videos.db")
-        main_conn.row_factory = sqlite3.Row
-        row = main_conn.execute(
-            """
-            SELECT role, COUNT(*) AS cnt FROM videos
-            WHERE champion = ? AND role NOT IN ('ability_enrichment')
-            GROUP BY role ORDER BY cnt DESC LIMIT 1
-            """,
-            (champion,)
-        ).fetchone()
-        if not row:
-            row = main_conn.execute(
-                "SELECT role FROM champion_archetypes WHERE champion = ? LIMIT 1",
+    if not roles:
+        # Fall back to main videos.db for archetypes
+        try:
+            main_conn = sqlite3.connect("videos.db")
+            main_conn.row_factory = sqlite3.Row
+            db_rows = main_conn.execute(
+                """
+                SELECT role, COUNT(*) AS cnt FROM videos
+                WHERE champion = ? AND role NOT IN ('ability_enrichment')
+                GROUP BY role ORDER BY cnt DESC LIMIT 2
+                """,
                 (champion,)
-            ).fetchone()
-        main_conn.close()
-        if row:
-            return row["role"]
-    except Exception:
-        pass
+            ).fetchall()
+            if db_rows:
+                roles = [r["role"] for r in db_rows]
+            else:
+                row = main_conn.execute(
+                    "SELECT role FROM champion_archetypes WHERE champion = ? LIMIT 1",
+                    (champion,)
+                ).fetchone()
+                if row:
+                    roles = [row["role"]]
+            main_conn.close()
+        except Exception:
+            pass
 
-    return "unknown"
+    return set(roles) if roles else {"unknown"}
+
+
+def _champion_primary_role(champion: str) -> str:
+    """Return the champion's most-used role."""
+    roles = _champion_valid_roles(champion)
+    roles.discard("unknown")
+    return next(iter(roles)) if roles else "unknown"
+
+
+NON_LOL_BLOCKLIST = {
+    "legends of runeterra", "runeterra", " lor ", "teamfight tactics", " tft ",
+    "wild rift", "mobile", "card game", "spiritforged", "path of champions",
+}
+
+_LANG_TAGS = re.compile(
+    r'\b(FR|ES|PT|DE|KR|CN|JP|IT|RU|PL|TR|NL|HU|RO|CS|EL|AR|VI|TH)\b'
+)
+
+def _is_english_title(title: str) -> bool:
+    """Return False if the title is clearly non-English."""
+    # Non-ASCII characters strongly suggest a non-English title
+    if any(ord(c) > 127 for c in title):
+        return False
+    # Explicit language codes (e.g. "Cho'Gath FR", "guide ES")
+    if _LANG_TAGS.search(title.upper()):
+        return False
+    return True
 
 
 def _has_guide_keyword(title: str) -> tuple[bool, str]:
@@ -147,8 +179,9 @@ def filter_results(
     results: list[dict],
     existing_ids: set[str],
     limit: int,
+    valid_roles: set[str] | None = None,
 ) -> list[dict]:
-    """Filter by duration and keywords, then sort longest-first."""
+    """Filter by duration, keywords, and role mismatch, then sort longest-first."""
     kept = []
     for v in results:
         if v["video_id"] in existing_ids:
@@ -157,9 +190,19 @@ def filter_results(
             continue
         if v["duration"] and v["duration"] > MAX_DURATION_S:
             continue
+        tl = v["title"].lower()
+        if any(k in tl for k in NON_LOL_BLOCKLIST):
+            continue
+        if not _is_english_title(v["title"]):
+            continue
         matched, kw = _has_guide_keyword(v["title"])
         if not matched:
             continue
+        # Reject if title explicitly names a role not in champion's valid roles
+        if valid_roles and "unknown" not in valid_roles:
+            title_role = _detect_role_from_title(v["title"])
+            if title_role and title_role not in valid_roles:
+                continue
         v["_matched_kw"] = kw
         kept.append(v)
     # Longest videos first — educational deep-dives over short clips
@@ -181,11 +224,19 @@ def scrape_champion(champion: str, limit: int = 10, dry_run: bool = False) -> in
     Returns the number of new rows inserted (or would-be inserted in dry_run).
     """
     existing = _get_existing_ids()
-    primary_role = _champion_primary_role(champion)
+    valid_roles = _champion_valid_roles(champion)
+    primary_role = next((r for r in valid_roles if r != "unknown"), "unknown")
     role_term = primary_role if primary_role != "unknown" else ""
     query = f"league of legends {champion} {role_term} guide".strip()
+
+    # Only fetch what's still needed (partial fill support)
+    already_have = _champion_video_count(champion)
+    needed = max(0, limit - already_have)
+    if needed == 0:
+        return 0
+
     results = search_youtube(query)
-    filtered = filter_results(results, existing, limit)
+    filtered = filter_results(results, existing, needed, valid_roles=valid_roles)
 
     inserted = 0
     for v in filtered:

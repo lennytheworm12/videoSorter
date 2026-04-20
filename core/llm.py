@@ -34,13 +34,10 @@ if _GOOGLE_API_KEY:
     from google.genai import types as _gtypes
 
     _DEFAULT_MODEL = _LLM_MODEL or "gemini-3.1-flash-lite-preview"
-
     _client = _genai.Client(api_key=_GOOGLE_API_KEY)
     _fallback_client = _genai.Client(api_key=_GOOGLE_CLOUD_API_KEY) if _GOOGLE_CLOUD_API_KEY else None
 
-    # Query the model's actual output token limit at startup
-    _model_info = _client.models.get(model=_DEFAULT_MODEL)
-    _MAX_OUTPUT_TOKENS = _model_info.output_token_limit
+    _MAX_OUTPUT_TOKENS = 8192  # flash-lite hard limit
     _fallback_label = "GOOGLE_API_KEY_TWO" if _fallback_client else "none"
     print(f"[llm] Gemini backend: {_DEFAULT_MODEL} (max output tokens: {_MAX_OUTPUT_TOKENS:,}, fallback: {_fallback_label})")
 

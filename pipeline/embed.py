@@ -93,7 +93,8 @@ def load_all_vectors(
     """
     query = """
         SELECT i.id, i.text, i.insight_type, i.embedding,
-               i.confidence, i.source_score, v.video_id, v.role, v.champion
+               i.confidence, i.source_score, v.video_id, v.role, v.champion,
+               COALESCE(v.source, 'discord') AS source
         FROM insights i
         JOIN videos v ON i.video_id = v.video_id
         WHERE i.embedding IS NOT NULL
@@ -126,6 +127,7 @@ def load_all_vectors(
             "insight_type": row["insight_type"],
             "confidence": row["confidence"],
             "source_score": row["source_score"],
+            "source": row["source"],
         })
         vectors.append(np.frombuffer(row["embedding"], dtype=np.float32))
 
