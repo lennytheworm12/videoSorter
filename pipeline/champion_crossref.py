@@ -27,14 +27,56 @@ Usage:
 
 import argparse
 import json
+import pathlib
+import sqlite3
 import numpy as np
-from core.database import get_connection, init_db
+from core.database import DB_PATH, get_connection, init_db
 from core.llm import chat as llm_chat
 
 # Minimum cosine similarity to count as a meaningful archetype neighbor
 KNN_THRESHOLD = 0.50
 # Max neighbors to store per champion
 MAX_NEIGHBORS = 5
+
+
+def _archetype_db_paths() -> list[pathlib.Path]:
+    """
+    Read archetype mappings from the active DB first, then fall back to videos.db.
+
+    guide_test.db intentionally stores guide-derived insights separately, but the
+    archetype table often only exists in videos.db. Cross-ref should reuse that
+    canonical mapping instead of requiring the table to be duplicated.
+    """
+    paths: list[pathlib.Path] = []
+    primary = pathlib.Path(DB_PATH)
+    for candidate in (primary, pathlib.Path("videos.db")):
+        if candidate.exists() and candidate not in paths:
+            paths.append(candidate)
+    return paths
+
+
+def _load_archetype_map() -> dict[str, str]:
+    archetype_map: dict[str, str] = {}
+    for db_path in _archetype_db_paths():
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT champion, archetype FROM champion_archetypes"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            rows = []
+        finally:
+            conn.close()
+        for row in rows:
+            archetype_map.setdefault(row["champion"].lower(), row["archetype"])
+    return archetype_map
+
+
+def _lookup_archetype(champion: str, archetype_map: dict[str, str] | None = None) -> str | None:
+    if archetype_map is None:
+        archetype_map = _load_archetype_map()
+    return archetype_map.get(champion.lower())
 
 
 # ── DB setup ──────────────────────────────────────────────────────────────────
@@ -99,13 +141,7 @@ def build_champion_vectors() -> dict[str, np.ndarray]:
         groups.setdefault(row["champion"], []).append(vec)
 
     # Load archetype map (champion → archetype, role-agnostic: pick first match)
-    with get_connection() as conn:
-        arch_rows = conn.execute(
-            "SELECT champion, archetype FROM champion_archetypes"
-        ).fetchall()
-    archetype_map: dict[str, str] = {}
-    for r in arch_rows:
-        archetype_map.setdefault(r["champion"].lower(), r["archetype"])
+    archetype_map = _load_archetype_map()
 
     # Mean-pool and normalise
     champion_vectors: dict[str, np.ndarray] = {}
@@ -161,13 +197,7 @@ def compute_archetype_neighbors() -> dict[str, list[dict]]:
         return {}
 
     # Load archetype per champion (role-agnostic: first entry wins)
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT champion, archetype FROM champion_archetypes"
-        ).fetchall()
-    archetype_map: dict[str, str] = {}
-    for r in rows:
-        archetype_map.setdefault(r["champion"].lower(), r["archetype"])
+    archetype_map = _load_archetype_map()
 
     neighbors: dict[str, list[dict]] = {}
 
@@ -245,20 +275,29 @@ def generalize_insights(dry_run: bool = False) -> None:
             ).fetchall()
         }
 
-    # Load champion_identity insights with archetype info (role-agnostic: first match)
+    # Load champion_identity insights and attach archetype in Python so we can fall
+    # back to the canonical videos.db archetype table when guide_test.db is empty.
     with get_connection() as conn:
         rows = conn.execute("""
-            SELECT i.id, i.text, v.champion, v.role,
-                   (SELECT ca.archetype FROM champion_archetypes ca
-                    WHERE LOWER(ca.champion) = LOWER(v.champion)
-                    LIMIT 1) AS archetype
+            SELECT i.id, i.text, v.champion, v.role
             FROM insights i
             JOIN videos v ON i.video_id = v.video_id
             WHERE i.insight_type = 'champion_identity'
               AND v.champion IS NOT NULL
         """).fetchall()
+    archetype_map = _load_archetype_map()
 
-    pending = [r for r in rows if r["id"] not in done]
+    pending = []
+    for row in rows:
+        if row["id"] in done:
+            continue
+        pending.append({
+            "id": row["id"],
+            "text": row["text"],
+            "champion": row["champion"],
+            "role": row["role"],
+            "archetype": _lookup_archetype(row["champion"], archetype_map),
+        })
     if not pending:
         print("  All champion_identity insights already labeled.")
         return
@@ -273,6 +312,7 @@ def generalize_insights(dry_run: bool = False) -> None:
     total_saved = 0
     total_gen = 0
     total_skipped = 0
+    missing_archetype_logged = 0
 
     def _flush(b: list[tuple]) -> None:
         nonlocal total_saved, total_gen
@@ -288,7 +328,11 @@ def generalize_insights(dry_run: bool = False) -> None:
 
     for i, row in enumerate(pending, 1):
         if not row["archetype"]:
-            print(f"    [skip] insight {row['id']}: no archetype for {row['champion']}")
+            if missing_archetype_logged < 10:
+                print(f"    [skip] insight {row['id']}: no archetype for {row['champion']}")
+                missing_archetype_logged += 1
+                if missing_archetype_logged == 10:
+                    print("    [skip] further missing-archetype rows suppressed…")
             total_skipped += 1
             continue
 
@@ -377,15 +421,11 @@ def get_archetype_insights(
 
     Used by query.py as the layer-2 archetype fallback.
     """
-    # Get this champion's archetype (role-agnostic: first match)
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT archetype FROM champion_archetypes WHERE LOWER(champion) = LOWER(?) LIMIT 1",
-            (champion,),
-        ).fetchone()
-    if not row:
+    # Get this champion's archetype (role-agnostic: first match), falling back to
+    # the canonical mapping in videos.db when guide_test.db has no archetype rows.
+    archetype = _lookup_archetype(champion)
+    if not archetype:
         return []
-    archetype = row["archetype"]
 
     # Load champion vectors for similarity scoring
     vectors = load_champion_vectors()
