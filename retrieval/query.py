@@ -124,6 +124,38 @@ def _shorten_ability_description(description: str, limit: int = 150) -> str:
     return clipped + "…"
 
 
+def _plain_english_ability_summary(champion: str, description: str, limit: int = 150) -> str:
+    summary = _shorten_ability_description(description, limit=400)
+    if not summary:
+        return ""
+
+    summary = re.sub(rf"^{re.escape(champion)}\s+", "", summary)
+
+    replacements = [
+        (r"\ban enemy it encounters\b", "the first enemy hit"),
+        (r"\bblows a kiss\b", "throws a kiss skillshot forward"),
+        (r"\bsends out and pulls back\b", "throws out and pulls back"),
+        (r"\bgains a brief burst of Move Speed\b", "gets a brief move speed burst"),
+        (r"\binstantly stopping movement abilities\b", "stopping dashes"),
+        (r"\bwalk harmlessly towards her\b", f"walk toward {champion}"),
+        (r"\bwalk harmlessly towards him\b", f"walk toward {champion}"),
+        (r"\bwalk harmlessly towards them\b", f"walk toward {champion}"),
+        (r"\bnearby enemies\b", "nearby targets"),
+    ]
+    for pattern, replacement in replacements:
+        summary = re.sub(pattern, replacement, summary, flags=re.IGNORECASE)
+
+    summary = summary.replace("Move Speed", "move speed")
+    summary = re.sub(r"\s+", " ", summary).strip(" ,;:")
+    if summary:
+        summary = summary[0].upper() + summary[1:]
+
+    if len(summary) <= limit:
+        return summary
+    clipped = summary[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return clipped + "…"
+
+
 def _important_ability_tags(raw_properties: str | None, limit: int = 3) -> list[str]:
     if not raw_properties:
         return []
@@ -176,7 +208,7 @@ def _format_ability_reference(champion: str) -> str:
     for row in rows:
         slot = row["ability_slot"]
         name = row["name"] or slot
-        desc = _shorten_ability_description(row["description"] or "")
+        desc = _plain_english_ability_summary(champion, row["description"] or "")
         tags = _important_ability_tags(row["properties"])
         tag_text = f" ({', '.join(tags)})" if tags else ""
         if desc:
