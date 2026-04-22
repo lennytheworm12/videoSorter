@@ -26,7 +26,8 @@ from sentence_transformers import SentenceTransformer
 os.environ.setdefault("DB_PATH", "guide_test.db")
 
 from core.database import get_connection, set_status, insert_insight, init_db
-from core.champions import correct_names, champion_names_for_prompt
+from core.champions import correct_names
+from core.game_registry import DEFAULT_GAME, SUPPORTED_GAMES, analysis_spec, normalize_game
 from core.llm import chat as llm_chat, BACKEND
 
 EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
@@ -332,24 +333,29 @@ def chunk_by_hour(transcript: str) -> list[str]:
     return chunks or [transcript]
 
 
-def _system_prompt_for_source(source: str) -> str:
-    if source == "mobafire_guide":
-        return WRITTEN_GUIDE_SYSTEM_PROMPT
-    return VIDEO_SYSTEM_PROMPT
-
-
-def _call_llm(chunk: str, champion: str, role: str, title: str, chunk_label: str, source: str) -> dict:
+def _call_llm(
+    chunk: str,
+    subject: str,
+    role: str,
+    title: str,
+    chunk_label: str,
+    source: str,
+    game: str,
+) -> dict:
     # Escape curly braces in user content before .format() so guide text with
     # {Q}/{W} ability notation or JSON examples doesn't get parsed as format fields.
+    spec = analysis_spec(game, source)
     safe_chunk = chunk.replace("{", "{{").replace("}", "}}")
-    prompt = EXTRACTION_PROMPT.format(
-        champion=champion or "unknown",
+    prompt = spec.extraction_prompt.format(
+        subject=subject or "unknown",
         role=role or "unknown",
         title=title or "",
         chunk_label=chunk_label,
         transcript_chunk=safe_chunk,
     )
-    system = _system_prompt_for_source(source) + "\n\nFULL CHAMPION LIST:\n" + champion_names_for_prompt()
+    system = spec.system_prompt
+    if spec.reference_block:
+        system += "\n\nREFERENCE LIST:\n" + spec.reference_block
 
     t0 = time.time()
     raw = llm_chat(system=system, user=prompt, temperature=0.1, max_tokens=4096)
@@ -374,10 +380,12 @@ def _call_llm(chunk: str, champion: str, role: str, title: str, chunk_label: str
         else:
             result = {}
 
+    normalised_result = {key: result.get(key, []) for key in spec.insight_types}
+
     # Normalise items to (text, emphasis) tuples
-    for key, items in result.items():
+    for key, items in normalised_result.items():
         if not isinstance(items, list):
-            result[key] = []
+            normalised_result[key] = []
             continue
         normalised = []
         for item in items:
@@ -387,9 +395,9 @@ def _call_llm(chunk: str, champion: str, role: str, title: str, chunk_label: str
                 text = correct_names(item["text"].strip())
                 emphasis = int(item.get("emphasis", 1))
                 normalised.append((text, emphasis))
-        result[key] = normalised
+        normalised_result[key] = normalised
 
-    return result
+    return normalised_result
 
 
 def _already_analyzed(video_id: str) -> bool:
@@ -399,30 +407,40 @@ def _already_analyzed(video_id: str) -> bool:
         ).fetchone() is not None
 
 
-def _get_pending_guide_videos(champion: str | None = None, source: str | None = None) -> list:
+def _get_pending_guide_videos(
+    subject: str | None = None,
+    source: str | None = None,
+    game: str | None = None,
+) -> list:
     with get_connection() as conn:
         source_clause = "source IN ('youtube_guide', 'mobafire_guide')"
         params: list = []
         if source:
             source_clause = "source = ?"
             params.append(source)
-        if champion:
+        game_clause = ""
+        if game:
+            game_clause = " AND game = ?"
+            params.append(normalize_game(game))
+        if subject:
             return conn.execute(
                 """
                 SELECT * FROM videos
                 WHERE status = 'transcribed'
                   AND """ + source_clause + """
-                  AND champion = ?
-                ORDER BY champion, video_id
+                  """ + game_clause + """
+                  AND LOWER(COALESCE(subject, champion)) = LOWER(?)
+                ORDER BY COALESCE(subject, champion), video_id
                 """,
-                params + [champion]
+                params + [subject]
             ).fetchall()
         return conn.execute(
             """
             SELECT * FROM videos
             WHERE status = 'transcribed'
               AND """ + source_clause + """
-            ORDER BY champion, video_id
+              """ + game_clause + """
+            ORDER BY game, COALESCE(subject, champion), video_id
             """,
             params,
         ).fetchall()
@@ -431,7 +449,8 @@ def _get_pending_guide_videos(champion: str | None = None, source: str | None = 
 def analyze_video(video: dict, dry_run: bool = False) -> int:
     """Analyze one guide video. Returns number of insights saved (or found in dry_run)."""
     video_id = video["video_id"]
-    champion  = video["champion"] or "unknown"
+    game      = normalize_game(video["game"] or DEFAULT_GAME)
+    subject   = video["subject"] or video["champion"] or "unknown"
     role      = video["role"] or "unknown"
     title     = video["video_title"] or ""
     source    = video["source"] or "youtube_guide"
@@ -446,7 +465,7 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
     for i, chunk in enumerate(chunks):
         chunk_label = f"hour {i + 1} of {len(chunks)}"
         print(f"  Analyzing {chunk_label}…", end=" ", flush=True)
-        result = _call_llm(chunk, champion, role, title, chunk_label, source)
+        result = _call_llm(chunk, subject, role, title, chunk_label, source, game)
 
         window_matrix = _embed_chunk_windows(chunk)
         n_this_chunk = 0
@@ -475,20 +494,29 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
     return total
 
 
-def run(champion: str | None = None, dry_run: bool = False, source: str | None = None) -> None:
-    videos = _get_pending_guide_videos(champion, source=source)
+def run(
+    subject: str | None = None,
+    dry_run: bool = False,
+    source: str | None = None,
+    game: str | None = None,
+) -> None:
+    videos = _get_pending_guide_videos(subject, source=source, game=game)
     print(f"Guide entries to analyze: {len(videos)}")
 
     for video in videos:
         video_id = video["video_id"]
-        champ    = video["champion"] or "?"
+        subject_name = video["subject"] or video["champion"] or "?"
+        game_name = normalize_game(video["game"] or DEFAULT_GAME)
 
         if _already_analyzed(video_id):
             print(f"[skip] {video_id} already analyzed")
             set_status(video_id, "analyzed")
             continue
 
-        print(f"\n[{video['source']}] [{champ}] {video_id} | {(video['video_title'] or '')[:60]}")
+        print(
+            f"\n[{game_name}] [{video['source']}] "
+            f"[{subject_name}] {video_id} | {(video['video_title'] or '')[:60]}"
+        )
         try:
             n = analyze_video(dict(video), dry_run=dry_run)
             print(f"  → {n} insights {'(dry-run, not saved)' if dry_run else 'saved'}")
@@ -501,7 +529,7 @@ def run(champion: str | None = None, dry_run: bool = False, source: str | None =
                 set_status(video_id, "error")
 
 
-def _reset_for_reanalysis(champion: str | None, source: str | None) -> None:
+def _reset_for_reanalysis(subject: str | None, source: str | None, game: str | None) -> None:
     """Delete existing insights and reset status to transcribed so run() picks them up."""
     with get_connection() as conn:
         source_clause = "source IN ('youtube_guide', 'mobafire_guide')"
@@ -509,14 +537,18 @@ def _reset_for_reanalysis(champion: str | None, source: str | None) -> None:
         if source:
             source_clause = "source = ?"
             params.append(source)
-        if champion:
+        game_clause = ""
+        if game:
+            game_clause = " AND game = ?"
+            params.append(normalize_game(game))
+        if subject:
             video_ids = [r["video_id"] for r in conn.execute(
-                "SELECT video_id FROM videos WHERE " + source_clause + " AND champion=?",
-                params + [champion]
+                "SELECT video_id FROM videos WHERE " + source_clause + game_clause + " AND LOWER(COALESCE(subject, champion)) = LOWER(?)",
+                params + [subject]
             ).fetchall()]
         else:
             video_ids = [r["video_id"] for r in conn.execute(
-                "SELECT video_id FROM videos WHERE " + source_clause,
+                "SELECT video_id FROM videos WHERE " + source_clause + game_clause,
                 params
             ).fetchall()]
 
@@ -532,13 +564,16 @@ def _reset_for_reanalysis(champion: str | None, source: str | None) -> None:
             video_ids
         )
         conn.commit()
-    label = champion or "all champions"
+    label = subject or "all subjects"
     print(f"Reset {len(video_ids)} video(s) for {label} ({n_insights} insights deleted)")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze guide-style entries in guide_test.db")
-    parser.add_argument("--champion", help="Only analyze videos for this champion")
+    parser.add_argument("--game", choices=sorted(SUPPORTED_GAMES), default=DEFAULT_GAME,
+                        help="Game namespace to analyze")
+    parser.add_argument("--subject", help="Only analyze videos for this subject (champion, civ, strategy)")
+    parser.add_argument("--champion", help="Compatibility alias for --subject")
     parser.add_argument("--source", choices=["youtube_guide", "mobafire_guide"],
                         help="Limit to one guide source")
     parser.add_argument("--dry-run", action="store_true", help="Print insights, don't save")
@@ -547,9 +582,10 @@ def main() -> None:
     args = parser.parse_args()
 
     init_db()
+    subject = args.subject or args.champion
     if args.reanalyze:
-        _reset_for_reanalysis(args.champion, args.source)
-    run(champion=args.champion, dry_run=args.dry_run, source=args.source)
+        _reset_for_reanalysis(subject, args.source, args.game)
+    run(subject=subject, dry_run=args.dry_run, source=args.source, game=args.game)
 
 
 if __name__ == "__main__":

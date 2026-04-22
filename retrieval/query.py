@@ -33,6 +33,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 from pipeline.embed import load_all_vectors
 from pipeline.champion_crossref import get_archetype_insights
 from core.llm import chat as llm_chat
+from core.game_registry import DEFAULT_GAME, game_label, normalize_game
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 TOP_K = 35
@@ -224,6 +225,32 @@ Using the insights above, explain how {champion_a} and {champion_b} work togethe
 If a side only has archetype data, reason from the shared playstyle — do not refuse to answer.
 """.strip()
 
+GENERIC_SYSTEM = """
+You are a {game_name} coaching assistant. You have access to insights extracted
+from a curated knowledge base of educational content. Answer using ONLY the
+provided insights.
+
+When the insights support it, organise the answer into concise sections such as:
+- Core Identity / Gameplan
+- Opening / Early Game
+- Economy / Macro
+- Scouting / Adaptation
+- Composition / Fights
+- Map Control / Win Condition
+
+Only include sections that are actually supported by the retrieved insights.
+Do not invent game-specific advice that is not grounded in the retrieved text.
+""".strip()
+
+GENERIC_USER = """
+Player question: {question}
+
+Relevant insights:
+{insights}
+
+Answer using only the insights above.
+""".strip()
+
 
 # ── Intent detection ──────────────────────────────────────────────────────────
 
@@ -398,7 +425,9 @@ def retrieve(
     question: str,
     role: str | None = None,
     champion: str | None = None,
+    subject: str | None = None,
     insight_type: str | None = None,
+    game: str = DEFAULT_GAME,
     top_k: int = TOP_K,
 ) -> list[dict]:
     """
@@ -407,8 +436,13 @@ def retrieve(
     Layer 1: direct video insights (filtered by champion/role/type if given).
     Layer 2: generalizable archetype insights blended into remaining slots.
     """
+    game = normalize_game(game)
+    if subject is None:
+        subject = champion
     ids, texts, metadata, matrix = load_all_vectors(
+        game=game,
         role=role,
+        subject=subject,
         champion=champion,
         insight_type=insight_type,
     )
@@ -448,7 +482,9 @@ def retrieve(
             "text": texts[i],
             "insight_type": metadata[i]["insight_type"],
             "role": metadata[i]["role"],
+            "subject": metadata[i].get("subject"),
             "champion": metadata[i]["champion"],
+            "game": metadata[i].get("game", game),
             "rank": metadata[i].get("rank"),
             "website_rating": metadata[i].get("website_rating"),
             "source": metadata[i].get("source", "discord"),
@@ -458,7 +494,7 @@ def retrieve(
             "retrieval_layer": "direct",
         })
 
-    if champion:
+    if game == "lol" and champion:
         _blend_archetype_insights(results, champion, top_k)
 
     return results
@@ -532,6 +568,7 @@ def _fetch_specific_matchup_notes(
     champion_a: str,
     champion_b: str,
     role: str | None = None,
+    game: str = DEFAULT_GAME,
     limit: int = 8,
 ) -> list[dict]:
     """
@@ -557,13 +594,15 @@ def _fetch_specific_matchup_notes(
         with _db.get_connection() as conn:
             query = """
             SELECT i.text, i.insight_type, i.confidence, i.source_score,
-                   v.role, v.champion, v.rank, v.website_rating, COALESCE(v.source, 'discord') AS source
+                   v.role, COALESCE(v.subject, v.champion) AS subject, v.champion, v.game,
+                   v.rank, v.website_rating, COALESCE(v.source, 'discord') AS source
             FROM insights i
                 JOIN videos v ON i.video_id = v.video_id
                 WHERE v.champion = ?
+                  AND v.game = ?
                   AND i.insight_type IN ('champion_matchups', 'matchup_advice')
             """
-            params: list = [champion_a]
+            params: list = [champion_a, normalize_game(game)]
             if role:
                 query += " AND v.role = ?"
                 params.append(role)
@@ -587,7 +626,9 @@ def _fetch_specific_matchup_notes(
                 "text": text,
                 "insight_type": row["insight_type"],
                 "role": row["role"],
+                "subject": row["subject"],
                 "champion": row["champion"],
+                "game": row["game"],
                 "rank": row["rank"],
                 "website_rating": row["website_rating"],
                 "source": row["source"],
@@ -613,6 +654,7 @@ def retrieve_duo(
     champion_a: str,
     champion_b: str,
     role: str | None = None,
+    game: str = DEFAULT_GAME,
     top_k: int = TOP_K,
 ) -> tuple[list[dict], list[dict]]:
     """
@@ -628,18 +670,26 @@ def retrieve_duo(
 
     Returns (insights_a, insights_b).
     """
+    game = normalize_game(game)
     per_side = max(top_k // 2, 6)
 
-    matchup_notes_a = _fetch_specific_matchup_notes(champion_a, champion_b, role=role, limit=max(4, per_side // 2))
-    matchup_notes_b = _fetch_specific_matchup_notes(champion_b, champion_a, limit=max(4, per_side // 2))
+    matchup_notes_a: list[dict] = []
+    matchup_notes_b: list[dict] = []
+    if game == "lol":
+        matchup_notes_a = _fetch_specific_matchup_notes(
+            champion_a, champion_b, role=role, game=game, limit=max(4, per_side // 2)
+        )
+        matchup_notes_b = _fetch_specific_matchup_notes(
+            champion_b, champion_a, game=game, limit=max(4, per_side // 2)
+        )
 
-    insights_a = matchup_notes_a + retrieve(question, champion=champion_a, role=role, top_k=per_side)
+    insights_a = matchup_notes_a + retrieve(question, champion=champion_a, role=role, game=game, top_k=per_side)
     if not insights_a:
-        insights_a = _archetype_fallback(champion_a, per_side)
+        insights_a = _archetype_fallback(champion_a, per_side) if game == "lol" else []
 
-    insights_b = matchup_notes_b + retrieve(question, champion=champion_b, top_k=per_side)
+    insights_b = matchup_notes_b + retrieve(question, champion=champion_b, game=game, top_k=per_side)
     if not insights_b:
-        insights_b = _archetype_fallback(champion_b, per_side)
+        insights_b = _archetype_fallback(champion_b, per_side) if game == "lol" else []
 
     # Keep exact matchup notes first, then dedupe by text.
     deduped_a: list[dict] = []
@@ -844,7 +894,9 @@ def answer(
     question: str,
     role: str | None = None,
     champion: str | None = None,
+    subject: str | None = None,
     insight_type: str | None = None,
+    game: str = DEFAULT_GAME,
     top_k: int = TOP_K,
     show_sources: bool = True,
 ) -> str:
@@ -854,6 +906,39 @@ def answer(
       - Synergy (X with/and Y) → retrieve both sides, synthesize combo
       - General               → single retrieve + answer
     """
+    game = normalize_game(game)
+    if subject is None:
+        subject = champion
+
+    if game != "lol":
+        insights = retrieve(
+            question,
+            role=role,
+            subject=subject,
+            insight_type=insight_type,
+            game=game,
+            top_k=top_k,
+        )
+        if not insights:
+            return "No relevant insights found. Make sure embed.py has been run."
+
+        formatted = "\n".join(
+            f"{i + 1}. [{r['insight_type']} | {r.get('role') or 'n/a'}"
+            + (f" | {r.get('subject')}" if r.get("subject") else "")
+            + (f" | {_source_label(r)}" if r.get("source") else "")
+            + f"] {r['text']}"
+            for i, r in enumerate(insights)
+        )
+
+        generated = llm_chat(
+            system=GENERIC_SYSTEM.format(game_name=game_label(game)),
+            user=GENERIC_USER.format(question=question, insights=formatted),
+            temperature=0.2,
+        )
+        if show_sources:
+            generated += _sources_block(insights)
+        return generated
+
     # Only auto-detect intent when the user hasn't manually specified a champion
     if not champion:
         intent = detect_intent(question)
@@ -861,7 +946,7 @@ def answer(
         intent = {"type": "general"}
 
     if intent["type"] in ("matchup", "synergy"):
-        return _answer_duo(question, intent, role=role, top_k=top_k, show_sources=show_sources)
+        return _answer_duo(question, intent, role=role, game=game, top_k=top_k, show_sources=show_sources)
 
     # ── General / single-champion path ────────────────────────────────────────
     detected_champ_early = champion
@@ -940,13 +1025,14 @@ def _answer_duo(
     question: str,
     intent: dict,
     role: str | None,
+    game: str,
     top_k: int,
     show_sources: bool,
 ) -> str:
     a, b = intent["a"], intent["b"]
     mode = intent["type"]
 
-    insights_a, insights_b = retrieve_duo(question, a, b, role=role, top_k=top_k)
+    insights_a, insights_b = retrieve_duo(question, a, b, role=role, game=game, top_k=top_k)
 
     if not insights_a and not insights_b:
         return f"No insights found for {a} or {b}. Make sure embed.py has been run."
@@ -1004,8 +1090,10 @@ def _sources_block(insights: list[dict], prefix: str = "") -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Query the LoL coaching knowledge base")
     parser.add_argument("question", nargs="+", help="Your question")
+    parser.add_argument("--game", default=DEFAULT_GAME, help="Game namespace (lol, aoe2)")
     parser.add_argument("--role", help="Filter by role (mid/top/jungle/adc/support)")
     parser.add_argument("--champion", help="Force a specific champion filter (skips intent detection)")
+    parser.add_argument("--subject", help="Generic subject filter (champion, civ, strategy, etc.)")
     parser.add_argument("--type", dest="insight_type",
                         help="Filter by insight type (principles/laning_tips/macro_advice/etc.)")
     parser.add_argument("--top-k", type=int, default=TOP_K, help="Number of insights to retrieve")
@@ -1027,20 +1115,41 @@ def main() -> None:
         print(f"Filter: role={args.role}")
     if args.champion:
         print(f"Filter: champion={args.champion}")
+    if args.subject:
+        print(f"Filter: subject={args.subject}")
     if args.insight_type:
         print(f"Filter: type={args.insight_type}")
+    print(f"Filter: game={normalize_game(args.game)}")
     print()
 
     if args.retrieve_only:
-        results = retrieve(question, role=args.role, champion=args.champion,
-                           insight_type=args.insight_type, top_k=args.top_k)
+        results = retrieve(
+            question,
+            role=args.role,
+            champion=args.champion,
+            subject=args.subject or args.champion,
+            insight_type=args.insight_type,
+            game=args.game,
+            top_k=args.top_k,
+        )
         for r in results:
-            layer = f" | {r['retrieval_layer']}" if r.get("retrieval_layer") == "archetype" else ""
-            print(f"[{r['score']:.3f} | conf {r['confidence']:.2f}{layer}] ({r['insight_type']}) {r['text']}")
+            layer = f" | {r['retrieval_layer']}" if r.get("retrieval_layer") else ""
+            label = r.get("subject") or r.get("champion") or "-"
+            print(
+                f"[{r['score']:.3f} | conf {r['confidence']:.2f}{layer}] "
+                f"({r['insight_type']} | {label} | {r.get('game') or normalize_game(args.game)}) {r['text']}"
+            )
         return
 
-    result = answer(question, role=args.role, champion=args.champion,
-                    insight_type=args.insight_type, top_k=args.top_k)
+    result = answer(
+        question,
+        role=args.role,
+        champion=args.champion,
+        subject=args.subject or args.champion,
+        insight_type=args.insight_type,
+        game=args.game,
+        top_k=args.top_k,
+    )
     print(result)
 
 

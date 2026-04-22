@@ -26,7 +26,9 @@ def init_db() -> None:
                 video_url         TEXT NOT NULL,
                 video_title       TEXT,
                 description       TEXT,
+                game              TEXT DEFAULT 'lol',
                 role              TEXT NOT NULL,
+                subject           TEXT,
                 champion          TEXT,
                 rank              TEXT,
                 website_rating    REAL,
@@ -62,12 +64,32 @@ def init_db() -> None:
                 pass
         for col, typedef in [
             ("source", "TEXT DEFAULT 'discord'"),
+            ("game", "TEXT DEFAULT 'lol'"),
+            ("subject", "TEXT DEFAULT NULL"),
             ("website_rating", "REAL DEFAULT NULL"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE videos ADD COLUMN {col} {typedef}")
             except Exception:
                 pass  # column already exists
+        try:
+            conn.execute(
+                "UPDATE videos SET game = 'lol' WHERE game IS NULL OR TRIM(game) = ''"
+            )
+        except Exception:
+            pass
+        try:
+            conn.execute(
+                """
+                UPDATE videos
+                SET subject = champion
+                WHERE (subject IS NULL OR TRIM(subject) = '')
+                  AND champion IS NOT NULL
+                  AND TRIM(champion) != ''
+                """
+            )
+        except Exception:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pending_descriptions (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,20 +180,37 @@ def insert_video(
     message_timestamp: str,
     video_title: Optional[str] = None,
     description: Optional[str] = None,
+    game: str = "lol",
+    subject: Optional[str] = None,
     champion: Optional[str] = None,
     rank: Optional[str] = None,
     website_rating: float | None = None,
     source: str = "discord",
 ) -> None:
     """Insert a video row, ignoring duplicates (same video_id)."""
+    if subject is None:
+        subject = champion
     with get_connection() as conn:
         conn.execute(
             """
             INSERT OR IGNORE INTO videos
-                (video_id, video_url, video_title, description, role, champion, rank, website_rating, message_timestamp, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (video_id, video_url, video_title, description, game, role, subject, champion, rank, website_rating, message_timestamp, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (video_id, video_url, video_title, description, role, champion, rank, website_rating, message_timestamp, source),
+            (
+                video_id,
+                video_url,
+                video_title,
+                description,
+                game,
+                role,
+                subject,
+                champion,
+                rank,
+                website_rating,
+                message_timestamp,
+                source,
+            ),
         )
         conn.commit()
 

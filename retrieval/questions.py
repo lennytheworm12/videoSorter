@@ -19,6 +19,7 @@ import json
 import os
 import argparse
 from core.llm import chat as llm_chat
+from core.game_registry import DEFAULT_GAME, normalize_game
 
 # ---------------------------------------------------------------------------
 # Canonical question templates
@@ -177,7 +178,7 @@ Insight type keys to use:
 """.strip()
 
 
-def normalize(question: str) -> dict:
+def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
     """
     Takes a raw player question and returns:
       - normalized: cleaner, canonical form
@@ -186,6 +187,15 @@ def normalize(question: str) -> dict:
       - insight_types: ordered list of relevant categories
       - reasoning: why it was mapped this way
     """
+    if normalize_game(game) != "lol":
+        return {
+            "normalized": question,
+            "champion": None,
+            "role": None,
+            "insight_types": ["general_advice"],
+            "reasoning": f"{normalize_game(game)} currently uses raw question pass-through normalization",
+        }
+
     prompt = NORMALIZE_PROMPT.format(
         question=question,
         templates=_TEMPLATE_LIST,
@@ -212,7 +222,7 @@ def normalize(question: str) -> dict:
         }
 
 
-def ask(question: str, top_k: int = 12, show_sources: bool = True) -> str:
+def ask(question: str, top_k: int = 12, show_sources: bool = True, game: str = DEFAULT_GAME) -> str:
     """
     Full pipeline: normalize question → extract filters → query knowledge base.
     Drop-in replacement for query.answer() with smarter routing.
@@ -220,7 +230,7 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True) -> str:
     from retrieval.query import answer
 
     print(f"Normalizing question…")
-    parsed = normalize(question)
+    parsed = normalize(question, game=game)
 
     print(f"  → {parsed['normalized']}")
     if parsed.get("reasoning"):
@@ -235,6 +245,7 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True) -> str:
     return answer(
         question=parsed["normalized"],
         role=parsed.get("role"),
+        game=game,
         top_k=top_k,
         show_sources=show_sources,
     )
@@ -243,6 +254,7 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ask the LoL coaching knowledge base")
     parser.add_argument("question", nargs="+", help="Your question in plain English")
+    parser.add_argument("--game", default=DEFAULT_GAME, help="Game namespace (lol, aoe2)")
     parser.add_argument("--raw", action="store_true",
                         help="Skip normalization, pass question directly to query.py")
     parser.add_argument("--normalize-only", action="store_true",
@@ -251,19 +263,20 @@ def main() -> None:
 
     question = " ".join(args.question)
     print(f"\nQuestion: {question}\n")
+    game = normalize_game(args.game)
 
     if args.normalize_only:
-        result = normalize(question)
+        result = normalize(question, game=game)
         import json as _json
         print(_json.dumps(result, indent=2))
         return
 
     if args.raw:
         from retrieval.query import answer
-        print(answer(question, show_sources=True))
+        print(answer(question, game=game, show_sources=True))
         return
 
-    print(ask(question))
+    print(ask(question, game=game))
 
 
 if __name__ == "__main__":

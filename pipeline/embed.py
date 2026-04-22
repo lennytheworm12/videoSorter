@@ -81,6 +81,8 @@ def _load_vectors_from_db(
     role: str | None,
     champion: str | None,
     insight_type: str | None,
+    game: str | None = None,
+    subject: str | None = None,
 ) -> tuple[list[int], list[str], list[dict], list[np.ndarray]]:
     import core.database as _db
     import pathlib as _pl
@@ -88,16 +90,23 @@ def _load_vectors_from_db(
 
     query = """
         SELECT i.id, i.text, i.insight_type, i.embedding,
-               i.confidence, i.source_score, v.video_id, v.role, v.champion, v.rank, v.website_rating,
+               i.confidence, i.source_score, v.video_id, v.game, v.role, COALESCE(v.subject, v.champion) AS subject,
+               v.champion, v.rank, v.website_rating,
                COALESCE(v.source, 'discord') AS source
         FROM insights i
         JOIN videos v ON i.video_id = v.video_id
         WHERE i.embedding IS NOT NULL
     """
     params: list = []
+    if game:
+        query += " AND v.game = ?"
+        params.append(game)
     if role:
         query += " AND v.role = ?"
         params.append(role)
+    if subject:
+        query += " AND LOWER(COALESCE(v.subject, v.champion)) = LOWER(?)"
+        params.append(subject)
     if champion:
         query += " AND LOWER(v.champion) = LOWER(?)"
         params.append(champion)
@@ -114,7 +123,9 @@ def _load_vectors_from_db(
         texts.append(row["text"])
         metadata.append({
             "video_id": row["video_id"],
+            "game": row["game"],
             "role": row["role"],
+            "subject": row["subject"],
             "champion": row["champion"],
             "rank": row["rank"],
             "website_rating": row["website_rating"],
@@ -131,6 +142,8 @@ def load_all_vectors(
     role: str | None = None,
     champion: str | None = None,
     insight_type: str | None = None,
+    game: str | None = None,
+    subject: str | None = None,
 ) -> tuple[list, list[str], list[dict], np.ndarray]:
     """
     Load insight IDs, texts, metadata, and vectors from all DBs.
@@ -147,7 +160,9 @@ def load_all_vectors(
     for db_path in _ALL_DBS:
         if not pathlib.Path(db_path).exists():
             continue
-        ids, texts, meta, vecs = _load_vectors_from_db(db_path, role, champion, insight_type)
+        ids, texts, meta, vecs = _load_vectors_from_db(
+            db_path, role, champion, insight_type, game=game, subject=subject
+        )
         all_ids.extend(ids)
         all_texts.extend(texts)
         all_meta.extend(meta)
