@@ -22,8 +22,11 @@ Usage:
 
 import re
 import math
+import json
+import html
 import logging
 import argparse
+import sqlite3
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -47,6 +50,14 @@ RANK_WEIGHTS = {
     "challenger": 2.0,
 }
 
+_ABILITY_SLOT_ORDER = {"P": 0, "Q": 1, "W": 2, "E": 3, "R": 4}
+_ABILITY_TAG_PRIORITY = [
+    "suppression", "stasis", "sleep", "polymorph", "airborne", "stun",
+    "charm", "taunt", "fear", "grounded", "root", "silence", "dash",
+    "blink", "untargetable", "invulnerable", "spell_shield", "shield",
+    "heal", "slow", "execute", "true_damage",
+]
+
 
 def _source_weight(meta: dict) -> float:
     source = meta.get("source") or "discord"
@@ -54,7 +65,7 @@ def _source_weight(meta: dict) -> float:
         return 1.6
     if source == "aoe2_wiki":
         return 1.1
-    if source == "aoe2_video":
+    if source in {"aoe2_video", "aoe2_coaching"}:
         return 1.0
     if source == "mobafire_guide":
         rank_weight = RANK_WEIGHTS.get(str(meta.get("rank") or "").lower(), 1.0)
@@ -83,11 +94,113 @@ def _source_label(meta: dict) -> str:
         return " | ".join(parts)
     if source == "aoe2_wiki":
         return "wiki"
+    if source == "aoe2_coaching":
+        return "coaching"
     if source == "aoe2_video":
         return "youtube"
     if source == "youtube_guide":
         return "youtube"
     return source
+
+
+def _strip_html(text: str) -> str:
+    text = html.unescape(text or "")
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"</?[^>]+>", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _shorten_ability_description(description: str, limit: int = 150) -> str:
+    clean = _strip_html(description)
+    if not clean:
+        return ""
+    parts = re.split(r"(?<=[.!?])\s+", clean)
+    summary = parts[0].strip() if parts and parts[0].strip() else clean
+    summary = re.sub(rf"^{re.escape(summary.split(':', 1)[0])}:\s*", "", summary) if ":" in summary[:30] else summary
+    if len(summary) <= limit:
+        return summary
+    clipped = summary[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return clipped + "…"
+
+
+def _important_ability_tags(raw_properties: str | None, limit: int = 3) -> list[str]:
+    if not raw_properties:
+        return []
+    try:
+        tags = json.loads(raw_properties)
+    except Exception:
+        return []
+    if not isinstance(tags, list):
+        return []
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for tag in _ABILITY_TAG_PRIORITY:
+        if tag in tags and tag not in seen:
+            ordered.append(tag)
+            seen.add(tag)
+    for tag in tags:
+        if isinstance(tag, str) and tag not in seen:
+            ordered.append(tag)
+            seen.add(tag)
+    return ordered[:limit]
+
+
+def _ability_rows(champion: str) -> list[sqlite3.Row]:
+    """
+    Fetch champion ability rows from the canonical Data Dragon-backed table.
+    videos.db is the source of truth for champion kit reference data.
+    """
+    rows: list[sqlite3.Row] = []
+    try:
+        with sqlite3.connect("videos.db") as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT champion, ability_slot, name, description, properties
+                FROM champion_abilities
+                WHERE LOWER(champion) = LOWER(?)
+                """,
+                (champion,),
+            ).fetchall()
+    except Exception:
+        rows = []
+    return sorted(rows, key=lambda r: _ABILITY_SLOT_ORDER.get(r["ability_slot"], 99))
+
+
+def _format_ability_reference(champion: str) -> str:
+    rows = _ability_rows(champion)
+    if not rows:
+        return ""
+    lines = [f"### {champion} Abilities"]
+    for row in rows:
+        slot = row["ability_slot"]
+        name = row["name"] or slot
+        desc = _shorten_ability_description(row["description"] or "")
+        tags = _important_ability_tags(row["properties"])
+        tag_text = f" ({', '.join(tags)})" if tags else ""
+        if desc:
+            lines.append(f"- `{slot}` {name}{tag_text}: {desc}")
+        else:
+            lines.append(f"- `{slot}` {name}{tag_text}")
+    return "\n".join(lines)
+
+
+def _ability_reference_block(champions: list[str]) -> str:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for champion in champions:
+        if champion and champion not in seen:
+            ordered.append(champion)
+            seen.add(champion)
+    if not ordered:
+        return ""
+
+    sections = [_format_ability_reference(champion) for champion in ordered]
+    sections = [section for section in sections if section]
+    if not sections:
+        return ""
+    return "**Champion Kits**\n" + "\n\n".join(sections)
 
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
@@ -242,6 +355,7 @@ When the insights support it, organise the answer into concise sections such as:
 - Core Identity / Gameplan
 - Opening / Early Game
 - Economy / Macro
+- Micro / Execution
 - Scouting / Adaptation
 - Composition / Fights
 - Map Control / Win Condition
@@ -435,6 +549,7 @@ def retrieve(
     champion: str | None = None,
     subject: str | None = None,
     insight_type: str | None = None,
+    preferred_types: list[str] | None = None,
     game: str = DEFAULT_GAME,
     top_k: int = TOP_K,
 ) -> list[dict]:
@@ -470,7 +585,9 @@ def retrieve(
     bm25 = _bm25_scores(query_tokens, corpus_tokens)
     bm25_ranked = np.argsort(bm25)[::-1][:fetch_k].tolist()
 
-    fused_indices = _rrf_fuse([semantic_ranked, bm25_ranked])[:top_k]
+    fused_indices = _rrf_fuse([semantic_ranked, bm25_ranked])
+    candidate_count = min(len(fused_indices), max(top_k * 4, 60))
+    fused_indices = fused_indices[:candidate_count]
 
     confidences = np.array([m.get("confidence") or 0.5 for m in metadata])
     source_scores = np.array([m.get("source_score") or 0.5 for m in metadata])
@@ -479,8 +596,17 @@ def retrieve(
     source_weights = np.array([_source_weight(m) for m in metadata])
     combined = (0.6 * confidences + 0.4 * source_scores)
     sim_scores = matrix @ query_vec
+    preferred_map = {
+        insight: max(0.0, 0.12 - (index * 0.02))
+        for index, insight in enumerate(preferred_types or [])
+    }
+
     fused_indices.sort(
-        key=lambda i: (0.5 * float(sim_scores[i]) + 0.5 * float(combined[i])) * float(source_weights[i]),
+        key=lambda i: (
+            0.5 * float(sim_scores[i])
+            + 0.5 * float(combined[i])
+            + preferred_map.get(metadata[i]["insight_type"], 0.0)
+        ) * float(source_weights[i]),
         reverse=True,
     )
 
@@ -507,6 +633,63 @@ def retrieve(
         _blend_archetype_insights(results, champion, top_k)
 
     return results
+
+
+def _aoe2_query_profile(question: str) -> dict[str, object]:
+    q = question.lower()
+    preferred: list[str] = []
+    notes: list[str] = []
+
+    def add(*insight_types: str) -> None:
+        for insight_type in insight_types:
+            if insight_type not in preferred:
+                preferred.append(insight_type)
+
+    age_patterns = [
+        ("dark_age", r"\bdark age\b"),
+        ("feudal_age", r"\bfeudal\b"),
+        ("castle_age", r"\bcastle age\b|\bcastle\b"),
+        ("imperial_age", r"\bimperial age\b|\bimperial\b|\bimp\b"),
+    ]
+    for age_bucket, pattern in age_patterns:
+        if re.search(pattern, q):
+            add(age_bucket)
+            break
+
+    if re.search(r"\b(hotkey|hotkeys|control group|control groups|grouping|ui|interface|shortcut|shortcuts)\b", q):
+        add("game_mechanics", "micro")
+        notes.append(
+            "If the question is about hotkeys, control groups, or UI setup, lead with mechanics/setup advice before broader strategy."
+        )
+
+    if re.search(r"\b(micro|split micro|focus fire|formation|formations|stutter|kiting|dodge|quickwall|army control)\b", q):
+        add("micro", "unit_compositions")
+        notes.append(
+            "When the question is about execution, include concrete unit-control details and avoid drifting into vague macro filler."
+        )
+
+    if re.search(r"\b(defend|defense|defence|hold|survive|stabilize|stabilise|under attack|against pressure|vs pressure|stop a rush)\b", q):
+        add("scouting", "economy_macro", "micro", "map_control", "matchup_advice")
+        notes.append(
+            "Frame the answer around scouting the threat, stabilizing efficiently, and transitioning back to a healthy economy."
+        )
+    elif re.search(r"\b(attack|aggression|aggressive|pressure|push|timing attack|allin|all-in|raid|raiding)\b", q):
+        add("build_orders", "feudal_age", "castle_age", "unit_compositions", "map_control", "micro")
+        notes.append(
+            "Frame the answer around setup, timing, execution, and what to do if the initial attack does not end the game."
+        )
+
+    if not preferred:
+        add("principles", "economy_macro")
+
+    guidance = ""
+    if notes:
+        guidance = "\n\nAoE2 answer guidance:\n- " + "\n- ".join(notes)
+
+    return {
+        "preferred_types": preferred,
+        "guidance": guidance,
+    }
 
 
 def _merge_ranked_results(*result_sets: list[dict], limit: int) -> list[dict]:
@@ -940,11 +1123,16 @@ def answer(
         subject = champion
 
     if game != "lol":
+        aoe2_profile = _aoe2_query_profile(question) if game == "aoe2" else {
+            "preferred_types": None,
+            "guidance": "",
+        }
         insights = retrieve(
             question,
             role=role,
             subject=subject,
             insight_type=insight_type,
+            preferred_types=aoe2_profile["preferred_types"],
             game=game,
             top_k=top_k,
         )
@@ -954,6 +1142,7 @@ def answer(
                 role=role,
                 subject=None,
                 insight_type=insight_type,
+                preferred_types=aoe2_profile["preferred_types"],
                 game=game,
                 top_k=max(4, top_k // 3),
             )
@@ -971,7 +1160,7 @@ def answer(
         )
 
         generated = llm_chat(
-            system=GENERIC_SYSTEM.format(game_name=game_label(game)),
+            system=GENERIC_SYSTEM.format(game_name=game_label(game)) + str(aoe2_profile["guidance"] or ""),
             user=GENERIC_USER.format(question=question, insights=formatted),
             temperature=0.2,
         )
@@ -1027,6 +1216,10 @@ def answer(
         user=GENERAL_USER.format(question=question, insights=formatted) + stat_block,
         temperature=0.2,
     )
+
+    ability_block = _ability_reference_block([detected_champ]) if detected_champ else ""
+    if ability_block:
+        generated = ability_block + "\n\n" + generated
 
     if show_sources:
         generated += _sources_block(insights)
@@ -1105,6 +1298,10 @@ def _answer_duo(
 
     generated = llm_chat(system=system, user=user, temperature=0.2)
 
+    ability_block = _ability_reference_block([a, b])
+    if ability_block:
+        generated = ability_block + "\n\n" + generated
+
     if show_sources:
         generated += f"\n\n---\nSources for {a}:\n" + _sources_block(insights_a, prefix="  ")
         generated += f"\nSources for {b}:\n" + _sources_block(insights_b, prefix="  ")
@@ -1163,12 +1360,16 @@ def main() -> None:
     print()
 
     if args.retrieve_only:
+        profile = _aoe2_query_profile(question) if normalize_game(args.game) == "aoe2" else {
+            "preferred_types": None
+        }
         results = retrieve(
             question,
             role=args.role,
             champion=args.champion,
             subject=args.subject or args.champion,
             insight_type=args.insight_type,
+            preferred_types=profile["preferred_types"],
             game=args.game,
             top_k=args.top_k,
         )
