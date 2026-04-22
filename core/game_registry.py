@@ -87,6 +87,17 @@ def _json_schema_block(keys: tuple[str, ...]) -> str:
     return "{\n" + body + "\n    }"
 
 
+def _escape_format_braces(text: str) -> str:
+    """
+    Escape literal braces for a later .format() call.
+
+    analysis_spec() builds prompt templates that are formatted again at runtime with
+    fields like {subject} and {transcript_chunk}. Any literal JSON examples embedded
+    in those templates must have their braces doubled first.
+    """
+    return text.replace("{", "{{").replace("}", "}}")
+
+
 LOL_VIDEO_SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert League of Legends analyst extracting actionable insights
     from YouTube guide and educational videos.
@@ -244,6 +255,7 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
     game = normalize_game(game)
     if game == "aoe2":
         insight_types = AOE2_INSIGHT_TYPES
+        schema_block = _escape_format_braces(_json_schema_block(insight_types))
         system_prompt = (
             AOE2_WRITTEN_SYSTEM_PROMPT if source == "mobafire_guide" else AOE2_VIDEO_SYSTEM_PROMPT
         )
@@ -262,10 +274,10 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
             ---
 
             Return exactly this JSON structure. Use [] for categories with no insights.
-            Each insight is an object: {{"text": "...", "emphasis": 1|2|3}}
+            Each insight is an object: {{{{"text": "...", "emphasis": 1|2|3}}}}
             (1=mentioned once, 2=a few times, 3=repeatedly stressed)
 
-            {_json_schema_block(insight_types)}
+            {schema_block}
         """).strip()
         return AnalysisSpec(
             system_prompt=system_prompt,
@@ -275,6 +287,7 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
         )
 
     insight_types = LOL_INSIGHT_TYPES
+    schema_block = _escape_format_braces(_json_schema_block(insight_types))
     system_prompt = LOL_WRITTEN_SYSTEM_PROMPT if source == "mobafire_guide" else LOL_VIDEO_SYSTEM_PROMPT
     extraction_prompt = textwrap.dedent(f"""
         Extract actionable insights from this League of Legends guide source.
@@ -291,13 +304,13 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
         ---
 
         Return exactly this JSON structure. Use [] for categories with no insights.
-        Each insight is an object: {{"text": "...", "emphasis": 1|2|3}}
+        Each insight is an object: {{{{"text": "...", "emphasis": 1|2|3}}}}
         (1=mentioned once, 2=a few times, 3=repeatedly stressed)
 
         Remember: write insights as second-person coaching instructions with the WHY
         included, and keep only evergreen advice.
 
-        {_json_schema_block(insight_types)}
+        {schema_block}
     """).strip()
     return AnalysisSpec(
         system_prompt=system_prompt,
