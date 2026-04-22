@@ -23,7 +23,7 @@ def list_videos(champion: str | None = None) -> None:
                        COUNT(i.id) AS n_insights
                 FROM videos v
                 LEFT JOIN insights i ON i.video_id = v.video_id
-                WHERE v.source = 'youtube_guide' AND v.champion = ?
+                WHERE v.source IN ('youtube_guide', 'mobafire_guide') AND v.champion = ?
                 GROUP BY v.video_id
                 ORDER BY v.champion, v.video_title
                 """,
@@ -32,11 +32,11 @@ def list_videos(champion: str | None = None) -> None:
         else:
             rows = conn.execute(
                 """
-                SELECT v.video_id, v.champion, v.role, v.status, v.video_title,
+                SELECT v.video_id, v.champion, v.role, v.status, v.source, v.video_title,
                        COUNT(i.id) AS n_insights
                 FROM videos v
                 LEFT JOIN insights i ON i.video_id = v.video_id
-                WHERE v.source = 'youtube_guide'
+                WHERE v.source IN ('youtube_guide', 'mobafire_guide')
                 GROUP BY v.video_id
                 ORDER BY v.champion, v.video_title
                 """
@@ -48,7 +48,8 @@ def list_videos(champion: str | None = None) -> None:
             current = r["champion"]
             print(f"\n── {current} ──")
         insights = f" [{r['n_insights']} insights]" if r["n_insights"] else ""
-        print(f"  {r['video_id']}  [{r['status']}]{insights}  {r['video_title'] or '(no title)'}")
+        src = r["source"] if "source" in r.keys() else "youtube_guide"
+        print(f"  {r['video_id']}  [{src} | {r['status']}]{insights}  {r['video_title'] or '(no title)'}")
 
     print(f"\nTotal: {len(rows)} videos")
 
@@ -85,7 +86,7 @@ def review_champion(champion: str, index: int, total: int):
                    COUNT(i.id) AS n_insights
             FROM videos v
             LEFT JOIN insights i ON i.video_id = v.video_id
-            WHERE v.source = 'youtube_guide' AND v.champion = ?
+            WHERE v.source IN ('youtube_guide', 'mobafire_guide') AND v.champion = ?
             GROUP BY v.video_id
             ORDER BY v.video_title
             """,
@@ -136,7 +137,7 @@ def review_champion(champion: str, index: int, total: int):
 def interactive(start_champion: str | None = None) -> None:
     with get_connection() as conn:
         champions = [r[0] for r in conn.execute(
-            "SELECT DISTINCT champion FROM videos WHERE source='youtube_guide' ORDER BY champion"
+            "SELECT DISTINCT champion FROM videos WHERE source IN ('youtube_guide', 'mobafire_guide') ORDER BY champion"
         ).fetchall()]
 
     if not champions:
@@ -170,7 +171,7 @@ def bulk_remove_by_keyword(keyword: str) -> None:
     kw = keyword.lower()
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT video_id, video_title FROM videos WHERE source='youtube_guide'",
+            "SELECT video_id, video_title FROM videos WHERE source IN ('youtube_guide', 'mobafire_guide')",
         ).fetchall()
         matched = [r for r in rows if kw in (r["video_title"] or "").lower()]
         if not matched:

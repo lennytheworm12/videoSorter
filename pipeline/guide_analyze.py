@@ -1,16 +1,14 @@
 """
-LLM analysis for YouTube guide videos (source='youtube_guide').
+LLM analysis for guide-style sources in guide_test.db.
 
-Key differences from analyze.py (coaching sessions):
-  - No coach/student role filtering — presenter speaks directly to viewer
-  - Skip intro/outro fluff, sponsor reads, "like and subscribe" calls
-  - Chunks long transcripts into ~1-hour windows before each LLM call so a
-    2-hour guide doesn't dilute a 20-minute one — insights are aggregated across
-    all chunks and the dedup/repetition system handles cross-chunk overlap
+Supported sources:
+  - youtube_guide   : transcribed educational videos
+  - mobafire_guide  : cleaned written guide text saved directly into transcription
 
 Usage:
-    uv run python -m pipeline.guide_analyze               # all youtube_guide videos
+    uv run python -m pipeline.guide_analyze               # all guide sources
     uv run python -m pipeline.guide_analyze --champion Aatrox
+    uv run python -m pipeline.guide_analyze --source mobafire_guide
     uv run python -m pipeline.guide_analyze --dry-run     # print insights, don't save
 """
 
@@ -38,7 +36,7 @@ _WINDOW_STRIDE = 20
 # ~130 wpm speaking rate × 60 min = 7800; use 9000 to give a comfortable buffer
 WORDS_PER_HOUR = 9_000
 
-SYSTEM_PROMPT = textwrap.dedent("""
+VIDEO_SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert League of Legends analyst extracting actionable insights
     from YouTube guide and educational videos.
 
@@ -56,6 +54,10 @@ SYSTEM_PROMPT = textwrap.dedent("""
       - Patch-specific or seasonal content: current meta picks, item tier lists, "right
         now X is broken", rune page recommendations tied to a patch, anything that will
         be wrong next season. We want evergreen fundamentals only.
+      - Rank-gated advice that only applies to a specific skill bracket: "at your elo",
+        "in low elo you can get away with", "high elo players will punish this",
+        "this only works below Diamond", "beginners should". If advice is only correct
+        for some rank tiers, discard it — we serve players of all levels.
 
     TRANSCRIPT CONTEXT:
     Auto-generated captions — no punctuation, champion/item names often misspelled.
@@ -80,6 +82,11 @@ SYSTEM_PROMPT = textwrap.dedent("""
 
     matchup_advice: How to play against a specific champion or class. Must include
     both the condition (what the enemy does) and the adjustment required.
+
+    champion_matchups: Direct champion-vs-champion notes where the enemy champion
+    is explicitly named (for example "Against Fiora..." or "Versus Malphite...").
+    Use this only for concrete champion-specific matchup guidance, not broad class
+    advice like "against ranged champions".
 
     macro_advice: Post-laning — roaming, objectives, side lane, Teleport decisions,
     win condition execution.
@@ -124,6 +131,78 @@ SYSTEM_PROMPT = textwrap.dedent("""
         decision-making patterns that hold across patches.
 """).strip()
 
+WRITTEN_GUIDE_SYSTEM_PROMPT = textwrap.dedent("""
+    You are an expert League of Legends analyst extracting actionable insights
+    from written champion guides.
+
+    SOURCE FILTERING — critical:
+    This is a written guide page, not a transcript. Treat section headings,
+    matchup notes, and explanatory paragraphs as the source of truth.
+
+    SKIP entirely:
+      - Navigation chrome, comments, votes, "more guides", advertisements
+      - Raw build tables, rune blocks, item lists, ability-order rows, and stat widgets
+        unless the guide explicitly explains WHY a choice is correct
+      - Author bio unless it contains evergreen champion-specific reasoning
+      - Patch/season/current-meta claims, tier-list framing, or "right now" advice
+      - Rank-gated advice that only works at low elo / high elo / for beginners
+      - Generic filler that is not specific enough to coach off of
+
+    PRIORITISE:
+      - Champion identity and win conditions
+      - Ability usage, trading patterns, lane plans, matchup adaptations
+      - Teamfight role, side lane vs grouping logic, and execution details
+      - Explanatory text around itemization when the reasoning is evergreen
+
+    INSIGHT CATEGORIES — definitions:
+
+    champion_identity: This champion's unique strategic role, win conditions, power
+    spikes, and what differentiates it from others. Must be specific to this champion.
+
+    game_mechanics: ONLY advice about the game client — keybindings, settings, camera,
+    mouse hardware. Almost always [].
+
+    principles: Broad strategic mental models and matchup logic that the guide frames
+    as general rules, not just one isolated example.
+
+    laning_tips: Specific laning-phase decisions — wave management, trading patterns,
+    positioning, spacing, recall timing.
+
+    champion_mechanics: How to use this champion's abilities — combos, sequencing,
+    spacing, cooldown usage, level spikes, and ability-specific interactions.
+
+    matchup_advice: How to play against a specific champion or class. Must include
+    both the enemy condition and the needed adjustment.
+
+    champion_matchups: Direct champion-vs-champion notes where the opposing champion
+    is explicitly named. Keep only actionable matchup guidance that would help answer
+    "{champion} into specific enemy champion" queries. If the enemy champion is not
+    named directly, use matchup_advice instead.
+
+    macro_advice: Post-laning — roaming, objective setup, side lane management,
+    tempo, reset timing, split push vs group.
+
+    teamfight_tips: Positioning, engage/disengage, target priority, execution in
+    skirmishes and team fights.
+
+    vision_control: Ward placement, timing, denial, and map setup with vision.
+
+    itemization: ONLY evergreen item reasoning tied to identity, matchup, or enemy
+    profile. Skip static full builds with no explanation.
+
+    general_advice: Mindset or broadly useful advice that does not fit above.
+    Keep sparse.
+
+    OUTPUT RULES:
+    1. Return valid JSON only. No markdown fences, no text outside the JSON.
+    2. Empty category = [] — never write a string.
+    3. Each insight must be a complete standalone sentence and immediately usable.
+    4. Use correct LoL spelling for all names.
+    5. Do not invent advice not present in the guide.
+    6. Prefer direct second-person coaching instructions with the WHY included.
+    7. Do not restate raw build tables or stat blocks unless the guide explains them.
+""").strip()
+
 EXTRACTION_PROMPT = textwrap.dedent("""
     Extract actionable insights from this League of Legends guide video transcript.
 
@@ -156,6 +235,7 @@ EXTRACTION_PROMPT = textwrap.dedent("""
         "principles": [],
         "laning_tips": [],
         "champion_mechanics": [],
+        "champion_matchups": [],
         "matchup_advice": [],
         "macro_advice": [],
         "teamfight_tips": [],
@@ -252,15 +332,24 @@ def chunk_by_hour(transcript: str) -> list[str]:
     return chunks or [transcript]
 
 
-def _call_llm(chunk: str, champion: str, role: str, title: str, chunk_label: str) -> dict:
+def _system_prompt_for_source(source: str) -> str:
+    if source == "mobafire_guide":
+        return WRITTEN_GUIDE_SYSTEM_PROMPT
+    return VIDEO_SYSTEM_PROMPT
+
+
+def _call_llm(chunk: str, champion: str, role: str, title: str, chunk_label: str, source: str) -> dict:
+    # Escape curly braces in user content before .format() so guide text with
+    # {Q}/{W} ability notation or JSON examples doesn't get parsed as format fields.
+    safe_chunk = chunk.replace("{", "{{").replace("}", "}}")
     prompt = EXTRACTION_PROMPT.format(
         champion=champion or "unknown",
         role=role or "unknown",
         title=title or "",
         chunk_label=chunk_label,
-        transcript_chunk=chunk,
+        transcript_chunk=safe_chunk,
     )
-    system = SYSTEM_PROMPT + "\n\nFULL CHAMPION LIST:\n" + champion_names_for_prompt()
+    system = _system_prompt_for_source(source) + "\n\nFULL CHAMPION LIST:\n" + champion_names_for_prompt()
 
     t0 = time.time()
     raw = llm_chat(system=system, user=prompt, temperature=0.1, max_tokens=4096)
@@ -310,24 +399,32 @@ def _already_analyzed(video_id: str) -> bool:
         ).fetchone() is not None
 
 
-def _get_pending_guide_videos(champion: str | None = None) -> list:
+def _get_pending_guide_videos(champion: str | None = None, source: str | None = None) -> list:
     with get_connection() as conn:
+        source_clause = "source IN ('youtube_guide', 'mobafire_guide')"
+        params: list = []
+        if source:
+            source_clause = "source = ?"
+            params.append(source)
         if champion:
             return conn.execute(
                 """
                 SELECT * FROM videos
-                WHERE source = 'youtube_guide' AND status = 'transcribed'
+                WHERE status = 'transcribed'
+                  AND """ + source_clause + """
                   AND champion = ?
                 ORDER BY champion, video_id
                 """,
-                (champion,)
+                params + [champion]
             ).fetchall()
         return conn.execute(
             """
             SELECT * FROM videos
-            WHERE source = 'youtube_guide' AND status = 'transcribed'
+            WHERE status = 'transcribed'
+              AND """ + source_clause + """
             ORDER BY champion, video_id
-            """
+            """,
+            params,
         ).fetchall()
 
 
@@ -337,6 +434,7 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
     champion  = video["champion"] or "unknown"
     role      = video["role"] or "unknown"
     title     = video["video_title"] or ""
+    source    = video["source"] or "youtube_guide"
     transcript = video["transcription"] or ""
 
     chunks = chunk_by_hour(transcript)
@@ -348,7 +446,7 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
     for i, chunk in enumerate(chunks):
         chunk_label = f"hour {i + 1} of {len(chunks)}"
         print(f"  Analyzing {chunk_label}…", end=" ", flush=True)
-        result = _call_llm(chunk, champion, role, title, chunk_label)
+        result = _call_llm(chunk, champion, role, title, chunk_label, source)
 
         window_matrix = _embed_chunk_windows(chunk)
         n_this_chunk = 0
@@ -377,9 +475,9 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
     return total
 
 
-def run(champion: str | None = None, dry_run: bool = False) -> None:
-    videos = _get_pending_guide_videos(champion)
-    print(f"Guide videos to analyze: {len(videos)}")
+def run(champion: str | None = None, dry_run: bool = False, source: str | None = None) -> None:
+    videos = _get_pending_guide_videos(champion, source=source)
+    print(f"Guide entries to analyze: {len(videos)}")
 
     for video in videos:
         video_id = video["video_id"]
@@ -390,7 +488,7 @@ def run(champion: str | None = None, dry_run: bool = False) -> None:
             set_status(video_id, "analyzed")
             continue
 
-        print(f"\n[{champ}] {video_id} | {(video['video_title'] or '')[:60]}")
+        print(f"\n[{video['source']}] [{champ}] {video_id} | {(video['video_title'] or '')[:60]}")
         try:
             n = analyze_video(dict(video), dry_run=dry_run)
             print(f"  → {n} insights {'(dry-run, not saved)' if dry_run else 'saved'}")
@@ -403,17 +501,23 @@ def run(champion: str | None = None, dry_run: bool = False) -> None:
                 set_status(video_id, "error")
 
 
-def _reset_for_reanalysis(champion: str | None) -> None:
+def _reset_for_reanalysis(champion: str | None, source: str | None) -> None:
     """Delete existing insights and reset status to transcribed so run() picks them up."""
     with get_connection() as conn:
+        source_clause = "source IN ('youtube_guide', 'mobafire_guide')"
+        params: list = []
+        if source:
+            source_clause = "source = ?"
+            params.append(source)
         if champion:
             video_ids = [r["video_id"] for r in conn.execute(
-                "SELECT video_id FROM videos WHERE source='youtube_guide' AND champion=?",
-                (champion,)
+                "SELECT video_id FROM videos WHERE " + source_clause + " AND champion=?",
+                params + [champion]
             ).fetchall()]
         else:
             video_ids = [r["video_id"] for r in conn.execute(
-                "SELECT video_id FROM videos WHERE source='youtube_guide'"
+                "SELECT video_id FROM videos WHERE " + source_clause,
+                params
             ).fetchall()]
 
         if not video_ids:
@@ -433,8 +537,10 @@ def _reset_for_reanalysis(champion: str | None) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze YouTube guide videos")
+    parser = argparse.ArgumentParser(description="Analyze guide-style entries in guide_test.db")
     parser.add_argument("--champion", help="Only analyze videos for this champion")
+    parser.add_argument("--source", choices=["youtube_guide", "mobafire_guide"],
+                        help="Limit to one guide source")
     parser.add_argument("--dry-run", action="store_true", help="Print insights, don't save")
     parser.add_argument("--reanalyze", action="store_true",
                         help="Delete existing insights and re-run (use with --champion or alone for all)")
@@ -442,8 +548,8 @@ def main() -> None:
 
     init_db()
     if args.reanalyze:
-        _reset_for_reanalysis(args.champion)
-    run(champion=args.champion, dry_run=args.dry_run)
+        _reset_for_reanalysis(args.champion, args.source)
+    run(champion=args.champion, dry_run=args.dry_run, source=args.source)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,13 @@ uv run python -m scrape.main --role support
 
 # Check what was scraped (debug)
 uv run python -m scrape.debug_scrape
+
+# Scrape top-rated MOBAFire written guides per champion into guide_test.db
+uv run python -m scrape.mobafire_scrape --limit 3
+uv run python -m scrape.mobafire_scrape --champion Aatrox
+uv run python -m scrape.mobafire_scrape --reanalyze --limit 3
+uv run python -m scrape.mobafire_scrape --reanalyze --champion Aatrox --limit 3
+uv run python -m scrape.mobafire_scrape --status
 ```
 
 ---
@@ -74,6 +81,11 @@ uv run python retry_no_transcript.py --dry-run
 
 # Retry a specific role only
 uv run python retry_no_transcript.py --role top
+
+# Analyze guide sources already stored in guide_test.db
+uv run python -m pipeline.guide_analyze
+uv run python -m pipeline.guide_analyze --source mobafire_guide
+uv run python -m pipeline.guide_analyze --champion Aatrox --source mobafire_guide
 ```
 
 ---

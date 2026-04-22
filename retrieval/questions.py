@@ -28,7 +28,7 @@ from core.llm import chat as llm_chat
 CANONICAL_QUESTIONS = [
     # Principles / mental models
     ("What is the core win condition for [champion]?",
-     ["principles", "champion_mechanics"],
+     ["champion_identity", "principles", "champion_mechanics"],
      "Champion win condition and game plan"),
 
     ("What is the general gameplan when playing a [archetype] champion in [role]?",
@@ -62,19 +62,19 @@ CANONICAL_QUESTIONS = [
 
     # Matchups
     ("How do I play [champion] against poke/mage champions?",
-     ["matchup_advice", "laning_tips", "itemization"],
+     ["champion_matchups", "matchup_advice", "laning_tips"],
      "Playing vs poke/mage archetype"),
 
     ("How do I play [champion] against assassins?",
-     ["matchup_advice", "laning_tips", "itemization"],
+     ["champion_matchups", "matchup_advice", "laning_tips"],
      "Playing vs assassin archetype"),
 
     ("How do I play [champion] against tanks or bruisers?",
-     ["matchup_advice", "laning_tips"],
+     ["champion_matchups", "matchup_advice", "laning_tips"],
      "Playing vs tank/bruiser archetype"),
 
     ("What is [champion]'s specific gameplan against [champion]?",
-     ["matchup_advice", "principles"],
+     ["champion_matchups", "matchup_advice", "principles"],
      "Champion vs champion matchup gameplan — always name both champions"),
 
     # Macro
@@ -158,11 +158,13 @@ Return a JSON object with these fields:
     "normalized": "the best matching canonical template with ALL placeholders filled in — always include the player's champion name if mentioned, never drop it",
     "champion": "champion name if mentioned or implied, else null",
     "role": "one of: top, jungle, mid, adc, support — if mentioned or implied, else null",
-    "insight_types": ["ordered list of 2-3 most relevant insight type keys from: principles, laning_tips, champion_mechanics, matchup_advice, macro_advice, teamfight_tips, vision_control, itemization, general_advice"],
+    "insight_types": ["ordered list of 2-3 most relevant insight type keys from: champion_identity, champion_matchups, principles, laning_tips, champion_mechanics, matchup_advice, macro_advice, teamfight_tips, vision_control, itemization, general_advice"],
     "reasoning": "one sentence explaining the mapping"
 }}
 
 Insight type keys to use:
+- champion_identity: champion-specific win condition, role in fights, broad strategic identity
+- champion_matchups: named champion-vs-champion matchup notes, especially from written guides
 - principles: mental models, archetypes, win conditions, the WHY behind tips
 - laning_tips: specific laning phase actions
 - champion_mechanics: abilities, combos, power spikes

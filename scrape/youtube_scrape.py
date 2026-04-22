@@ -115,6 +115,9 @@ def _champion_primary_role(champion: str) -> str:
 NON_LOL_BLOCKLIST = {
     "legends of runeterra", "runeterra", " lor ", "teamfight tactics", " tft ",
     "wild rift", "mobile", "card game", "spiritforged", "path of champions",
+    "unranked to", "iron to", "bronze to", "silver to", "gold to",
+    "plat to", "platinum to", "diamond to", "low elo", "rank up fast",
+    "how to climb from", "hardstuck", "elo boost",
 }
 
 _LANG_TAGS = re.compile(

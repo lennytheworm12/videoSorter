@@ -29,6 +29,7 @@ def init_db() -> None:
                 role              TEXT NOT NULL,
                 champion          TEXT,
                 rank              TEXT,
+                website_rating    REAL,
                 message_timestamp TEXT,
                 status            TEXT DEFAULT 'pending',
                 transcription     TEXT,
@@ -61,6 +62,7 @@ def init_db() -> None:
                 pass
         for col, typedef in [
             ("source", "TEXT DEFAULT 'discord'"),
+            ("website_rating", "REAL DEFAULT NULL"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE videos ADD COLUMN {col} {typedef}")
@@ -158,6 +160,7 @@ def insert_video(
     description: Optional[str] = None,
     champion: Optional[str] = None,
     rank: Optional[str] = None,
+    website_rating: float | None = None,
     source: str = "discord",
 ) -> None:
     """Insert a video row, ignoring duplicates (same video_id)."""
@@ -165,10 +168,10 @@ def insert_video(
         conn.execute(
             """
             INSERT OR IGNORE INTO videos
-                (video_id, video_url, video_title, description, role, champion, rank, message_timestamp, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (video_id, video_url, video_title, description, role, champion, rank, website_rating, message_timestamp, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (video_id, video_url, video_title, description, role, champion, rank, message_timestamp, source),
+            (video_id, video_url, video_title, description, role, champion, rank, website_rating, message_timestamp, source),
         )
         conn.commit()
 

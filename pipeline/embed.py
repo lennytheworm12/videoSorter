@@ -12,6 +12,7 @@ Safe to re-run — skips insights that already have a vector stored.
 """
 
 import logging
+import pathlib
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
@@ -72,28 +73,22 @@ def embed_insights() -> None:
     print(f"Done — {len(ids)} insights embedded.")
 
 
-def load_all_vectors(
-    role: str | None = None,
-    champion: str | None = None,
-    insight_type: str | None = None,
-) -> tuple[list[int], list[str], list[dict], np.ndarray]:
-    """
-    Load insight IDs, texts, metadata, and vectors from DB.
-    Optional filters narrow the pool before returning.
+_ALL_DBS = ["videos.db", "guide_test.db"]
 
-    All insights are returned — source_score is used as a soft weight
-    in retrieval ranking rather than a hard filter, so low-scoring
-    insights can still surface if they cluster well across more data.
 
-    Returns:
-        ids       — list of insight row IDs
-        texts     — list of insight strings
-        metadata  — list of dicts with video_id, role, champion, insight_type
-        matrix    — numpy array shape (n, 384), pre-normalised
-    """
+def _load_vectors_from_db(
+    db_path: str,
+    role: str | None,
+    champion: str | None,
+    insight_type: str | None,
+) -> tuple[list[int], list[str], list[dict], list[np.ndarray]]:
+    import core.database as _db
+    import pathlib as _pl
+    _db.DB_PATH = _pl.Path(db_path)
+
     query = """
         SELECT i.id, i.text, i.insight_type, i.embedding,
-               i.confidence, i.source_score, v.video_id, v.role, v.champion,
+               i.confidence, i.source_score, v.video_id, v.role, v.champion, v.rank, v.website_rating,
                COALESCE(v.source, 'discord') AS source
         FROM insights i
         JOIN videos v ON i.video_id = v.video_id
@@ -110,31 +105,66 @@ def load_all_vectors(
         query += " AND i.insight_type = ?"
         params.append(insight_type)
 
-    with get_connection() as conn:
+    with _db.get_connection() as conn:
         rows = conn.execute(query, params).fetchall()
-
-    if not rows:
-        return [], [], [], np.empty((0, 384), dtype=np.float32)
 
     ids, texts, metadata, vectors = [], [], [], []
     for row in rows:
-        ids.append(row["id"])
+        ids.append(f"{db_path}:{row['id']}")
         texts.append(row["text"])
         metadata.append({
             "video_id": row["video_id"],
             "role": row["role"],
             "champion": row["champion"],
+            "rank": row["rank"],
+            "website_rating": row["website_rating"],
             "insight_type": row["insight_type"],
             "confidence": row["confidence"],
             "source_score": row["source_score"],
             "source": row["source"],
         })
         vectors.append(np.frombuffer(row["embedding"], dtype=np.float32))
+    return ids, texts, metadata, vectors
 
-    matrix = np.stack(vectors)
-    return ids, texts, metadata, matrix
+
+def load_all_vectors(
+    role: str | None = None,
+    champion: str | None = None,
+    insight_type: str | None = None,
+) -> tuple[list, list[str], list[dict], np.ndarray]:
+    """
+    Load insight IDs, texts, metadata, and vectors from all DBs.
+    Merges videos.db and guide_test.db transparently.
+
+    Returns:
+        ids       — list of insight row IDs (prefixed with db path)
+        texts     — list of insight strings
+        metadata  — list of dicts with video_id, role, champion, insight_type
+        matrix    — numpy array shape (n, 384), pre-normalised
+    """
+    all_ids, all_texts, all_meta, all_vecs = [], [], [], []
+
+    for db_path in _ALL_DBS:
+        if not pathlib.Path(db_path).exists():
+            continue
+        ids, texts, meta, vecs = _load_vectors_from_db(db_path, role, champion, insight_type)
+        all_ids.extend(ids)
+        all_texts.extend(texts)
+        all_meta.extend(meta)
+        all_vecs.extend(vecs)
+
+    if not all_vecs:
+        return [], [], [], np.empty((0, 384), dtype=np.float32)
+
+    matrix = np.stack(all_vecs)
+    return all_ids, all_texts, all_meta, matrix
 
 
 if __name__ == "__main__":
-    init_db()
-    embed_insights()
+    import pathlib
+    import core.database as _db
+    for _path in ["videos.db", "guide_test.db"]:
+        _db.DB_PATH = pathlib.Path(_path)
+        print(f"\n--- {_path} ---")
+        init_db()
+        embed_insights()

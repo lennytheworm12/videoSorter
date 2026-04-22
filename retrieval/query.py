@@ -35,8 +35,50 @@ from pipeline.champion_crossref import get_archetype_insights
 from core.llm import chat as llm_chat
 
 MODEL_NAME = "all-MiniLM-L6-v2"
-TOP_K = 12
+TOP_K = 35
 RRF_K = 60
+RANK_WEIGHTS = {
+    "": 1.0,
+    "diamond": 1.0,
+    "emerald": 0.7,
+    "master": 1.4,
+    "grandmaster": 1.8,
+    "challenger": 2.0,
+}
+
+
+def _source_weight(meta: dict) -> float:
+    source = meta.get("source") or "discord"
+    if source == "discord":
+        return 1.6
+    if source == "mobafire_guide":
+        rank_weight = RANK_WEIGHTS.get(str(meta.get("rank") or "").lower(), 1.0)
+        rating = meta.get("website_rating")
+        rating_bonus = 1.0
+        if rating is not None:
+            try:
+                rating_bonus += min(max((float(rating) - 8.5) * 0.05, 0.0), 0.15)
+            except (TypeError, ValueError):
+                pass
+        return rank_weight * rating_bonus
+    return 1.0
+
+
+def _source_label(meta: dict) -> str:
+    source = meta.get("source") or "discord"
+    if source == "mobafire_guide":
+        parts = ["mobafire"]
+        if meta.get("rank"):
+            parts.append(str(meta["rank"]))
+        if meta.get("website_rating") is not None:
+            try:
+                parts.append(f"rating {float(meta['website_rating']):.1f}")
+            except (TypeError, ValueError):
+                pass
+        return " | ".join(parts)
+    if source == "youtube_guide":
+        return "youtube"
+    return source
 
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
@@ -46,8 +88,50 @@ You are a League of Legends coaching assistant. You have access to insights
 extracted from a real coach's video library. Answer using ONLY the provided
 coaching insights — do not add advice not grounded in the retrieved insights.
 
-- Lead with the core principle or mental model if one is present
-- Follow with specific actionable tips
+When the question is about how to play a specific champion, structure your answer as:
+
+### Champion Identity
+- What kind of champion this is — win condition, role in fights, key strengths and weaknesses
+- Item spike dependencies or power curves if present in the insights
+
+### Key Mechanics & Ability Interactions
+- Passive behavior, ability windows, resource management (energy/mana), and auto-attack weaving cues
+- When to use or hold specific abilities (e.g. shield to absorb a key enemy spell, dash timing)
+- CC windows and follow-up opportunities
+- Omit this section if the insights contain no mechanic-level detail
+
+### Laning / Early Game
+- Specific laning mechanics, trade patterns, level spikes, what to do and avoid early
+
+### Wave Control
+- How this champion interacts with the wave — push, freeze, slow-push, or crash
+- Any ability or stat properties that make them strong or weak at wave management
+- Omit this section if the insights contain nothing relevant to wave control
+
+### Teamfight & Positioning
+- Where to position, when to engage, target priority
+- How to use mobility or defensives to survive and reach carries
+- CC threats to respect that can shut down their pattern
+- Omit this section if the insights contain no teamfight-specific detail
+
+### Macro
+- Mid/late game decision-making, roaming, split push vs. grouping
+
+### Synergies
+- Champions or compositions this champion works well with, and why
+- Omit this section if the insights contain no synergy information
+
+### General Principles
+- Only include here: mindset, practice habits, or universal tips that are not champion-specific
+- Omit this section entirely if nothing fits
+
+For non-champion-specific questions, skip the headers and answer directly and concisely.
+
+Rules:
+- Champion-specific insights (champion_identity, champion_mechanics, laning_tips, matchup_advice) take priority
+- For exact matchup questions, champion_matchups insights are the highest-fidelity source and should be prioritised over broader matchup_advice when present
+- Never bury champion mechanics inside a generic principles section
+- Only include a section if the insights actually support it — do not pad with generic advice
 - If insights contradict each other, acknowledge both perspectives
 - Be concise — players want clear, direct coaching advice
 """.strip()
@@ -145,6 +229,48 @@ If a side only has archetype data, reason from the shared playstyle — do not r
 
 _CHAMPION_LOOKUP: dict[str, str] | None = None  # {normalized_lowercase: canonical}
 
+# Common shorthands and nicknames players actually type
+_CHAMPION_ALIASES: dict[str, str] = {
+    "cassio": "Cassiopeia", "cass": "Cassiopeia",
+    "mf": "Miss Fortune",
+    "tf": "Twisted Fate",
+    "yi": "Master Yi",
+    "j4": "Jarvan IV", "jarvan": "Jarvan IV",
+    "gp": "Gangplank",
+    "naut": "Nautilus",
+    "morg": "Morgana",
+    "asol": "Aurelion Sol",
+    "wb": "Wukong",
+    "sej": "Sejuani",
+    "kog": "Kog'Maw", "kogmaw": "Kog'Maw",
+    "xin": "Xin Zhao",
+    "vlad": "Vladimir",
+    "mundo": "Dr. Mundo",
+    "malph": "Malphite",
+    "fiddle": "Fiddlesticks", "fiddlesticks": "Fiddlesticks",
+    "kass": "Kassadin",
+    "kata": "Katarina",
+    "liss": "Lissandra",
+    "ori": "Orianna",
+    "panth": "Pantheon",
+    "rengar": "Rengar",
+    "trist": "Tristana",
+    "zyra": "Zyra",
+    "heimer": "Heimerdinger",
+    "hwei": "Hwei",
+    "khazix": "Kha'Zix", "kha": "Kha'Zix",
+    "chogath": "Cho'Gath", "cho": "Cho'Gath",
+    "veig": "Veigar",
+    "ww": "Warwick",
+    "twitch": "Twitch",
+    "rek": "Rek'Sai", "reksai": "Rek'Sai",
+    "trynd": "Tryndamere",
+    "mordekaiser": "Mordekaiser", "morde": "Mordekaiser",
+    "tahm": "Tahm Kench",
+    "aurelion": "Aurelion Sol",
+    "ambessa": "Ambessa",
+}
+
 def _normalize(name: str) -> str:
     """Strip apostrophes and special chars so 'kaisa' matches \"Kai'Sa\"."""
     return re.sub(r"[^a-z0-9 ]", "", name.lower()).strip()
@@ -171,6 +297,8 @@ def _get_champion_lookup() -> dict[str, str]:
         for name in names:
             lookup[name.lower()] = name          # exact lowercase
             lookup[_normalize(name)] = name      # normalized (strips apostrophes etc.)
+        for alias, canonical in _CHAMPION_ALIASES.items():
+            lookup[alias] = canonical
         _CHAMPION_LOOKUP = lookup
     return _CHAMPION_LOOKUP
 
@@ -306,13 +434,11 @@ def retrieve(
     source_scores = np.array([m.get("source_score") or 0.5 for m in metadata])
     # Discord coaching sessions carry higher trust — real coach/student interactions
     # are more signal-dense than scraped YouTube guides, so boost them at ranking time.
-    source_weights = np.array([
-        1.35 if m.get("source") == "discord" else 1.0
-        for m in metadata
-    ])
+    source_weights = np.array([_source_weight(m) for m in metadata])
     combined = (0.6 * confidences + 0.4 * source_scores)
+    sim_scores = matrix @ query_vec
     fused_indices.sort(
-        key=lambda i: (matrix[i] @ query_vec) * (0.5 + 0.5 * float(combined[i])) * float(source_weights[i]),
+        key=lambda i: (0.5 * float(sim_scores[i]) + 0.5 * float(combined[i])) * float(source_weights[i]),
         reverse=True,
     )
 
@@ -323,7 +449,10 @@ def retrieve(
             "insight_type": metadata[i]["insight_type"],
             "role": metadata[i]["role"],
             "champion": metadata[i]["champion"],
+            "rank": metadata[i].get("rank"),
+            "website_rating": metadata[i].get("website_rating"),
             "source": metadata[i].get("source", "discord"),
+            "source_weight": round(float(source_weights[i]), 4),
             "score": round(float(cosine_scores[i]), 4),
             "confidence": round(float(confidences[i]), 4),
             "retrieval_layer": "direct",
@@ -346,6 +475,10 @@ def _blend_archetype_insights(results: list[dict], champion: str, top_k: int) ->
             "insight_type": h["insight_type"],
             "role": None,
             "champion": h["source_champion"],
+            "rank": None,
+            "website_rating": None,
+            "source": "archetype",
+            "source_weight": 1.0,
             "score": round(h["similarity"], 4),
             "confidence": round(h["confidence"], 4),
             "retrieval_layer": "archetype",
@@ -383,12 +516,96 @@ def _fetch_ability_windows(champion: str, limit: int = 5) -> list[dict]:
             "insight_type": "ability_windows",
             "role": None,
             "champion": champion,
+            "rank": None,
+            "website_rating": None,
+            "source": "ability_enrichment",
+            "source_weight": 1.0,
             "score": 1.0,
             "confidence": 0.8,
             "retrieval_layer": "ability_enrichment",
         }
         for r in rows
     ]
+
+
+def _fetch_specific_matchup_notes(
+    champion_a: str,
+    champion_b: str,
+    role: str | None = None,
+    limit: int = 8,
+) -> list[dict]:
+    """
+    Pull explicit champion-vs-champion notes first from the dedicated
+    champion_matchups bucket, then from broader matchup_advice when the text
+    explicitly names champion_b. This is meant for X-into-Y queries where exact
+    written-guide matchup notes are higher fidelity than general champion data.
+    """
+    import pathlib
+    import core.database as _db
+
+    enemy_patterns = {
+        champion_b.lower(),
+        _normalize(champion_b),
+    }
+
+    hits: list[dict] = []
+    seen_texts: set[str] = set()
+    for db_path in ("videos.db", "guide_test.db"):
+        if not pathlib.Path(db_path).exists():
+            continue
+        _db.DB_PATH = pathlib.Path(db_path)
+        with _db.get_connection() as conn:
+            query = """
+            SELECT i.text, i.insight_type, i.confidence, i.source_score,
+                   v.role, v.champion, v.rank, v.website_rating, COALESCE(v.source, 'discord') AS source
+            FROM insights i
+                JOIN videos v ON i.video_id = v.video_id
+                WHERE v.champion = ?
+                  AND i.insight_type IN ('champion_matchups', 'matchup_advice')
+            """
+            params: list = [champion_a]
+            if role:
+                query += " AND v.role = ?"
+                params.append(role)
+            query += " ORDER BY CASE WHEN i.insight_type = 'champion_matchups' THEN 0 ELSE 1 END, i.id"
+            rows = conn.execute(query, params).fetchall()
+
+        for row in rows:
+            text = row["text"]
+            text_norm = _normalize(text)
+            text_low = text.lower()
+            if not any(
+                re.search(r"\b" + re.escape(name) + r"\b", text_low) or
+                re.search(r"\b" + re.escape(name) + r"\b", text_norm)
+                for name in enemy_patterns
+            ):
+                continue
+            if text in seen_texts:
+                continue
+            seen_texts.add(text)
+            hits.append({
+                "text": text,
+                "insight_type": row["insight_type"],
+                "role": row["role"],
+                "champion": row["champion"],
+                "rank": row["rank"],
+                "website_rating": row["website_rating"],
+                "source": row["source"],
+                "score": 1.0 if row["insight_type"] == "champion_matchups" else 0.9,
+                "confidence": round(float(row["confidence"] or row["source_score"] or 0.75), 4),
+                "source_weight": round(float(_source_weight(dict(row))), 4),
+                "retrieval_layer": "exact_matchup",
+            })
+    hits.sort(
+        key=lambda r: (
+            1 if r["insight_type"] == "champion_matchups" else 0,
+            float(r.get("source_weight") or 1.0),
+            float(r.get("confidence") or 0.0),
+            float(r.get("website_rating") or 0.0),
+        ),
+        reverse=True,
+    )
+    return hits[:limit]
 
 
 def retrieve_duo(
@@ -413,13 +630,35 @@ def retrieve_duo(
     """
     per_side = max(top_k // 2, 6)
 
-    insights_a = retrieve(question, champion=champion_a, role=role, top_k=per_side)
+    matchup_notes_a = _fetch_specific_matchup_notes(champion_a, champion_b, role=role, limit=max(4, per_side // 2))
+    matchup_notes_b = _fetch_specific_matchup_notes(champion_b, champion_a, limit=max(4, per_side // 2))
+
+    insights_a = matchup_notes_a + retrieve(question, champion=champion_a, role=role, top_k=per_side)
     if not insights_a:
         insights_a = _archetype_fallback(champion_a, per_side)
 
-    insights_b = retrieve(question, champion=champion_b, top_k=per_side)
+    insights_b = matchup_notes_b + retrieve(question, champion=champion_b, top_k=per_side)
     if not insights_b:
         insights_b = _archetype_fallback(champion_b, per_side)
+
+    # Keep exact matchup notes first, then dedupe by text.
+    deduped_a: list[dict] = []
+    seen_a: set[str] = set()
+    for row in insights_a:
+        if row["text"] in seen_a:
+            continue
+        seen_a.add(row["text"])
+        deduped_a.append(row)
+    insights_a = deduped_a[: max(per_side + len(matchup_notes_a), per_side)]
+
+    deduped_b: list[dict] = []
+    seen_b: set[str] = set()
+    for row in insights_b:
+        if row["text"] in seen_b:
+            continue
+        seen_b.add(row["text"])
+        deduped_b.append(row)
+    insights_b = deduped_b[: max(per_side + len(matchup_notes_b), per_side)]
 
     # Append ability_windows for both sides (these capture CC/mobility interactions
     # that are critical for matchup context — not retrieved by embedding search)
@@ -499,6 +738,10 @@ def _archetype_fallback(champion: str, top_k: int) -> list[dict]:
             "insight_type": h["insight_type"],
             "role": None,
             "champion": h["source_champion"],
+            "rank": None,
+            "website_rating": None,
+            "source": "archetype",
+            "source_weight": 1.0,
             "score": round(h["similarity"], 4),
             "confidence": round(h["confidence"], 4),
             "retrieval_layer": "archetype",
@@ -529,14 +772,70 @@ def _format_insights(insights: list[dict]) -> str:
         layer_tag = {
             "archetype": " [archetype]",
             "ability_enrichment": " [ability]",
+            "exact_matchup": " [exact-matchup]",
         }.get(r.get("retrieval_layer", ""), "")
+        source_tag = f" | {_source_label(r)}" if r.get("source") else ""
         # Explicitly label the champion on ability_windows rows so the LLM
         # cannot mistake which champion's ability is being described.
         champ_tag = ""
         if r.get("insight_type") == "ability_windows" and r.get("champion"):
             champ_tag = f" | {r['champion']}'s ability"
-        lines.append(f"  - [{r['insight_type']}{layer_tag}{champ_tag}] {r['text']}")
+        lines.append(f"  - [{r['insight_type']}{layer_tag}{champ_tag}{source_tag}] {r['text']}")
     return "\n".join(lines)
+
+
+# ── Champion overview multi-query expansion ───────────────────────────────────
+
+_HOW_TO_PLAY_RE = re.compile(
+    r'\b(how (do i|to|should i) play|guide (for|on|to)|tips (for|on)|'
+    r'how (do i|to) (get good|improve|learn|master)|'
+    r'what (should|do) i do (as|playing|on)|general (tips|guide|gameplan))\b',
+    re.IGNORECASE,
+)
+
+
+def _is_how_to_play(question: str) -> bool:
+    return bool(_HOW_TO_PLAY_RE.search(question))
+
+
+def _multi_retrieve_champion(champion: str, role: str | None, top_k: int) -> list[dict]:
+    """
+    For broad 'how do I play X' questions, run targeted sub-queries per game phase
+    and merge results so all sections of the response have coverage.
+    """
+    sub_queries = [
+        (f"What is {champion}'s champion identity, win condition, and strategic gameplan?",
+         ["champion_identity", "principles"]),
+        (f"How do I play {champion} in lane early game, trade patterns and level spikes?",
+         ["laning_tips", "champion_mechanics"]),
+        (f"What direct champion-specific matchup notes exist for {champion} against named enemy champions?",
+         ["champion_matchups", "matchup_advice"]),
+        (f"What are {champion}'s key ability mechanics, passive interactions, and ability windows?",
+         ["ability_windows", "champion_mechanics"]),
+        (f"How do I play {champion} in teamfights and mid/late game macro decisions?",
+         ["teamfight_tips", "macro_advice"]),
+        (f"What items should I build on {champion} and what are their synergies with teammates?",
+         ["itemization", "champion_identity"]),
+    ]
+
+    per_sub = max(top_k // len(sub_queries), 6)
+    seen_texts: set[str] = set()
+    merged: list[dict] = []
+
+    for query_text, _ in sub_queries:
+        hits = retrieve(query_text, role=role, champion=champion, top_k=per_sub)
+        for h in hits:
+            if h["text"] not in seen_texts:
+                seen_texts.add(h["text"])
+                merged.append(h)
+
+    # Re-rank merged pool by score * confidence * source weight
+    merged.sort(
+        key=lambda r: (r["score"] * 0.5 + r["confidence"] * 0.5)
+                      * _source_weight(r),
+        reverse=True,
+    )
+    return merged[:top_k]
 
 
 # ── Answer ────────────────────────────────────────────────────────────────────
@@ -565,29 +864,32 @@ def answer(
         return _answer_duo(question, intent, role=role, top_k=top_k, show_sources=show_sources)
 
     # ── General / single-champion path ────────────────────────────────────────
-    insights = retrieve(question, role=role, champion=champion,
-                        insight_type=insight_type, top_k=top_k)
+    detected_champ_early = champion
+    if not detected_champ_early:
+        q_norm = _normalize(question)
+        lookup = _get_champion_lookup()
+        for name_key in sorted(lookup, key=len, reverse=True):
+            if re.search(r'\b' + re.escape(name_key) + r'\b', q_norm):
+                detected_champ_early = lookup[name_key]
+                break
+
+    if detected_champ_early and _is_how_to_play(question):
+        insights = _multi_retrieve_champion(detected_champ_early, role=role, top_k=top_k)
+    else:
+        insights = retrieve(question, role=role, champion=champion,
+                            insight_type=insight_type, top_k=top_k)
     if not insights:
         return "No relevant insights found. Make sure embed.py has been run."
 
     formatted = "\n".join(
         f"{i + 1}. [{r['insight_type']} | {r['role']}"
         + (f" | {r['champion']}" if r['champion'] else "")
+        + (f" | {_source_label(r)}" if r.get("source") else "")
         + f"] {r['text']}"
         for i, r in enumerate(insights)
     )
 
-    # If a single champion is mentioned in the question, attach their stat notes
-    detected_champ = champion or (intent.get("a") if intent.get("type") == "general" else None)
-    if not detected_champ:
-        # Try to find any champion mentioned (reuse intent lookup)
-        q_norm = _normalize(question)
-        lookup = _get_champion_lookup()
-        for name_key in sorted(lookup, key=len, reverse=True):
-            m = re.search(r'\b' + re.escape(name_key) + r'\b', q_norm)
-            if m:
-                detected_champ = lookup[name_key]
-                break
+    detected_champ = detected_champ_early
 
     stat_block = ""
     if detected_champ:
@@ -687,9 +989,11 @@ def _answer_duo(
 def _sources_block(insights: list[dict], prefix: str = "") -> str:
     lines = []
     for r in insights:
-        layer = f" | {r['retrieval_layer']}" if r.get("retrieval_layer") == "archetype" else ""
+        layer = f" | {r['retrieval_layer']}" if r.get("retrieval_layer") else ""
+        source = f" | {_source_label(r)}" if r.get("source") else ""
+        source_weight = f" | src-w {float(r.get('source_weight') or 1.0):.2f}"
         lines.append(
-            f"{prefix}[{r['score']:.2f} | conf {r['confidence']:.2f}{layer}]"
+            f"{prefix}[{r['score']:.2f} | conf {r['confidence']:.2f}{source_weight}{layer}{source}]"
             f" ({r['insight_type']}) {r['text'][:100]}{'...' if len(r['text']) > 100 else ''}"
         )
     return "\n".join(lines)

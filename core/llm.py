@@ -37,7 +37,7 @@ if _GOOGLE_API_KEY:
     _client = _genai.Client(api_key=_GOOGLE_API_KEY)
     _fallback_client = _genai.Client(api_key=_GOOGLE_CLOUD_API_KEY) if _GOOGLE_CLOUD_API_KEY else None
 
-    _MAX_OUTPUT_TOKENS = 8192  # flash-lite hard limit
+    _MAX_OUTPUT_TOKENS = 65536
     _fallback_label = "GOOGLE_API_KEY_TWO" if _fallback_client else "none"
     print(f"[llm] Gemini backend: {_DEFAULT_MODEL} (max output tokens: {_MAX_OUTPUT_TOKENS:,}, fallback: {_fallback_label})")
 
