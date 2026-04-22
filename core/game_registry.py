@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 import textwrap
 
 from core.champions import champion_names_for_prompt
@@ -22,6 +23,7 @@ LOL_INSIGHT_TYPES = (
     "game_mechanics",
     "principles",
     "laning_tips",
+    "ability_windows",
     "champion_mechanics",
     "champion_matchups",
     "matchup_advice",
@@ -30,6 +32,17 @@ LOL_INSIGHT_TYPES = (
     "vision_control",
     "itemization",
     "general_advice",
+)
+
+LOL_WRITTEN_INSIGHT_TYPES = (
+    "champion_identity",
+    "principles",
+    "laning_tips",
+    "ability_windows",
+    "champion_mechanics",
+    "champion_matchups",
+    "matchup_advice",
+    "macro_advice",
 )
 
 AOE2_INSIGHT_TYPES = (
@@ -48,6 +61,92 @@ AOE2_INSIGHT_TYPES = (
     "matchup_advice",
     "general_advice",
 )
+
+AOE2_CIVILIZATIONS = (
+    "Achaemenids",
+    "Armenians",
+    "Athenians",
+    "Aztecs",
+    "Bengalis",
+    "Berbers",
+    "Bohemians",
+    "Britons",
+    "Bulgarians",
+    "Burgundians",
+    "Burmese",
+    "Byzantines",
+    "Celts",
+    "Chinese",
+    "Cumans",
+    "Dravidians",
+    "Ethiopians",
+    "Franks",
+    "Georgians",
+    "Goths",
+    "Gurjaras",
+    "Hindustanis",
+    "Huns",
+    "Incas",
+    "Italians",
+    "Japanese",
+    "Jurchens",
+    "Khitans",
+    "Khmer",
+    "Koreans",
+    "Lac Viet",
+    "Lithuanians",
+    "Magyars",
+    "Malay",
+    "Malians",
+    "Mayans",
+    "Mongols",
+    "Persians",
+    "Poles",
+    "Portuguese",
+    "Romans",
+    "Saracens",
+    "Shu",
+    "Sicilians",
+    "Slavs",
+    "Spanish",
+    "Spartans",
+    "Tatars",
+    "Teutons",
+    "Turks",
+    "Vietnamese",
+    "Vikings",
+    "Wei",
+    "Wu",
+)
+
+AOE2_CIV_ALIASES = {
+    "bizantines": "Byzantines",
+    "byzantine": "Byzantines",
+    "frank": "Franks",
+    "gurjara": "Gurjaras",
+    "hindustani": "Hindustanis",
+    "hun": "Huns",
+    "inca": "Incas",
+    "italian": "Italians",
+    "jurchen": "Jurchens",
+    "khitan": "Khitans",
+    "lạc việt": "Lac Viet",
+    "lacviet": "Lac Viet",
+    "lithuanian": "Lithuanians",
+    "magyar": "Magyars",
+    "malian": "Malians",
+    "mayan": "Mayans",
+    "mongol": "Mongols",
+    "persian": "Persians",
+    "pole": "Poles",
+    "portuguese": "Portuguese",
+    "roman": "Romans",
+    "saracen": "Saracens",
+    "slav": "Slavs",
+    "teuton": "Teutons",
+    "turk": "Turks",
+    "viking": "Vikings",
+}
 
 
 def normalize_game(game: str | None) -> str:
@@ -78,8 +177,29 @@ def game_label(game: str) -> str:
 def subject_label(game: str) -> str:
     return {
         "lol": "Champion",
-        "aoe2": "Civilization / Strategy Topic",
+        "aoe2": "Civilization",
     }.get(normalize_game(game), "Subject")
+
+
+def aoe2_civilization_names_for_prompt() -> str:
+    return "\n".join(f"- {name}" for name in AOE2_CIVILIZATIONS)
+
+
+def canonical_aoe2_civilization(name: str | None) -> str | None:
+    if not name:
+        return None
+    key = re.sub(r"[^a-z0-9 ]", "", name.strip().lower())
+    if not key:
+        return None
+    lookup = {
+        re.sub(r"[^a-z0-9 ]", "", civilization.lower()): civilization
+        for civilization in AOE2_CIVILIZATIONS
+    }
+    lookup.update({
+        re.sub(r"[^a-z0-9 ]", "", alias.lower()): civilization
+        for alias, civilization in AOE2_CIV_ALIASES.items()
+    })
+    return lookup.get(key)
 
 
 def _json_schema_block(keys: tuple[str, ...]) -> str:
@@ -171,13 +291,59 @@ LOL_WRITTEN_SYSTEM_PROMPT = textwrap.dedent("""
         guide explicitly explains WHY a choice is correct
       - Patch/season/current-meta claims, tier-list framing, and low-signal filler
       - Rank-gated advice that only applies to one skill bracket
+      - Client/settings advice, UI tips, hotkeys, camera, or mouse setup
+      - Itemization/build-path recommendations, even when the guide discusses them
+      - Generic mindset filler, vision filler, or broad teamfight filler unless it
+        directly teaches champion-specific execution or macro
+      - Any advice that is not evergreen or is likely to drift with item/system changes
 
     PRIORITISE:
       - Champion identity and win conditions
-      - Ability usage, trading patterns, lane plans, and matchup adaptations
-      - Teamfight role, side lane vs grouping logic, and evergreen item reasoning
+      - Ability usage, timing windows, lockouts, and combo sequencing
+      - Trading patterns, spacing, wave control, lane plans, and matchup adaptations
+      - Side lane vs grouping logic, objective rotations, and macro execution
 
-    Use the same output categories and rules as the LoL video analyzer.
+    OUTPUT CATEGORIES FOR WRITTEN GUIDES:
+      - champion_identity
+      - principles
+      - laning_tips
+      - ability_windows
+      - champion_mechanics
+      - champion_matchups
+      - matchup_advice
+      - macro_advice
+
+    CATEGORY DEFINITIONS:
+    champion_identity: What this champion is trying to accomplish in lane and in
+    fights, where its power windows are, and what makes its gameplan distinct.
+
+    principles: Broad strategic rules the guide states explicitly and that remain
+    useful across many games.
+
+    laning_tips: Concrete early-lane execution, wave states, spacing, trading,
+    recall timing, and punish windows.
+
+    ability_windows: Exact timing or state-based windows tied to the champion's
+    kit, such as when to hold or spend an ability, how to chain CC, when an enemy
+    is locked in animation, or which cooldown/mobility window creates a punish.
+
+    champion_mechanics: Champion-specific combo flow, spacing, sequencing, and
+    execution details that are not primarily about one narrow timing window.
+
+    champion_matchups: Direct named champion-vs-champion notes where the enemy
+    champion is explicitly stated.
+
+    matchup_advice: Matchup guidance against named classes, patterns, or threat
+    profiles when a specific enemy champion is not the key point.
+
+    macro_advice: Mid/late-game map play, side lane decisions, resets, rotations,
+    objective setup, and how to use leads or play from behind.
+
+    HARD RULES:
+    1. Never output game_mechanics, itemization, vision_control, teamfight_tips,
+       or general_advice for written guides — if a sentence belongs there, discard it.
+    2. Prefer champion-specific execution over broad generic advice.
+    3. Keep only evergreen insights that will remain useful after item/patch changes.
 """).strip()
 
 AOE2_VIDEO_SYSTEM_PROMPT = textwrap.dedent("""
@@ -234,11 +400,16 @@ AOE2_VIDEO_SYSTEM_PROMPT = textwrap.dedent("""
     3. Each insight must be a complete standalone coaching sentence.
     4. Do not invent advice not present in the source.
     5. Prefer timeless strategy over patch-specific balance commentary.
+    6. For each insight, set "subject" to the exact civilization name only if
+       the advice is specifically about that civilization; otherwise set
+       "subject" to null.
+    7. For each insight, set "subject_type" to "civ" for civilization-specific
+       advice or "general" for universal RTS / AoE2 guidance.
 """).strip()
 
 AOE2_WRITTEN_SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert Age of Empires II analyst extracting actionable insights
-    from written guides.
+    from written guides and reference pages.
 
     SOURCE FILTERING — critical:
     Treat explanatory paragraphs, matchup notes, build-order explanations, and
@@ -248,6 +419,13 @@ AOE2_WRITTEN_SYSTEM_PROMPT = textwrap.dedent("""
     PRIORITISE the same strategy categories used by the AoE2 video analyzer, with
     emphasis on build orders, scouting reactions, economy, unit transitions, and
     civilization-specific power windows.
+
+    WRITTEN-SOURCE RULES:
+    1. Preserve factual civilization bonuses, unit traits, tech tree limits, and
+       timing benchmarks when the source states them explicitly.
+    2. Convert raw facts into compact evergreen insights instead of copying tables.
+    3. Use "subject" and "subject_type" exactly the same way as the video analyzer:
+       "civ" for civilization-specific guidance, "general" for universal knowledge.
 """).strip()
 
 
@@ -257,7 +435,7 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
         insight_types = AOE2_INSIGHT_TYPES
         schema_block = _escape_format_braces(_json_schema_block(insight_types))
         system_prompt = (
-            AOE2_WRITTEN_SYSTEM_PROMPT if source == "mobafire_guide" else AOE2_VIDEO_SYSTEM_PROMPT
+            AOE2_WRITTEN_SYSTEM_PROMPT if source == "aoe2_wiki" else AOE2_VIDEO_SYSTEM_PROMPT
         )
         extraction_prompt = textwrap.dedent(f"""
             Extract actionable insights from this Age of Empires II guide source.
@@ -274,8 +452,13 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
             ---
 
             Return exactly this JSON structure. Use [] for categories with no insights.
-            Each insight is an object: {{{{"text": "...", "emphasis": 1|2|3}}}}
-            (1=mentioned once, 2=a few times, 3=repeatedly stressed)
+            Each insight is an object:
+            {{{{"text": "...", "emphasis": 1|2|3, "subject": "Civilization Name" | null, "subject_type": "civ" | "general"}}}}
+            - Use subject_type="civ" only when the advice is specifically about one named civilization.
+            - Use subject_type="general" when the advice applies broadly, even if it appears inside a civ guide.
+            - Use the exact civilization spelling from the reference list when subject_type="civ".
+            - Do not tag a broad strategy concept with a civilization unless the source clearly anchors it there.
+            - "Context" may be things like 1v1, Arabia, Arena, team game, beginner, etc.
 
             {schema_block}
         """).strip()
@@ -283,10 +466,10 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
             system_prompt=system_prompt,
             extraction_prompt=extraction_prompt,
             insight_types=insight_types,
-            reference_block="",
+            reference_block=aoe2_civilization_names_for_prompt(),
         )
 
-    insight_types = LOL_INSIGHT_TYPES
+    insight_types = LOL_WRITTEN_INSIGHT_TYPES if source == "mobafire_guide" else LOL_INSIGHT_TYPES
     schema_block = _escape_format_braces(_json_schema_block(insight_types))
     system_prompt = LOL_WRITTEN_SYSTEM_PROMPT if source == "mobafire_guide" else LOL_VIDEO_SYSTEM_PROMPT
     extraction_prompt = textwrap.dedent(f"""

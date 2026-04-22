@@ -2,8 +2,10 @@
 LLM analysis for guide-style sources in guide_test.db.
 
 Supported sources:
-  - youtube_guide   : transcribed educational videos
-  - mobafire_guide  : cleaned written guide text saved directly into transcription
+  - youtube_guide   : transcribed League educational videos
+  - mobafire_guide  : cleaned League written guide text saved directly into transcription
+  - aoe2_video      : transcribed Age of Empires II educational videos
+  - aoe2_wiki       : imported Age of Empires II reference/wiki text
 
 Usage:
     uv run python -m pipeline.guide_analyze               # all guide sources
@@ -27,7 +29,13 @@ os.environ.setdefault("DB_PATH", "guide_test.db")
 
 from core.database import get_connection, set_status, insert_insight, init_db
 from core.champions import correct_names
-from core.game_registry import DEFAULT_GAME, SUPPORTED_GAMES, analysis_spec, normalize_game
+from core.game_registry import (
+    DEFAULT_GAME,
+    SUPPORTED_GAMES,
+    analysis_spec,
+    canonical_aoe2_civilization,
+    normalize_game,
+)
 from core.llm import chat as llm_chat, BACKEND
 
 EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
@@ -36,6 +44,7 @@ _WINDOW_STRIDE = 20
 
 # ~130 wpm speaking rate × 60 min = 7800; use 9000 to give a comfortable buffer
 WORDS_PER_HOUR = 9_000
+GUIDE_SOURCES = ("youtube_guide", "mobafire_guide", "aoe2_video", "aoe2_wiki")
 
 VIDEO_SYSTEM_PROMPT = textwrap.dedent("""
     You are an expert League of Legends analyst extracting actionable insights
@@ -382,7 +391,7 @@ def _call_llm(
 
     normalised_result = {key: result.get(key, []) for key in spec.insight_types}
 
-    # Normalise items to (text, emphasis) tuples
+    # Normalise items to structured tuples so downstream storage can tag insights.
     for key, items in normalised_result.items():
         if not isinstance(items, list):
             normalised_result[key] = []
@@ -390,11 +399,25 @@ def _call_llm(
         normalised = []
         for item in items:
             if isinstance(item, str) and item.strip():
-                normalised.append((correct_names(item.strip()), 1))
+                text = correct_names(item.strip()) if game == "lol" else item.strip()
+                normalised.append((text, 1, None, None))
             elif isinstance(item, dict) and item.get("text", "").strip():
-                text = correct_names(item["text"].strip())
+                text = item["text"].strip()
+                if game == "lol":
+                    text = correct_names(text)
                 emphasis = int(item.get("emphasis", 1))
-                normalised.append((text, emphasis))
+                insight_subject = item.get("subject")
+                insight_subject_type = item.get("subject_type")
+                if game == "aoe2":
+                    if insight_subject_type not in {"civ", "general"}:
+                        insight_subject_type = "general" if not insight_subject else "civ"
+                    if insight_subject_type == "civ":
+                        insight_subject = canonical_aoe2_civilization(str(insight_subject or "").strip())
+                        if not insight_subject:
+                            insight_subject_type = "general"
+                    else:
+                        insight_subject = None
+                normalised.append((text, emphasis, insight_subject, insight_subject_type))
         normalised_result[key] = normalised
 
     return normalised_result
@@ -413,7 +436,7 @@ def _get_pending_guide_videos(
     game: str | None = None,
 ) -> list:
     with get_connection() as conn:
-        source_clause = "source IN ('youtube_guide', 'mobafire_guide')"
+        source_clause = "source IN ('youtube_guide', 'mobafire_guide', 'aoe2_video', 'aoe2_wiki')"
         params: list = []
         if source:
             source_clause = "source = ?"
@@ -471,21 +494,34 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
         n_this_chunk = 0
         for insight_type, items in result.items():
             aggregated.setdefault(insight_type, [])
-            for text, emphasis in items:
+            for text, emphasis, insight_subject, insight_subject_type in items:
                 score = score_source_grounding(text, window_matrix)
-                aggregated[insight_type].append((text, emphasis, score))
+                aggregated[insight_type].append(
+                    (text, emphasis, score, insight_subject, insight_subject_type)
+                )
                 n_this_chunk += 1
         print(f"→ {n_this_chunk} insights")
 
     total = 0
     for insight_type, items in aggregated.items():
-        for text, emphasis, source_score in items:
+        for text, emphasis, source_score, insight_subject, insight_subject_type in items:
             if not text.strip():
                 continue
             if dry_run:
-                print(f"    [{insight_type}] {text}")
+                subject_suffix = ""
+                if insight_subject_type:
+                    subject_suffix = f" | {insight_subject_type}:{insight_subject or 'general'}"
+                print(f"    [{insight_type}{subject_suffix}] {text}")
             else:
-                insert_insight(video_id, insight_type, text.strip(), source_score, repetition_count=emphasis)
+                insert_insight(
+                    video_id,
+                    insight_type,
+                    text.strip(),
+                    source_score,
+                    repetition_count=emphasis,
+                    subject=insight_subject,
+                    subject_type=insight_subject_type,
+                )
             total += 1
 
     if not dry_run:
@@ -532,7 +568,7 @@ def run(
 def _reset_for_reanalysis(subject: str | None, source: str | None, game: str | None) -> None:
     """Delete existing insights and reset status to transcribed so run() picks them up."""
     with get_connection() as conn:
-        source_clause = "source IN ('youtube_guide', 'mobafire_guide')"
+        source_clause = "source IN ('youtube_guide', 'mobafire_guide', 'aoe2_video', 'aoe2_wiki')"
         params: list = []
         if source:
             source_clause = "source = ?"
@@ -574,7 +610,7 @@ def main() -> None:
                         help="Game namespace to analyze")
     parser.add_argument("--subject", help="Only analyze videos for this subject (champion, civ, strategy)")
     parser.add_argument("--champion", help="Compatibility alias for --subject")
-    parser.add_argument("--source", choices=["youtube_guide", "mobafire_guide"],
+    parser.add_argument("--source", choices=list(GUIDE_SOURCES),
                         help="Limit to one guide source")
     parser.add_argument("--dry-run", action="store_true", help="Print insights, don't save")
     parser.add_argument("--reanalyze", action="store_true",

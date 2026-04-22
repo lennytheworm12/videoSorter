@@ -52,6 +52,10 @@ def _source_weight(meta: dict) -> float:
     source = meta.get("source") or "discord"
     if source == "discord":
         return 1.6
+    if source == "aoe2_wiki":
+        return 1.1
+    if source == "aoe2_video":
+        return 1.0
     if source == "mobafire_guide":
         rank_weight = RANK_WEIGHTS.get(str(meta.get("rank") or "").lower(), 1.0)
         rating = meta.get("website_rating")
@@ -77,6 +81,10 @@ def _source_label(meta: dict) -> str:
             except (TypeError, ValueError):
                 pass
         return " | ".join(parts)
+    if source == "aoe2_wiki":
+        return "wiki"
+    if source == "aoe2_video":
+        return "youtube"
     if source == "youtube_guide":
         return "youtube"
     return source
@@ -483,6 +491,7 @@ def retrieve(
             "insight_type": metadata[i]["insight_type"],
             "role": metadata[i]["role"],
             "subject": metadata[i].get("subject"),
+            "subject_type": metadata[i].get("subject_type"),
             "champion": metadata[i]["champion"],
             "game": metadata[i].get("game", game),
             "rank": metadata[i].get("rank"),
@@ -498,6 +507,26 @@ def retrieve(
         _blend_archetype_insights(results, champion, top_k)
 
     return results
+
+
+def _merge_ranked_results(*result_sets: list[dict], limit: int) -> list[dict]:
+    merged: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for result_set in result_sets:
+        for row in result_set:
+            key = (row.get("text") or "", row.get("insight_type") or "")
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(row)
+    merged.sort(
+        key=lambda r: (
+            float(r.get("score") or 0.0) * 0.5
+            + float(r.get("confidence") or 0.0) * 0.5
+        ) * float(r.get("source_weight") or 1.0),
+        reverse=True,
+    )
+    return merged[:limit]
 
 
 def _blend_archetype_insights(results: list[dict], champion: str, top_k: int) -> None:
@@ -919,12 +948,23 @@ def answer(
             game=game,
             top_k=top_k,
         )
+        if subject:
+            general_hits = retrieve(
+                question,
+                role=role,
+                subject=None,
+                insight_type=insight_type,
+                game=game,
+                top_k=max(4, top_k // 3),
+            )
+            insights = _merge_ranked_results(insights, general_hits, limit=top_k)
         if not insights:
             return "No relevant insights found. Make sure embed.py has been run."
 
         formatted = "\n".join(
             f"{i + 1}. [{r['insight_type']} | {r.get('role') or 'n/a'}"
             + (f" | {r.get('subject')}" if r.get("subject") else "")
+            + (f" | {r.get('subject_type')}" if r.get("subject_type") else "")
             + (f" | {_source_label(r)}" if r.get("source") else "")
             + f"] {r['text']}"
             for i, r in enumerate(insights)
@@ -1134,7 +1174,7 @@ def main() -> None:
         )
         for r in results:
             layer = f" | {r['retrieval_layer']}" if r.get("retrieval_layer") else ""
-            label = r.get("subject") or r.get("champion") or "-"
+            label = r.get("subject") or r.get("champion") or r.get("subject_type") or "-"
             print(
                 f"[{r['score']:.3f} | conf {r['confidence']:.2f}{layer}] "
                 f"({r['insight_type']} | {label} | {r.get('game') or normalize_game(args.game)}) {r['text']}"

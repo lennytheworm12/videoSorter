@@ -19,7 +19,12 @@ import json
 import os
 import argparse
 from core.llm import chat as llm_chat
-from core.game_registry import DEFAULT_GAME, normalize_game
+from core.game_registry import (
+    AOE2_CIVILIZATIONS,
+    DEFAULT_GAME,
+    canonical_aoe2_civilization,
+    normalize_game,
+)
 
 # ---------------------------------------------------------------------------
 # Canonical question templates
@@ -137,6 +142,52 @@ _TEMPLATE_LIST = "\n".join(
     f"{i + 1}. {t}" for i, (t, _, _) in enumerate(CANONICAL_QUESTIONS)
 )
 
+AOE2_CANONICAL_QUESTIONS = [
+    ("What is the core identity and win condition of [civilization]?",
+     ["civilization_identity", "principles", "unit_compositions"],
+     "Civilization identity and broad game plan"),
+
+    ("What is a solid opening or build order for [civilization]?",
+     ["build_orders", "dark_age", "feudal_age"],
+     "Civilization opening and early structure"),
+
+    ("How should I play the Dark Age and Feudal Age more cleanly?",
+     ["dark_age", "feudal_age", "economy_macro"],
+     "Early game execution"),
+
+    ("How should I transition into Castle Age and Imperial Age?",
+     ["castle_age", "imperial_age", "economy_macro"],
+     "Mid and late age transitions"),
+
+    ("How should I balance economy and production in this spot?",
+     ["economy_macro", "build_orders", "principles"],
+     "Economy and production scaling"),
+
+    ("What should I scout for, and how should I adapt when I see it?",
+     ["scouting", "principles", "matchup_advice"],
+     "Scouting tells and response logic"),
+
+    ("What unit composition should I aim for, and when should I transition?",
+     ["unit_compositions", "castle_age", "imperial_age"],
+     "Army composition and transitions"),
+
+    ("How should I control the map and secure resources or relics?",
+     ["map_control", "economy_macro", "principles"],
+     "Map control and territory"),
+
+    ("How does [civilization] play into [civilization]?",
+     ["matchup_advice", "civilization_identity", "unit_compositions"],
+     "Civilization-versus-civilization adjustment"),
+
+    ("What fundamental AoE2 habits should a beginner focus on first?",
+     ["game_mechanics", "principles", "economy_macro"],
+     "Beginner fundamentals and clean execution"),
+]
+
+_AOE2_TEMPLATE_LIST = "\n".join(
+    f"{i + 1}. {t}" for i, (t, _, _) in enumerate(AOE2_CANONICAL_QUESTIONS)
+)
+
 # ---------------------------------------------------------------------------
 # Normalization prompt
 # ---------------------------------------------------------------------------
@@ -177,6 +228,55 @@ Insight type keys to use:
 - general_advice: mindset, applies broadly
 """.strip()
 
+AOE2_NORMALIZE_SYSTEM = """
+You are an Age of Empires II coaching assistant that helps players ask better questions.
+Your job is to normalize a player's question for a strategy knowledge base and extract
+the civilization filter when one is clearly present.
+
+Return valid JSON only.
+""".strip()
+
+AOE2_NORMALIZE_PROMPT = """
+A player asked: "{question}"
+
+Known civilizations:
+{civilizations}
+
+Here are the canonical question templates this knowledge base answers best:
+{templates}
+
+Return a JSON object with these fields:
+{{
+    "normalized": "the best matching canonical template, with civilization names filled in when clearly present",
+    "subject": "exact civilization name if one is clearly present, else null",
+    "role": null,
+    "insight_types": ["ordered list of 2-3 most relevant insight type keys from: civilization_identity, game_mechanics, principles, build_orders, dark_age, feudal_age, castle_age, imperial_age, economy_macro, scouting, unit_compositions, map_control, matchup_advice, general_advice"],
+    "reasoning": "one sentence explaining the mapping"
+}}
+
+Rules:
+- Use "subject" only for a named civilization, not a strategy archetype.
+- If the question is about general fundamentals, leave subject as null.
+- Prefer the most specific canonical phrasing that fits the player's intent.
+""".strip()
+
+
+def _extract_aoe2_subject(question: str) -> str | None:
+    q = question.lower()
+    matches: list[tuple[int, str]] = []
+    for civ in AOE2_CIVILIZATIONS:
+        pos = q.find(civ.lower())
+        if pos != -1:
+            matches.append((pos, civ))
+    if not matches:
+        for token in question.replace("/", " ").replace("-", " ").split():
+            civ = canonical_aoe2_civilization(token)
+            if civ:
+                return civ
+        return None
+    matches.sort(key=lambda item: item[0])
+    return matches[0][1]
+
 
 def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
     """
@@ -187,13 +287,48 @@ def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
       - insight_types: ordered list of relevant categories
       - reasoning: why it was mapped this way
     """
-    if normalize_game(game) != "lol":
+    game = normalize_game(game)
+
+    if game == "aoe2":
+        detected_subject = _extract_aoe2_subject(question)
+        prompt = AOE2_NORMALIZE_PROMPT.format(
+            question=question,
+            civilizations=", ".join(AOE2_CIVILIZATIONS),
+            templates=_AOE2_TEMPLATE_LIST,
+        )
+        raw = llm_chat(system=AOE2_NORMALIZE_SYSTEM, user=prompt, temperature=0.1)
+        if raw.startswith("```"):
+            raw = raw.split("```", 2)[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+        try:
+            data = json.loads(raw)
+            if data.get("subject"):
+                data["subject"] = canonical_aoe2_civilization(data["subject"]) or detected_subject
+            else:
+                data["subject"] = detected_subject
+            data.setdefault("role", None)
+            data.setdefault("insight_types", ["general_advice"])
+            data.setdefault("reasoning", "Mapped via AoE2 normalization prompt")
+            data.setdefault("normalized", question)
+            return data
+        except json.JSONDecodeError:
+            return {
+                "normalized": question,
+                "subject": detected_subject,
+                "role": None,
+                "insight_types": ["general_advice"],
+                "reasoning": "Could not parse AoE2 normalization response",
+            }
+
+    if game != "lol":
         return {
             "normalized": question,
             "champion": None,
             "role": None,
             "insight_types": ["general_advice"],
-            "reasoning": f"{normalize_game(game)} currently uses raw question pass-through normalization",
+            "reasoning": f"{game} currently uses raw question pass-through normalization",
         }
 
     prompt = NORMALIZE_PROMPT.format(
@@ -242,9 +377,11 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True, game: str = D
     # videos exist for that specific champion. Instead it's already baked into
     # the normalized question text, so semantic search surfaces it naturally.
     # insight_type filter is skipped too — too restrictive on small datasets.
+    subject = parsed.get("subject") if normalize_game(game) == "aoe2" else None
     return answer(
         question=parsed["normalized"],
         role=parsed.get("role"),
+        subject=subject,
         game=game,
         top_k=top_k,
         show_sources=show_sources,

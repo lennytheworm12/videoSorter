@@ -88,9 +88,18 @@ def _load_vectors_from_db(
     import pathlib as _pl
     _db.DB_PATH = _pl.Path(db_path)
 
+    effective_subject_sql = """
+        CASE
+            WHEN i.subject_type IS NOT NULL THEN i.subject
+            ELSE COALESCE(v.subject, v.champion)
+        END
+    """
+
     query = """
         SELECT i.id, i.text, i.insight_type, i.embedding,
-               i.confidence, i.source_score, v.video_id, v.game, v.role, COALESCE(v.subject, v.champion) AS subject,
+               i.subject AS raw_subject, i.subject_type, i.confidence, i.source_score,
+               v.video_id, v.game, v.role,
+               """ + effective_subject_sql + """ AS subject,
                v.champion, v.rank, v.website_rating,
                COALESCE(v.source, 'discord') AS source
         FROM insights i
@@ -105,8 +114,11 @@ def _load_vectors_from_db(
         query += " AND v.role = ?"
         params.append(role)
     if subject:
-        query += " AND LOWER(COALESCE(v.subject, v.champion)) = LOWER(?)"
+        query += " AND LOWER(" + effective_subject_sql + ") = LOWER(?)"
         params.append(subject)
+    elif game == "aoe2":
+        # General AoE2 queries should not be polluted by civ-tagged insights.
+        query += " AND COALESCE(i.subject_type, 'general') = 'general'"
     if champion:
         query += " AND LOWER(v.champion) = LOWER(?)"
         params.append(champion)
@@ -126,6 +138,8 @@ def _load_vectors_from_db(
             "game": row["game"],
             "role": row["role"],
             "subject": row["subject"],
+            "insight_subject": row["raw_subject"],
+            "subject_type": row["subject_type"],
             "champion": row["champion"],
             "rank": row["rank"],
             "website_rating": row["website_rating"],

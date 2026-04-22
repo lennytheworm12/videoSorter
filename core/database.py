@@ -44,6 +44,8 @@ def init_db() -> None:
                 video_id      TEXT NOT NULL REFERENCES videos(video_id),
                 insight_type  TEXT NOT NULL,
                 text          TEXT NOT NULL,
+                subject       TEXT,
+                subject_type  TEXT,
                 source_score  REAL DEFAULT NULL,
                 cluster_score REAL DEFAULT NULL,
                 confidence    REAL DEFAULT NULL,
@@ -52,6 +54,8 @@ def init_db() -> None:
         """)
         # Add columns to existing DBs that predate this schema
         for col, typedef in [
+            ("subject",           "TEXT DEFAULT NULL"),
+            ("subject_type",      "TEXT DEFAULT NULL"),
             ("source_score",      "REAL DEFAULT NULL"),
             ("cluster_score",     "REAL DEFAULT NULL"),
             ("confidence",        "REAL DEFAULT NULL"),
@@ -245,12 +249,18 @@ def insert_insight(
     text: str,
     source_score: float | None = None,
     repetition_count: int = 1,
+    subject: Optional[str] = None,
+    subject_type: Optional[str] = None,
 ) -> int:
     """Insert an insight and return its row id."""
     with get_connection() as conn:
         cur = conn.execute(
-            "INSERT INTO insights (video_id, insight_type, text, source_score, repetition_count) VALUES (?, ?, ?, ?, ?)",
-            (video_id, insight_type, text, source_score, repetition_count),
+            """
+            INSERT INTO insights (
+                video_id, insight_type, text, subject, subject_type, source_score, repetition_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (video_id, insight_type, text, subject, subject_type, source_score, repetition_count),
         )
         conn.commit()
         return cur.lastrowid
@@ -274,7 +284,7 @@ def get_all_insights_with_embeddings() -> list:
     with get_connection() as conn:
         return conn.execute(
             """
-            SELECT id, video_id, insight_type, text, embedding, source_score
+            SELECT id, video_id, insight_type, text, subject, subject_type, embedding, source_score
             FROM insights
             WHERE embedding IS NOT NULL
             """
