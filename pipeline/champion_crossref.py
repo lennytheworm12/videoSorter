@@ -232,6 +232,10 @@ def generalize_insights(dry_run: bool = False) -> None:
     """
     Label each champion_identity insight as 'specific' or 'generalizable'.
     Skips insights already labeled in crossref_insights.
+
+    Safety rule: if the LLM call fails or returns malformed output, do NOT write a
+    fallback row. Leave the insight unlabeled so a future rerun can classify it
+    correctly instead of poisoning the DB with a bogus 'specific' label.
     """
     # Get already-processed insight IDs
     with get_connection() as conn:
@@ -268,6 +272,7 @@ def generalize_insights(dry_run: bool = False) -> None:
     batch: list[tuple] = []
     total_saved = 0
     total_gen = 0
+    total_skipped = 0
 
     def _flush(b: list[tuple]) -> None:
         nonlocal total_saved, total_gen
@@ -282,6 +287,11 @@ def generalize_insights(dry_run: bool = False) -> None:
         total_gen += sum(1 for _, _, _, s in b if s == "generalizable")
 
     for i, row in enumerate(pending, 1):
+        if not row["archetype"]:
+            print(f"    [skip] insight {row['id']}: no archetype for {row['champion']}")
+            total_skipped += 1
+            continue
+
         prompt = GENERALIZE_PROMPT.format(
             champion=row["champion"],
             role=row["role"],
@@ -295,12 +305,15 @@ def generalize_insights(dry_run: bool = False) -> None:
                 if raw.startswith("json"):
                     raw = raw[4:]
             data = json.loads(raw.strip())
-            scope = data.get("scope", "specific")
+            scope = data.get("scope")
             if scope not in ("specific", "generalizable"):
-                scope = "specific"
+                print(f"    [skip] insight {row['id']}: invalid scope {scope!r}")
+                total_skipped += 1
+                continue
         except Exception as e:
             print(f"    [error] insight {row['id']}: {e}")
-            scope = "specific"
+            total_skipped += 1
+            continue
 
         batch.append((
             row["id"], row["champion"], row["archetype"] or "unknown", scope
@@ -311,12 +324,18 @@ def generalize_insights(dry_run: bool = False) -> None:
             batch = []
 
         if i % 50 == 0:
-            print(f"    {i}/{len(pending)} labeled… ({total_gen} generalizable so far)")
+            print(
+                f"    {i}/{len(pending)} processed… "
+                f"({total_saved} labeled, {total_gen} generalizable, {total_skipped} skipped)"
+            )
 
     if batch:
         _flush(batch)
 
-    print(f"  Done — {total_gen}/{total_saved} labeled generalizable.")
+    print(
+        f"  Done — {total_gen}/{total_saved} labeled generalizable. "
+        f"{total_skipped} skipped."
+    )
 
 
 # ── Status ────────────────────────────────────────────────────────────────────
