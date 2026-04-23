@@ -442,6 +442,9 @@ Rules:
 - If a section has limited evidence, keep it brief instead of inventing details.
 - For detailed questions, include concrete checkpoints, transitions, and mistakes
   when the evidence supports them.
+- For detailed questions, write 2-3 evidence-backed sentences per section when
+  that section has multiple useful retrieved insights. Do not collapse a
+  well-supported section into one broad sentence.
 - For detailed questions, make Core Identity / Gameplan and Opening / First
   Minutes dense when the section evidence supports it. Preserve useful build
   order timings, age-up windows, unit transitions, and early scouting/economy
@@ -458,6 +461,7 @@ Grouped retrieved insights:
 {sectioned_insights}
 
 Write the answer using the required section headings.
+If detail mode is yes, make each well-supported section 2-3 sentences.
 """.strip()
 
 AOE2_CIV_OVERVIEW_SECTION_TOP_K = 5

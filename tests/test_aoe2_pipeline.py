@@ -603,9 +603,11 @@ class Aoe2PipelineTests(unittest.TestCase):
         self.assertIn("  Core Identity / Gameplan:", answer)
         self.assertIn("  Opening / First Minutes:", answer)
         self.assertIn("### Opening / First Minutes", mocked_llm.call_args.kwargs["system"])
+        self.assertIn("2-3 evidence-backed sentences", mocked_llm.call_args.kwargs["system"])
         self.assertIn("## Core Identity / Gameplan", mocked_llm.call_args.kwargs["user"])
         self.assertIn("## Opening / First Minutes", mocked_llm.call_args.kwargs["user"])
         self.assertIn("Detail mode: yes", mocked_llm.call_args.kwargs["user"])
+        self.assertIn("2-3 sentences", mocked_llm.call_args.kwargs["user"])
 
     def test_detect_aoe2_intent_marks_civ_matchups(self) -> None:
         self.assertEqual(
