@@ -69,6 +69,8 @@ def _source_weight(meta: dict) -> float:
         return 0.9
     if source == "aoe2_wiki":
         return 1.1
+    if source == "aoe2_pdf":
+        return 1.2
     if source in {"aoe2_video", "aoe2_coaching"}:
         return 1.0
     if source == "mobafire_guide":
@@ -98,6 +100,8 @@ def _source_label(meta: dict) -> str:
         return " | ".join(parts)
     if source == "aoe2_wiki":
         return "wiki"
+    if source == "aoe2_pdf":
+        return "pdf guide"
     if source == "aoe2_coaching":
         return "coaching"
     if source == "aoe2_video":
@@ -779,6 +783,12 @@ def _aoe2_query_profile(question: str) -> dict[str, object]:
     preferred: list[str] = []
     situation_tags: list[str] = []
     notes: list[str] = []
+    is_detail = bool(
+        re.search(r"\b(detail|detailed|in[- ]?depth|step by step|full guide|explain more)\b", q)
+    )
+    is_civ_overview = bool(
+        re.search(r"\b(how (?:should|do) i play|how to play|playstyle|guide|gameplan)\b", q)
+    )
 
     def add(*insight_types: str) -> None:
         for insight_type in insight_types:
@@ -864,17 +874,46 @@ def _aoe2_query_profile(question: str) -> dict[str, object]:
     if re.search(r"\b(switch|transition|tech switch)\b", q):
         add_tag("tech_switch")
 
+    if is_civ_overview:
+        add(
+            "civilization_identity",
+            "build_orders",
+            "dark_age",
+            "feudal_age",
+            "castle_age",
+            "imperial_age",
+            "economy_macro",
+            "unit_compositions",
+            "map_control",
+        )
+        add_tag("dark_age", "feudal_pressure", "castle_timing", "imperial_transition")
+        notes.append(
+            "For a civilization overview, include a practical opening plan and describe how the game should progress through each age."
+        )
+
+    if is_detail:
+        notes.append(
+            "The player asked for detail, so give a step-by-step answer with more concrete checkpoints and common mistakes."
+        )
+
     if not preferred:
         add("principles", "economy_macro")
 
     guidance = ""
     if notes:
         guidance = "\n\nAoE2 answer guidance:\n- " + "\n- ".join(notes)
+    if is_civ_overview:
+        guidance += (
+            "\n\nFor civilization overview questions, structure the answer with these sections when supported by the retrieved insights: "
+            "Core Identity, Opening / First Minutes, Dark Age, Feudal Age, Castle Age, Imperial / Win Condition, Common Mistakes."
+        )
 
     return {
         "preferred_types": preferred,
         "situation_tags": situation_tags,
         "guidance": guidance,
+        "detail": is_detail,
+        "civ_overview": is_civ_overview,
     }
 
 
@@ -1490,7 +1529,10 @@ def answer(
             "preferred_types": None,
             "situation_tags": None,
             "guidance": "",
+            "detail": False,
+            "civ_overview": False,
         }
+        effective_top_k = max(top_k, 24) if aoe2_profile.get("detail") else top_k
         insights = retrieve(
             question,
             role=role,
@@ -1499,9 +1541,10 @@ def answer(
             preferred_types=aoe2_profile["preferred_types"],
             situation_tags=aoe2_profile["situation_tags"],
             game=game,
-            top_k=top_k,
+            top_k=effective_top_k,
         )
         if subject:
+            general_top_k = max(8, effective_top_k // 2) if aoe2_profile.get("civ_overview") else max(4, effective_top_k // 3)
             general_hits = retrieve(
                 question,
                 role=role,
@@ -1510,9 +1553,9 @@ def answer(
                 preferred_types=aoe2_profile["preferred_types"],
                 situation_tags=aoe2_profile["situation_tags"],
                 game=game,
-                top_k=max(4, top_k // 3),
+                top_k=general_top_k,
             )
-            insights = _merge_ranked_results(insights, general_hits, limit=top_k)
+            insights = _merge_ranked_results(insights, general_hits, limit=effective_top_k)
         if not insights:
             return "No relevant insights found. Make sure embed.py has been run."
 

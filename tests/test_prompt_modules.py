@@ -38,6 +38,10 @@ class PromptModuleTests(unittest.TestCase):
             analysis_spec("aoe2", "aoe2_wiki").system_prompt,
             AOE2_GUIDE_WRITTEN_SYSTEM_PROMPT,
         )
+        self.assertEqual(
+            analysis_spec("aoe2", "aoe2_pdf").system_prompt,
+            AOE2_GUIDE_WRITTEN_SYSTEM_PROMPT,
+        )
 
     def test_coaching_pipeline_imports_prompt_module_constants(self) -> None:
         self.assertEqual(coaching_analyze.LOL_COACHING_SYSTEM_PROMPT, LOL_COACHING_SYSTEM_PROMPT)

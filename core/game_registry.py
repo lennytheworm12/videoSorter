@@ -224,7 +224,7 @@ def analysis_spec(game: str, source: str) -> AnalysisSpec:
     game = normalize_game(game)
     if game == "aoe2":
         insight_types = AOE2_INSIGHT_TYPES
-        if source == "aoe2_wiki":
+        if source in {"aoe2_wiki", "aoe2_pdf"}:
             system_prompt = AOE2_GUIDE_WRITTEN_SYSTEM_PROMPT
         elif source == "aoe2_coaching":
             system_prompt = AOE2_GUIDE_COACHING_SYSTEM_PROMPT

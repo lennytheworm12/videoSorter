@@ -29,6 +29,9 @@ uv run python -m scrape.aoe2_video_import --review
 # Structured AoE2 import fallback (CSV/JSON)
 uv run python -m scrape.aoe2_import --input data/aoe2_sources.json --source aoe2_wiki
 
+# Import a written AoE2 PDF guide into knowledge.db
+uv run python -m scrape.aoe2_pdf_import "/mnt/c/Users/bphan/Downloads/hera-strategy-guide-2025-12 (1).pdf" --title "Hera Strategy Guide 2025"
+
 # Check what was scraped (debug)
 uv run python -m scrape.debug_scrape
 
@@ -114,6 +117,7 @@ uv run python -m pipeline.guide_transcribe
 uv run python -m pipeline.guide_analyze --game aoe2
 uv run python -m pipeline.guide_analyze --game aoe2 --source aoe2_coaching
 uv run python -m pipeline.guide_analyze --game aoe2 --source aoe2_wiki
+uv run python -m pipeline.guide_analyze --game aoe2 --source aoe2_pdf
 ```
 
 ---

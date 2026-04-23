@@ -18,6 +18,7 @@ Usage:
 import json
 import os
 import argparse
+import re
 from core.llm import chat as llm_chat
 from core.game_registry import (
     AOE2_CIVILIZATIONS,
@@ -143,6 +144,10 @@ _TEMPLATE_LIST = "\n".join(
 )
 
 AOE2_CANONICAL_QUESTIONS = [
+    ("How should I play [civilization] from opening through win condition?",
+     ["civilization_identity", "build_orders", "dark_age", "feudal_age", "castle_age", "imperial_age", "economy_macro", "unit_compositions", "map_control"],
+     "Civilization overview with opening and age-by-age game plan"),
+
     ("What is the core identity and win condition of [civilization]?",
      ["civilization_identity", "principles", "unit_compositions"],
      "Civilization identity and broad game plan"),
@@ -269,6 +274,8 @@ Return a JSON object with these fields:
 Rules:
 - Use "subject" only for a named civilization, not a strategy archetype.
 - If the question is about general fundamentals, leave subject as null.
+- For broad questions like "how should I play [civilization]" or "[civilization] guide",
+  prefer the full opening-through-win-condition template, not identity-only.
 - Prefer the most specific canonical phrasing that fits the player's intent.
 - Use "controls_settings" for hotkeys, control groups, camera setup, UI usage,
   and command efficiency.
@@ -294,6 +301,26 @@ def _extract_aoe2_subject(question: str) -> str | None:
         return None
     matches.sort(key=lambda item: item[0])
     return matches[0][1]
+
+
+def _is_aoe2_civ_overview_question(question: str, subject: str | None) -> bool:
+    if not subject:
+        return False
+    return bool(
+        re.search(
+            r"\b(how (?:should|do) i play|how to play|playstyle|guide|gameplan)\b",
+            question.lower(),
+        )
+    )
+
+
+def _is_detail_question(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(detail|detailed|in[- ]?depth|step by step|full guide|explain more)\b",
+            question.lower(),
+        )
+    )
 
 
 def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
@@ -326,6 +353,22 @@ def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
                 data["subject"] = canonical_aoe2_civilization(data["subject"]) or detected_subject
             else:
                 data["subject"] = detected_subject
+            if _is_aoe2_civ_overview_question(question, data.get("subject")):
+                detail_suffix = " in detail" if _is_detail_question(question) else ""
+                data["normalized"] = (
+                    f"How should I play {data['subject']} from opening through win condition{detail_suffix}?"
+                )
+                data["insight_types"] = [
+                    "civilization_identity",
+                    "build_orders",
+                    "dark_age",
+                    "feudal_age",
+                    "castle_age",
+                    "imperial_age",
+                    "economy_macro",
+                    "unit_compositions",
+                    "map_control",
+                ]
             data.setdefault("role", None)
             data.setdefault("insight_types", ["general_advice"])
             data.setdefault("reasoning", "Mapped via AoE2 normalization prompt")

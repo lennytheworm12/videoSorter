@@ -12,10 +12,12 @@ import pipeline.guide_analyze as guide_analyze
 import pipeline.guide_transcribe as guide_transcribe
 import pipeline.embed as embed
 from scrape.aoe2_import import import_rows
+from scrape.aoe2_pdf_import import import_pdf
 from scrape.aoe2_video_import import _classify_row, _read_url_lines, import_urls
 from scrape.aoe2_wiki_scrape import discover_portal_pages, extract_page_text
 import retrieval.query as retrieval_query
 from retrieval.query import _aoe2_query_profile, detect_aoe2_intent
+from retrieval.questions import normalize
 
 
 class Aoe2PipelineTests(unittest.TestCase):
@@ -120,12 +122,38 @@ class Aoe2PipelineTests(unittest.TestCase):
         video_spec = analysis_spec("aoe2", "aoe2_video")
         coaching_spec = analysis_spec("aoe2", "aoe2_coaching")
         wiki_spec = analysis_spec("aoe2", "aoe2_wiki")
+        pdf_spec = analysis_spec("aoe2", "aoe2_pdf")
 
         self.assertIn("guide-style content", video_spec.system_prompt)
         self.assertIn("coaching sessions, replay reviews", coaching_spec.system_prompt)
         self.assertIn("written guides and reference pages", wiki_spec.system_prompt)
+        self.assertIn("written guides and reference pages", pdf_spec.system_prompt)
         self.assertEqual(video_spec.insight_types, coaching_spec.insight_types)
         self.assertEqual(video_spec.insight_types, wiki_spec.insight_types)
+        self.assertEqual(video_spec.insight_types, pdf_spec.insight_types)
+
+    def test_pdf_import_marks_extracted_text_transcribed_and_idempotent(self) -> None:
+        pdf_path = pathlib.Path(self._tmpdir.name) / "hera.pdf"
+        pdf_path.write_bytes(b"%PDF test")
+
+        with mock.patch("scrape.aoe2_pdf_import.extract_pdf_text", return_value="Malay fast uptime opening guide."):
+            first_id = import_pdf(pdf_path, title="Hera Strategy Guide 2025")
+            second_id = import_pdf(pdf_path, title="Hera Strategy Guide 2025")
+
+        self.assertEqual(first_id, second_id)
+        with db.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT video_id, source, game, role, status, transcription, video_title FROM videos"
+            ).fetchall()
+
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["source"], "aoe2_pdf")
+        self.assertEqual(row["game"], "aoe2")
+        self.assertEqual(row["role"], "general")
+        self.assertEqual(row["status"], "transcribed")
+        self.assertEqual(row["video_title"], "Hera Strategy Guide 2025")
+        self.assertIn("Malay fast uptime", row["transcription"])
 
     def test_txt_video_import_supports_overrides_and_mixed_playlist_classification(self) -> None:
         input_path = pathlib.Path(self._tmpdir.name) / "aoe2_urls.txt"
@@ -243,6 +271,16 @@ class Aoe2PipelineTests(unittest.TestCase):
         self.assertTrue(chunks[0].endswith("."))
         self.assertIn("Scout early", chunks[0])
         self.assertTrue(any("Add farms" in chunk for chunk in chunks[1:]))
+
+    def test_guide_chunk_transcript_can_force_split_for_large_pdf_sources(self) -> None:
+        transcript = "Malay fast uptime opening. " * 900
+
+        with mock.patch.object(guide_analyze, "BACKEND", "gemini"):
+            normal_chunks = guide_analyze.chunk_transcript(transcript)
+            pdf_chunks = guide_analyze.chunk_transcript(transcript, force_split=True)
+
+        self.assertEqual(len(normal_chunks), 1)
+        self.assertGreater(len(pdf_chunks), 1)
 
     def test_guide_retranscribe_reset_only_touches_transcribable_sources(self) -> None:
         insert_video(
@@ -403,6 +441,98 @@ class Aoe2PipelineTests(unittest.TestCase):
         self.assertIn("unit_compositions", preferred_types)
         self.assertNotIn("controls_settings", preferred_types)
         self.assertEqual(profile["situation_tags"], [])
+
+    def test_aoe2_query_profile_expands_civ_overview_and_detail_questions(self) -> None:
+        profile = _aoe2_query_profile("how should I play the Malay in detail?")
+        preferred_types = profile["preferred_types"]
+        self.assertTrue(profile["civ_overview"])
+        self.assertTrue(profile["detail"])
+        self.assertIn("civilization_identity", preferred_types)
+        self.assertIn("build_orders", preferred_types)
+        self.assertIn("dark_age", preferred_types)
+        self.assertIn("imperial_age", preferred_types)
+        self.assertIn("Opening / First Minutes", profile["guidance"])
+
+    def test_aoe2_normalization_expands_how_to_play_civ_questions(self) -> None:
+        raw = (
+            '{"normalized":"What is the core identity and win condition of Malay?",'
+            '"subject":"Malay","role":null,'
+            '"insight_types":["civilization_identity","principles"],'
+            '"reasoning":"Broad civ question."}'
+        )
+        with mock.patch("retrieval.questions.llm_chat", return_value=raw):
+            result = normalize("how should I play the Malay", game="aoe2")
+
+        self.assertEqual(
+            result["normalized"],
+            "How should I play Malay from opening through win condition?",
+        )
+        self.assertEqual(result["subject"], "Malay")
+        self.assertIn("build_orders", result["insight_types"])
+
+    def test_aoe2_normalization_preserves_detail_mode_for_civ_overviews(self) -> None:
+        raw = (
+            '{"normalized":"What is the core identity and win condition of Malay?",'
+            '"subject":"Malay","role":null,'
+            '"insight_types":["civilization_identity","principles"],'
+            '"reasoning":"Broad detailed civ question."}'
+        )
+        with mock.patch("retrieval.questions.llm_chat", return_value=raw):
+            result = normalize("how should I play the Malay in detail", game="aoe2")
+
+        self.assertEqual(
+            result["normalized"],
+            "How should I play Malay from opening through win condition in detail?",
+        )
+
+    def test_aoe2_answer_uses_detail_top_k_and_merges_more_general_hits(self) -> None:
+        direct_hits = [
+            {
+                "text": "Malay advance quickly and should use timing windows.",
+                "insight_type": "civilization_identity",
+                "score": 0.9,
+                "confidence": 0.8,
+                "source_weight": 1.0,
+                "source": "aoe2_video",
+                "retrieval_layer": "direct",
+            }
+        ]
+        general_hits = [
+            {
+                "text": "Use a clean opening with constant villager production.",
+                "insight_type": "build_orders",
+                "score": 0.8,
+                "confidence": 0.8,
+                "source_weight": 1.2,
+                "source": "aoe2_pdf",
+                "retrieval_layer": "direct",
+            }
+        ]
+
+        calls = []
+
+        def fake_retrieve(*args, **kwargs):
+            calls.append(kwargs)
+            return direct_hits if kwargs.get("subject") == "Malay" else general_hits
+
+        with mock.patch.object(retrieval_query, "retrieve", side_effect=fake_retrieve), mock.patch.object(
+            retrieval_query,
+            "llm_chat",
+            return_value="Detailed Malay answer",
+        ) as mocked_llm:
+            answer = retrieval_query.answer(
+                "How should I play Malay from opening through win condition in detail?",
+                game="aoe2",
+                subject="Malay",
+                top_k=12,
+                show_sources=False,
+            )
+
+        self.assertEqual(answer, "Detailed Malay answer")
+        self.assertEqual(calls[0]["top_k"], 24)
+        self.assertGreaterEqual(calls[1]["top_k"], 12)
+        self.assertIn("Opening / First Minutes", mocked_llm.call_args.kwargs["system"])
+        self.assertIn("Use a clean opening", mocked_llm.call_args.kwargs["user"])
 
     def test_detect_aoe2_intent_marks_civ_matchups(self) -> None:
         self.assertEqual(

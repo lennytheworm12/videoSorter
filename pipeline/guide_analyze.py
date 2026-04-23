@@ -7,6 +7,7 @@ Supported sources:
   - aoe2_video      : transcribed Age of Empires II educational videos
   - aoe2_coaching   : transcribed Age of Empires II coaching / review videos
   - aoe2_wiki       : imported Age of Empires II reference/wiki text
+  - aoe2_pdf        : imported Age of Empires II written PDF guide text
 
 Usage:
     uv run python -m pipeline.guide_analyze               # all guide sources
@@ -41,7 +42,14 @@ EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
 _WINDOW_WORDS  = 40
 _WINDOW_STRIDE = 20
 
-GUIDE_SOURCES = ("youtube_guide", "mobafire_guide", "aoe2_video", "aoe2_coaching", "aoe2_wiki")
+GUIDE_SOURCES = (
+    "youtube_guide",
+    "mobafire_guide",
+    "aoe2_video",
+    "aoe2_coaching",
+    "aoe2_wiki",
+    "aoe2_pdf",
+)
 
 # Match the main League analyzer's smart context breaking for long transcripts.
 CHUNK_CHARS = 10_000
@@ -75,15 +83,14 @@ def score_source_grounding(insight_text: str, window_matrix: np.ndarray) -> floa
     return float((window_matrix @ vec).max())
 
 
-def chunk_transcript(transcript: str) -> list[str]:
+def chunk_transcript(transcript: str, force_split: bool = False) -> list[str]:
     """
     Match the main League analyzer's context-aware transcript chunking.
 
-    Gemini takes the full transcript in one call. Other backends split near
-    sentence boundaries with a short lookback window and fall back to word
-    boundaries for messy auto-captions.
+    Gemini takes normal transcripts in one call. Very large written sources can
+    force splitting so section-level details are not flattened into one prompt.
     """
-    if BACKEND == "gemini":
+    if BACKEND == "gemini" and not force_split:
         return [transcript]
 
     sentence_endings = {".", "!", "?"}
@@ -209,7 +216,7 @@ def _get_pending_guide_videos(
     game: str | None = None,
 ) -> list:
     with get_connection() as conn:
-        source_clause = "source IN ('youtube_guide', 'mobafire_guide', 'aoe2_video', 'aoe2_coaching', 'aoe2_wiki')"
+        source_clause = "source IN ('youtube_guide', 'mobafire_guide', 'aoe2_video', 'aoe2_coaching', 'aoe2_wiki', 'aoe2_pdf')"
         params: list = []
         if source:
             source_clause = "source = ?"
@@ -252,7 +259,7 @@ def analyze_video(video: dict, dry_run: bool = False) -> int:
     source    = video["source"] or "youtube_guide"
     transcript = video["transcription"] or ""
 
-    chunks = chunk_transcript(transcript)
+    chunks = chunk_transcript(transcript, force_split=source == "aoe2_pdf")
     total_words = len(transcript.split())
     print(f"  {total_words:,} words → {len(chunks)} chunk(s)")
 
@@ -338,7 +345,7 @@ def run(
 def _reset_for_reanalysis(subject: str | None, source: str | None, game: str | None) -> None:
     """Delete existing insights and reset status to transcribed so run() picks them up."""
     with get_connection() as conn:
-        source_clause = "source IN ('youtube_guide', 'mobafire_guide', 'aoe2_video', 'aoe2_coaching', 'aoe2_wiki')"
+        source_clause = "source IN ('youtube_guide', 'mobafire_guide', 'aoe2_video', 'aoe2_coaching', 'aoe2_wiki', 'aoe2_pdf')"
         params: list = []
         if source:
             source_clause = "source = ?"
