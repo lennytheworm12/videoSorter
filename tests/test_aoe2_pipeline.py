@@ -7,7 +7,7 @@ import numpy as np
 
 import core.database as db
 from core.database import init_db, insert_insight, insert_video
-from core.game_registry import analysis_spec
+from core.game_registry import analysis_spec, canonical_aoe2_civilization, find_aoe2_civilizations
 import pipeline.guide_analyze as guide_analyze
 import pipeline.guide_transcribe as guide_transcribe
 import pipeline.embed as embed
@@ -470,6 +470,23 @@ class Aoe2PipelineTests(unittest.TestCase):
         self.assertEqual(result["subject"], "Malay")
         self.assertIn("build_orders", result["insight_types"])
 
+    def test_aoe2_normalization_uses_mistyped_subject_match(self) -> None:
+        raw = (
+            '{"normalized":"What is the core identity and win condition of Malay?",'
+            '"subject":"Malians","role":null,'
+            '"insight_types":["civilization_identity","principles"],'
+            '"reasoning":"Broad civ question."}'
+        )
+        with mock.patch("retrieval.questions.llm_chat", return_value=raw):
+            result = normalize("how should I play malya", game="aoe2")
+
+        self.assertEqual(result["subject"], "Malay")
+        self.assertIn("local civ-name correction", result["reasoning"])
+        self.assertEqual(
+            result["normalized"],
+            "How should I play Malay from opening through win condition?",
+        )
+
     def test_aoe2_normalization_preserves_detail_mode_for_civ_overviews(self) -> None:
         raw = (
             '{"normalized":"What is the core identity and win condition of Malay?",'
@@ -538,6 +555,21 @@ class Aoe2PipelineTests(unittest.TestCase):
         self.assertEqual(
             detect_aoe2_intent("Franks vs Hindustanis"),
             {"type": "matchup", "a": "Franks", "b": "Hindustanis"},
+        )
+
+    def test_aoe2_civ_matching_handles_aliases_and_common_typos(self) -> None:
+        self.assertEqual(canonical_aoe2_civilization("byz"), "Byzantines")
+        self.assertEqual(canonical_aoe2_civilization("hindustan"), "Hindustanis")
+        self.assertEqual(find_aoe2_civilizations("how to play byzintines")[0][1], "Byzantines")
+        self.assertEqual(
+            find_aoe2_civilizations("malya vs hindustans"),
+            [(0, "Malay"), (9, "Hindustanis")],
+        )
+
+    def test_detect_aoe2_intent_handles_mistyped_civ_names(self) -> None:
+        self.assertEqual(
+            detect_aoe2_intent("malya vs hindustans"),
+            {"type": "matchup", "a": "Malay", "b": "Hindustanis"},
         )
 
     def test_answer_routes_aoe2_matchup_questions_to_duo_mode(self) -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+from difflib import get_close_matches
 
 from core.champions import champion_names_for_prompt
 from prompts.aoe2 import (
@@ -135,10 +136,33 @@ AOE2_CIVILIZATIONS = (
 )
 
 AOE2_CIV_ALIASES = {
+    "armenian": "Armenians",
+    "athenian": "Athenians",
+    "aztec": "Aztecs",
+    "bengali": "Bengalis",
+    "berber": "Berbers",
     "bizantines": "Byzantines",
+    "byz": "Byzantines",
+    "byzants": "Byzantines",
+    "byzintines": "Byzantines",
+    "bohemian": "Bohemians",
+    "briton": "Britons",
+    "bulgarian": "Bulgarians",
+    "burgundian": "Burgundians",
+    "burmese": "Burmese",
     "byzantine": "Byzantines",
+    "byzantins": "Byzantines",
+    "celt": "Celts",
+    "chinese": "Chinese",
+    "cuman": "Cumans",
+    "dravidians": "Dravidians",
+    "ethiopian": "Ethiopians",
     "frank": "Franks",
+    "georgian": "Georgians",
+    "goth": "Goths",
     "gurjara": "Gurjaras",
+    "hindustan": "Hindustanis",
+    "hindustans": "Hindustanis",
     "hindustani": "Hindustanis",
     "hun": "Huns",
     "inca": "Incas",
@@ -149,6 +173,7 @@ AOE2_CIV_ALIASES = {
     "lacviet": "Lac Viet",
     "lithuanian": "Lithuanians",
     "magyar": "Magyars",
+    "malya": "Malay",
     "malian": "Malians",
     "mapuche": "Mapuche",
     "maya": "Mayans",
@@ -165,7 +190,12 @@ AOE2_CIV_ALIASES = {
     "turk": "Turks",
     "tupi": "Tupi",
     "viking": "Vikings",
+    "viet": "Vietnamese",
+    "vietnam": "Vietnamese",
+    "vietnamese": "Vietnamese",
 }
+
+_AOE2_CIV_LOOKUP: dict[str, str] | None = None
 
 
 def normalize_game(game: str | None) -> str:
@@ -210,15 +240,82 @@ def canonical_aoe2_civilization(name: str | None) -> str | None:
     key = re.sub(r"[^a-z0-9 ]", "", name.strip().lower())
     if not key:
         return None
-    lookup = {
-        re.sub(r"[^a-z0-9 ]", "", civilization.lower()): civilization
-        for civilization in AOE2_CIVILIZATIONS
-    }
-    lookup.update({
-        re.sub(r"[^a-z0-9 ]", "", alias.lower()): civilization
-        for alias, civilization in AOE2_CIV_ALIASES.items()
-    })
+    lookup = aoe2_civilization_lookup()
     return lookup.get(key)
+
+
+def aoe2_civilization_lookup() -> dict[str, str]:
+    global _AOE2_CIV_LOOKUP
+    if _AOE2_CIV_LOOKUP is None:
+        lookup: dict[str, str] = {}
+        for civilization in AOE2_CIVILIZATIONS:
+            key = re.sub(r"[^a-z0-9 ]", "", civilization.lower())
+            compact = key.replace(" ", "")
+            lookup[key] = civilization
+            lookup[compact] = civilization
+            if key.endswith("s"):
+                lookup[key[:-1]] = civilization
+                lookup[compact[:-1]] = civilization
+        for alias, civilization in AOE2_CIV_ALIASES.items():
+            key = re.sub(r"[^a-z0-9 ]", "", alias.lower())
+            lookup[key] = civilization
+            lookup[key.replace(" ", "")] = civilization
+        _AOE2_CIV_LOOKUP = lookup
+    return _AOE2_CIV_LOOKUP
+
+
+def find_aoe2_civilizations(text: str, max_distance: int = 1) -> list[tuple[int, str]]:
+    """
+    Find civ mentions with exact alias matches plus conservative typo fallback.
+
+    The typo fallback only considers single-token civ names/aliases and allows a
+    one-edit near match, which catches common query typos without turning random
+    strategy words into civilization names.
+    """
+    q = text.lower()
+    q_norm = re.sub(r"[^a-z0-9 ]", " ", q)
+    q_norm = re.sub(r"\s+", " ", q_norm).strip()
+    lookup = aoe2_civilization_lookup()
+
+    found: list[tuple[int, str]] = []
+    spans: list[tuple[int, int]] = []
+
+    def add(start: int, end: int, civilization: str) -> None:
+        if any(s <= start < e or s < end <= e for s, e in spans):
+            return
+        if any(existing == civilization for _, existing in found):
+            return
+        spans.append((start, end))
+        found.append((start, civilization))
+
+    for key in sorted(lookup, key=len, reverse=True):
+        if not key:
+            continue
+        for search_q in (q, q_norm):
+            match = re.search(r"\b" + re.escape(key) + r"\b", search_q)
+            if match:
+                add(match.start(), match.end(), lookup[key])
+                break
+
+    # Conservative typo fallback for single-token civ names and aliases.
+    token_matches = list(re.finditer(r"\b[a-z][a-z0-9]{3,14}\b", q_norm))
+    single_token_lookup = {
+        key: value
+        for key, value in lookup.items()
+        if " " not in key and len(key) >= 4
+    }
+    single_keys = list(single_token_lookup)
+    for match in token_matches:
+        token = match.group(0)
+        if token in single_token_lookup:
+            continue
+        close = get_close_matches(token, single_keys, n=1, cutoff=0.84 if max_distance <= 1 else 0.78)
+        if close:
+            add(match.start(), match.end(), single_token_lookup[close[0]])
+
+    found.sort(key=lambda item: item[0])
+    return found
+
 
 def analysis_spec(game: str, source: str) -> AnalysisSpec:
     game = normalize_game(game)

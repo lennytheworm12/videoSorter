@@ -38,7 +38,7 @@ from pipeline.champion_crossref import get_archetype_insights
 from pipeline.aoe2_crossref import get_applicable_insights
 from core.llm import chat as llm_chat
 from core.db_paths import all_content_db_paths
-from core.game_registry import AOE2_CIVILIZATIONS, DEFAULT_GAME, canonical_aoe2_civilization, game_label, normalize_game
+from core.game_registry import DEFAULT_GAME, canonical_aoe2_civilization, find_aoe2_civilizations, game_label, normalize_game
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 TOP_K = 35
@@ -452,7 +452,6 @@ Using only the insights above, explain how {subject_a} should play against {subj
 # ── Intent detection ──────────────────────────────────────────────────────────
 
 _CHAMPION_LOOKUP: dict[str, str] | None = None  # {normalized_lowercase: canonical}
-_AOE2_LOOKUP: dict[str, str] | None = None
 
 # Common shorthands and nicknames players actually type
 _CHAMPION_ALIASES: dict[str, str] = {
@@ -528,17 +527,6 @@ def _get_champion_lookup() -> dict[str, str]:
     return _CHAMPION_LOOKUP
 
 
-def _get_aoe2_lookup() -> dict[str, str]:
-    global _AOE2_LOOKUP
-    if _AOE2_LOOKUP is None:
-        lookup: dict[str, str] = {}
-        for name in AOE2_CIVILIZATIONS:
-            lookup[name.lower()] = name
-            lookup[_normalize(name)] = name
-        _AOE2_LOOKUP = lookup
-    return _AOE2_LOOKUP
-
-
 def detect_aoe2_intent(question: str) -> dict:
     """
     Detect civilization-vs-civilization intent for AoE2 questions.
@@ -548,27 +536,7 @@ def detect_aoe2_intent(question: str) -> dict:
         {"type": "general"}
     """
     q = question.lower()
-    q_norm = _normalize(q)
-    lookup = _get_aoe2_lookup()
-
-    found_with_pos: list[tuple[int, str]] = []
-    seen_spans: list[tuple[int, int]] = []
-
-    for name_key in sorted(lookup, key=len, reverse=True):
-        for search_q in (q, q_norm):
-            m = re.search(r"\b" + re.escape(name_key) + r"\b", search_q)
-            if m:
-                start, end = m.start(), m.end()
-                if any(s <= start < e or s < end <= e for s, e in seen_spans):
-                    break
-                canonical = lookup[name_key]
-                if not any(c == canonical for _, c in found_with_pos):
-                    found_with_pos.append((start, canonical))
-                seen_spans.append((start, end))
-                break
-
-    found_with_pos.sort(key=lambda item: item[0])
-    found = [civilization for _, civilization in found_with_pos]
+    found = [civilization for _, civilization in find_aoe2_civilizations(question)]
     if len(found) < 2:
         return {"type": "general"}
 

@@ -24,6 +24,7 @@ from core.game_registry import (
     AOE2_CIVILIZATIONS,
     DEFAULT_GAME,
     canonical_aoe2_civilization,
+    find_aoe2_civilizations,
     normalize_game,
 )
 
@@ -287,20 +288,8 @@ Rules:
 
 
 def _extract_aoe2_subject(question: str) -> str | None:
-    q = question.lower()
-    matches: list[tuple[int, str]] = []
-    for civ in AOE2_CIVILIZATIONS:
-        pos = q.find(civ.lower())
-        if pos != -1:
-            matches.append((pos, civ))
-    if not matches:
-        for token in question.replace("/", " ").replace("-", " ").split():
-            civ = canonical_aoe2_civilization(token)
-            if civ:
-                return civ
-        return None
-    matches.sort(key=lambda item: item[0])
-    return matches[0][1]
+    matches = find_aoe2_civilizations(question)
+    return matches[0][1] if matches else None
 
 
 def _is_aoe2_civ_overview_question(question: str, subject: str | None) -> bool:
@@ -349,10 +338,17 @@ def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
         raw = raw.strip()
         try:
             data = json.loads(raw)
-            if data.get("subject"):
-                data["subject"] = canonical_aoe2_civilization(data["subject"]) or detected_subject
-            else:
+            llm_subject = canonical_aoe2_civilization(data.get("subject")) if data.get("subject") else None
+            if detected_subject:
                 data["subject"] = detected_subject
+                if llm_subject and llm_subject != detected_subject:
+                    data["reasoning"] = (
+                        f"Matched the typed civilization to {detected_subject} using local civ-name correction."
+                    )
+            elif data.get("subject"):
+                data["subject"] = llm_subject
+            else:
+                data["subject"] = None
             if _is_aoe2_civ_overview_question(question, data.get("subject")):
                 detail_suffix = " in detail" if _is_detail_question(question) else ""
                 data["normalized"] = (
