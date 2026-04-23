@@ -12,11 +12,19 @@ rows into Supabase for hosted query serving.
 Required backend env:
 
 ```bash
+cp .env.cloud.example .env.cloud.local
+# then copy the values you need into your main .env
 SUPABASE_DATABASE_URL='postgresql://...'
 SUPABASE_URL='https://your-project.supabase.co'
 SUPABASE_ANON_KEY='...'
 VECTOR_BACKEND=supabase
 REQUIRE_AUTH=true
+```
+
+Check what is still missing:
+
+```bash
+uv run python -m cloud.check_setup
 ```
 
 ## 2. Sync Local Data
@@ -51,6 +59,7 @@ POST /api/query
 Required frontend env in `apps/web/.env.local`:
 
 ```bash
+cp apps/web/.env.local.example apps/web/.env.local
 NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'
 NEXT_PUBLIC_SUPABASE_ANON_KEY='...'
 NEXT_PUBLIC_QUERY_API_URL='http://localhost:8000'

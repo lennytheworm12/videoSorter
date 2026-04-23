@@ -10,9 +10,12 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from core.env import load_project_env
 from core.game_registry import DEFAULT_GAME, normalize_game
 from retrieval.questions import normalize
 from retrieval.query import answer as rag_answer
+
+load_project_env()
 
 
 class QueryRequest(BaseModel):

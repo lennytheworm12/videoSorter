@@ -20,9 +20,12 @@ from typing import Any
 import numpy as np
 
 from core.db_paths import all_content_db_paths
+from core.env import load_project_env
 
 
 VECTOR_DIMENSION = 384
+
+load_project_env()
 
 
 VIDEO_COLUMNS = (

@@ -6,6 +6,10 @@ import os
 from collections.abc import Sequence
 from typing import Any
 
+from core.env import load_project_env
+
+load_project_env()
+
 
 def enabled() -> bool:
     return os.environ.get("VECTOR_BACKEND", "sqlite").strip().lower() == "supabase"

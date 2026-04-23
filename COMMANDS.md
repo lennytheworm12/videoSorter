@@ -143,6 +143,32 @@ uv run python -m retrieval.questions "your question" --top-k 20
 # Ask AoE2-specific questions
 uv run python -m retrieval.questions --game aoe2 "how should I open with Franks?"
 uv run python -m retrieval.questions --game aoe2 "how do I defend early pressure with better micro?"
+
+# Optional: test the split detailed AoE2 answer path
+uv run python -m retrieval.questions --game aoe2 --split-detail "how should I play Khmer in detail"
+```
+
+---
+
+## Cloud MVP
+
+```bash
+# Check local cloud/frontend setup status
+uv run python -m cloud.check_setup
+
+# Preview how many rows will be synced to Supabase
+uv run python -m cloud.migrate_supabase --dry-run
+
+# After running supabase/schema.sql and setting SUPABASE_DATABASE_URL
+uv run python -m cloud.migrate_supabase --apply
+
+# Start the backend query API
+uv run uvicorn api.main:app --reload
+
+# Start the frontend
+cd apps/web
+npm install
+npm run dev
 ```
 
 ---
