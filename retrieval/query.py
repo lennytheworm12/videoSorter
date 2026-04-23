@@ -1758,6 +1758,7 @@ def answer(
     game: str = DEFAULT_GAME,
     top_k: int = TOP_K,
     show_sources: bool = True,
+    aoe2_split_detail: bool = False,
 ) -> str:
     """
     Full RAG pipeline with automatic intent routing:
@@ -1787,6 +1788,7 @@ def answer(
                 subject,
                 aoe2_profile,
                 show_sources=show_sources,
+                split_detail=aoe2_split_detail,
             )
         effective_top_k = max(top_k, 24) if aoe2_profile.get("detail") else top_k
         insights = retrieve(
@@ -2017,6 +2019,7 @@ def _answer_aoe2_civ_overview(
     subject: str,
     profile: dict[str, object],
     show_sources: bool,
+    split_detail: bool = False,
 ) -> str:
     sections = _retrieve_aoe2_civ_overview_sections(
         question,
@@ -2027,7 +2030,7 @@ def _answer_aoe2_civ_overview(
     if not all_insights:
         return f"No relevant insights found for {subject}. Make sure embed.py has been run."
 
-    if profile.get("detail"):
+    if profile.get("detail") and split_detail:
         generated = _answer_aoe2_civ_overview_split(question, subject, sections)
     else:
         generated = llm_chat(
@@ -2035,7 +2038,7 @@ def _answer_aoe2_civ_overview(
             user=AOE2_CIV_OVERVIEW_USER.format(
                 question=question,
                 subject=subject,
-                detail_mode="no",
+                detail_mode="yes" if profile.get("detail") else "no",
                 sectioned_insights=_format_aoe2_civ_overview_sections(sections),
             ),
             temperature=0.2,
@@ -2070,6 +2073,8 @@ def main() -> None:
     parser.add_argument("--type", dest="insight_type",
                         help="Filter by insight type (principles/laning_tips/macro_advice/etc.)")
     parser.add_argument("--top-k", type=int, default=TOP_K, help="Number of insights to retrieve")
+    parser.add_argument("--split-detail", action="store_true",
+                        help="For detailed AoE2 civ overviews, use two LLM calls and splice the answer")
     parser.add_argument("--retrieve-only", action="store_true",
                         help="Show retrieved insights without generating an answer")
     parser.add_argument("--intent", action="store_true",
@@ -2128,6 +2133,7 @@ def main() -> None:
         insight_type=args.insight_type,
         game=args.game,
         top_k=args.top_k,
+        aoe2_split_detail=args.split_detail,
     )
     print(result)
 

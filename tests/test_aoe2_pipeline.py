@@ -641,7 +641,7 @@ class Aoe2PipelineTests(unittest.TestCase):
         ), mock.patch.object(
             retrieval_query,
             "llm_chat",
-            side_effect=["Early Malay answer", "Late Malay answer"],
+            return_value="Detailed Malay answer",
         ) as mocked_llm:
             answer = retrieval_query.answer(
                 "How should I play Malay from opening through win condition in detail?",
@@ -650,27 +650,71 @@ class Aoe2PipelineTests(unittest.TestCase):
                 show_sources=True,
             )
 
-        self.assertIn("Early Malay answer\n\nLate Malay answer", answer)
-        self.assertEqual(mocked_llm.call_count, 2)
+        self.assertIn("Detailed Malay answer", answer)
+        self.assertEqual(mocked_llm.call_count, 1)
         self.assertEqual(answer.count("Use a clean opening"), 2)
         self.assertEqual(answer.count("Sources by section:"), 1)
         self.assertIn("Sources by section:", answer)
         self.assertIn("  Core Identity / Gameplan:", answer)
         self.assertIn("  Opening / First Minutes:", answer)
+        user = mocked_llm.call_args.kwargs["user"]
+        self.assertIn("## Core Identity / Gameplan", user)
+        self.assertIn("## Opening / First Minutes", user)
+        self.assertIn("## Castle Age", user)
+        self.assertIn("Detail mode: yes", user)
+        self.assertIn("2-3 sentences", user)
+
+    def test_aoe2_civ_overview_split_detail_flag_uses_two_llm_calls(self) -> None:
+        def insight(text: str, insight_type: str = "build_orders") -> dict:
+            return {
+                "text": text,
+                "insight_type": insight_type,
+                "score": 0.8,
+                "confidence": 0.8,
+                "source_weight": 2.0,
+                "source": "aoe2_pdf",
+                "retrieval_layer": "direct",
+            }
+
+        sections = [
+            {"name": "Core Identity / Gameplan", "insights": [insight("Core.", "civilization_identity")]},
+            {"name": "Opening / First Minutes", "insights": [insight("Opening.")]},
+            {"name": "Dark Age", "insights": [insight("Dark Age setup.", "dark_age")]},
+            {"name": "Feudal Age", "insights": [insight("Feudal transition.", "feudal_age")]},
+            {"name": "Castle Age", "insights": [insight("Castle Age push.", "castle_age")]},
+            {"name": "Imperial / Win Condition", "insights": [insight("Imperial win condition.", "imperial_age")]},
+            {"name": "Common Mistakes", "insights": [insight("Avoid idle TC.", "principles")]},
+        ]
+
+        with mock.patch.object(
+            retrieval_query,
+            "_retrieve_aoe2_civ_overview_sections",
+            return_value=sections,
+        ), mock.patch.object(
+            retrieval_query,
+            "llm_chat",
+            side_effect=["Early Malay answer", "Late Malay answer"],
+        ) as mocked_llm:
+            answer = retrieval_query.answer(
+                "How should I play Malay from opening through win condition in detail?",
+                game="aoe2",
+                subject="Malay",
+                show_sources=True,
+                aoe2_split_detail=True,
+            )
+
+        self.assertIn("Early Malay answer\n\nLate Malay answer", answer)
+        self.assertEqual(mocked_llm.call_count, 2)
+        self.assertEqual(answer.count("Sources by section:"), 1)
         first_user = mocked_llm.call_args_list[0].kwargs["user"]
         second_user = mocked_llm.call_args_list[1].kwargs["user"]
         self.assertIn("only part of the required sections", mocked_llm.call_args_list[0].kwargs["system"])
         self.assertIn("## Core Identity / Gameplan", first_user)
-        self.assertIn("## Opening / First Minutes", first_user)
-        self.assertIn("## Dark Age", first_user)
         self.assertIn("## Feudal Age", first_user)
         self.assertNotIn("## Castle Age", first_user)
         self.assertIn("## Castle Age", second_user)
-        self.assertIn("## Imperial / Win Condition", second_user)
         self.assertIn("## Common Mistakes", second_user)
         self.assertNotIn("## Feudal Age", second_user)
-        self.assertIn("Detail mode: yes", first_user)
-        self.assertIn("2-3 sentences", first_user)
 
     def test_aoe2_civ_overview_compact_answer_uses_single_llm_call(self) -> None:
         sections = [

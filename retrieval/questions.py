@@ -414,7 +414,13 @@ def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
         }
 
 
-def ask(question: str, top_k: int = 12, show_sources: bool = True, game: str = DEFAULT_GAME) -> str:
+def ask(
+    question: str,
+    top_k: int = 12,
+    show_sources: bool = True,
+    game: str = DEFAULT_GAME,
+    aoe2_split_detail: bool = False,
+) -> str:
     """
     Full pipeline: normalize question → extract filters → query knowledge base.
     Drop-in replacement for query.answer() with smarter routing.
@@ -442,6 +448,7 @@ def ask(question: str, top_k: int = 12, show_sources: bool = True, game: str = D
         game=game,
         top_k=top_k,
         show_sources=show_sources,
+        aoe2_split_detail=aoe2_split_detail,
     )
 
 
@@ -453,6 +460,8 @@ def main() -> None:
                         help="Skip normalization, pass question directly to query.py")
     parser.add_argument("--normalize-only", action="store_true",
                         help="Show normalization result without querying")
+    parser.add_argument("--split-detail", action="store_true",
+                        help="For detailed AoE2 civ overviews, use two LLM calls and splice the answer")
     args = parser.parse_args()
 
     question = " ".join(args.question)
@@ -467,10 +476,15 @@ def main() -> None:
 
     if args.raw:
         from retrieval.query import answer
-        print(answer(question, game=game, show_sources=True))
+        print(answer(
+            question,
+            game=game,
+            show_sources=True,
+            aoe2_split_detail=args.split_detail,
+        ))
         return
 
-    print(ask(question, game=game))
+    print(ask(question, game=game, aoe2_split_detail=args.split_detail))
 
 
 if __name__ == "__main__":
