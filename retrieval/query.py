@@ -42,6 +42,7 @@ from core.game_registry import DEFAULT_GAME, canonical_aoe2_civilization, find_a
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 TOP_K = 35
+_RETRIEVAL_MODEL: SentenceTransformer | None = None
 RRF_K = 60
 RANK_WEIGHTS = {
     "": 1.0,
@@ -59,6 +60,13 @@ _ABILITY_TAG_PRIORITY = [
     "blink", "untargetable", "invulnerable", "spell_shield", "shield",
     "heal", "slow", "execute", "true_damage",
 ]
+
+
+def _get_retrieval_model() -> SentenceTransformer:
+    global _RETRIEVAL_MODEL
+    if _RETRIEVAL_MODEL is None:
+        _RETRIEVAL_MODEL = SentenceTransformer(MODEL_NAME)
+    return _RETRIEVAL_MODEL
 
 
 def _source_weight(meta: dict) -> float:
@@ -416,6 +424,84 @@ Relevant insights:
 Answer using only the insights above.
 """.strip()
 
+AOE2_CIV_OVERVIEW_SYSTEM = """
+You are an Age of Empires II coaching assistant. Answer using ONLY the grouped
+retrieved insights provided for each section.
+
+Use exactly these section headings, in this order:
+### Core Identity / Gameplan
+### Opening / First Minutes
+### Dark Age
+### Feudal Age
+### Castle Age
+### Imperial / Win Condition
+### Common Mistakes
+
+Rules:
+- Keep every section grounded in its own retrieved section evidence.
+- If a section has limited evidence, keep it brief instead of inventing details.
+- For detailed questions, include concrete checkpoints, transitions, and mistakes
+  when the evidence supports them.
+- Prioritize pdf guide evidence when it appears, because it is the north-star guide.
+""".strip()
+
+AOE2_CIV_OVERVIEW_USER = """
+Player question: {question}
+Civilization: {subject}
+Detail mode: {detail_mode}
+
+Grouped retrieved insights:
+{sectioned_insights}
+
+Write the answer using the required section headings.
+""".strip()
+
+AOE2_CIV_OVERVIEW_SECTION_TOP_K = 5
+AOE2_CIV_OVERVIEW_SECTIONS = (
+    {
+        "name": "Core Identity / Gameplan",
+        "query": "What is {subject}'s core identity, strengths, weaknesses, and win condition?",
+        "preferred_types": ["civilization_identity", "principles", "unit_compositions"],
+        "situation_tags": [],
+    },
+    {
+        "name": "Opening / First Minutes",
+        "query": "What opening or first minutes build order should {subject} use?",
+        "preferred_types": ["build_orders", "dark_age", "economy_macro"],
+        "situation_tags": ["dark_age", "economy"],
+    },
+    {
+        "name": "Dark Age",
+        "query": "How should {subject} play Dark Age cleanly?",
+        "preferred_types": ["dark_age", "build_orders", "scouting"],
+        "situation_tags": ["dark_age", "scouting"],
+    },
+    {
+        "name": "Feudal Age",
+        "query": "How should {subject} play Feudal Age pressure, defense, and transitions?",
+        "preferred_types": ["feudal_age", "build_orders", "unit_compositions", "map_control"],
+        "situation_tags": ["feudal_pressure", "defense", "map_control"],
+    },
+    {
+        "name": "Castle Age",
+        "query": "How should {subject} transition and pressure in Castle Age?",
+        "preferred_types": ["castle_age", "economy_macro", "unit_compositions", "map_control"],
+        "situation_tags": ["castle_timing", "economy", "map_control"],
+    },
+    {
+        "name": "Imperial / Win Condition",
+        "query": "How should {subject} close the game in Imperial Age and execute its win condition?",
+        "preferred_types": ["imperial_age", "civilization_identity", "unit_compositions", "map_control"],
+        "situation_tags": ["imperial_transition", "map_control"],
+    },
+    {
+        "name": "Common Mistakes",
+        "query": "What common mistakes should {subject} avoid?",
+        "preferred_types": ["principles", "general_advice", "civilization_identity"],
+        "situation_tags": [],
+    },
+)
+
 AOE2_MATCHUP_SYSTEM = """
 You are an Age of Empires II coaching assistant. You have insights about two
 civilizations plus shared general AoE2 strategy context.
@@ -677,7 +763,7 @@ def retrieve(
     n = len(ids)
     fetch_k = min(n, max(top_k * 3, 50))
 
-    model = SentenceTransformer(MODEL_NAME)
+    model = _get_retrieval_model()
     query_vec = model.encode(question, convert_to_numpy=True, normalize_embeddings=True)
     cosine_scores = matrix @ query_vec
     semantic_ranked = np.argsort(cosine_scores)[::-1][:fetch_k].tolist()
@@ -903,6 +989,72 @@ def _merge_ranked_results(*result_sets: list[dict], limit: int) -> list[dict]:
         reverse=True,
     )
     return merged[:limit]
+
+
+def _retrieve_aoe2_civ_overview_sections(
+    question: str,
+    subject: str,
+) -> list[dict]:
+    sections: list[dict] = []
+    for spec in AOE2_CIV_OVERVIEW_SECTIONS:
+        section_question = spec["query"].format(subject=subject)
+        preferred_types = list(spec["preferred_types"])
+        situation_tags = list(spec["situation_tags"])
+        subject_hits = retrieve(
+            section_question,
+            subject=subject,
+            preferred_types=preferred_types,
+            situation_tags=situation_tags,
+            game="aoe2",
+            top_k=AOE2_CIV_OVERVIEW_SECTION_TOP_K,
+        )
+        hits = subject_hits
+        if len(hits) < 3:
+            general_hits = retrieve(
+                section_question,
+                subject=None,
+                preferred_types=preferred_types,
+                situation_tags=situation_tags,
+                game="aoe2",
+                top_k=AOE2_CIV_OVERVIEW_SECTION_TOP_K,
+            )
+            hits = _merge_ranked_results(
+                subject_hits,
+                general_hits,
+                limit=AOE2_CIV_OVERVIEW_SECTION_TOP_K,
+            )
+        sections.append({
+            "name": spec["name"],
+            "question": section_question,
+            "preferred_types": preferred_types,
+            "insights": hits[:AOE2_CIV_OVERVIEW_SECTION_TOP_K],
+        })
+    return sections
+
+
+def _format_aoe2_civ_overview_sections(sections: list[dict]) -> str:
+    blocks: list[str] = []
+    for section in sections:
+        insights = section.get("insights") or []
+        if insights:
+            body = _format_insights(insights)
+        else:
+            body = "  (no retrieved insights for this section)"
+        blocks.append(f"## {section['name']}\n{body}")
+    return "\n\n".join(blocks)
+
+
+def _flatten_section_insights(sections: list[dict]) -> list[dict]:
+    flattened: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for section in sections:
+        for row in section.get("insights") or []:
+            key = (row.get("text") or "", row.get("insight_type") or "")
+            if key in seen:
+                continue
+            seen.add(key)
+            flattened.append(row)
+    return flattened
 
 
 def _blend_archetype_insights(results: list[dict], champion: str, top_k: int) -> None:
@@ -1500,6 +1652,13 @@ def answer(
             "detail": False,
             "civ_overview": False,
         }
+        if game == "aoe2" and subject and aoe2_profile.get("civ_overview"):
+            return _answer_aoe2_civ_overview(
+                question,
+                subject,
+                aoe2_profile,
+                show_sources=show_sources,
+            )
         effective_top_k = max(top_k, 24) if aoe2_profile.get("detail") else top_k
         insights = retrieve(
             question,
@@ -1721,6 +1880,32 @@ def _answer_aoe2_duo(
         if general_insights:
             generated += "\nShared AoE2 context:\n" + _sources_block(general_insights, prefix="  ")
 
+    return generated
+
+
+def _answer_aoe2_civ_overview(
+    question: str,
+    subject: str,
+    profile: dict[str, object],
+    show_sources: bool,
+) -> str:
+    sections = _retrieve_aoe2_civ_overview_sections(question, subject)
+    all_insights = _flatten_section_insights(sections)
+    if not all_insights:
+        return f"No relevant insights found for {subject}. Make sure embed.py has been run."
+
+    generated = llm_chat(
+        system=AOE2_CIV_OVERVIEW_SYSTEM,
+        user=AOE2_CIV_OVERVIEW_USER.format(
+            question=question,
+            subject=subject,
+            detail_mode="yes" if profile.get("detail") else "no",
+            sectioned_insights=_format_aoe2_civ_overview_sections(sections),
+        ),
+        temperature=0.2,
+    )
+    if show_sources:
+        generated += "\n\n---\nSources:\n" + _sources_block(all_insights, prefix="  ")
     return generated
 
 

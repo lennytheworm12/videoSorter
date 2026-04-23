@@ -502,37 +502,87 @@ class Aoe2PipelineTests(unittest.TestCase):
             "How should I play Malay from opening through win condition in detail?",
         )
 
-    def test_aoe2_answer_uses_detail_top_k_and_merges_more_general_hits(self) -> None:
-        direct_hits = [
-            {
-                "text": "Malay advance quickly and should use timing windows.",
-                "insight_type": "civilization_identity",
-                "score": 0.9,
-                "confidence": 0.8,
-                "source_weight": 1.0,
-                "source": "aoe2_video",
-                "retrieval_layer": "direct",
-            }
-        ]
-        general_hits = [
-            {
-                "text": "Use a clean opening with constant villager production.",
-                "insight_type": "build_orders",
-                "score": 0.8,
-                "confidence": 0.8,
-                "source_weight": 1.2,
-                "source": "aoe2_pdf",
-                "retrieval_layer": "direct",
-            }
-        ]
-
+    def test_aoe2_civ_overview_retrieves_five_insights_per_standard_section(self) -> None:
         calls = []
 
         def fake_retrieve(*args, **kwargs):
             calls.append(kwargs)
-            return direct_hits if kwargs.get("subject") == "Malay" else general_hits
+            insight_type = kwargs["preferred_types"][0]
+            return [
+                {
+                    "text": f"{insight_type} section insight {i}",
+                    "insight_type": insight_type,
+                    "score": 0.9,
+                    "confidence": 0.8,
+                    "source_weight": 2.0,
+                    "source": "aoe2_pdf",
+                    "retrieval_layer": "direct",
+                }
+                for i in range(5)
+            ]
 
-        with mock.patch.object(retrieval_query, "retrieve", side_effect=fake_retrieve), mock.patch.object(
+        with mock.patch.object(retrieval_query, "retrieve", side_effect=fake_retrieve):
+            sections = retrieval_query._retrieve_aoe2_civ_overview_sections(
+                "How should I play Malay from opening through win condition in detail?",
+                "Malay",
+            )
+
+        self.assertEqual(
+            [section["name"] for section in sections],
+            [
+                "Core Identity / Gameplan",
+                "Opening / First Minutes",
+                "Dark Age",
+                "Feudal Age",
+                "Castle Age",
+                "Imperial / Win Condition",
+                "Common Mistakes",
+            ],
+        )
+        self.assertEqual(len(calls), len(retrieval_query.AOE2_CIV_OVERVIEW_SECTIONS))
+        self.assertTrue(all(call["top_k"] == 5 for call in calls))
+        self.assertIn("build_orders", calls[1]["preferred_types"])
+        self.assertIn("feudal_age", calls[3]["preferred_types"])
+        self.assertIn("imperial_age", calls[5]["preferred_types"])
+        self.assertTrue(all(len(section["insights"]) == 5 for section in sections))
+
+    def test_aoe2_civ_overview_answer_uses_grouped_section_prompt_and_sources(self) -> None:
+        duplicate = {
+            "text": "Use a clean opening with constant villager production.",
+            "insight_type": "build_orders",
+            "score": 0.8,
+            "confidence": 0.8,
+            "source_weight": 2.0,
+            "source": "aoe2_pdf",
+            "retrieval_layer": "direct",
+        }
+        sections = [
+            {
+                "name": "Core Identity / Gameplan",
+                "insights": [
+                    {
+                        "text": "Malay advance quickly and should use timing windows.",
+                        "insight_type": "civilization_identity",
+                        "score": 0.9,
+                        "confidence": 0.8,
+                        "source_weight": 1.0,
+                        "source": "aoe2_video",
+                        "retrieval_layer": "direct",
+                    },
+                    duplicate,
+                ],
+            },
+            {
+                "name": "Opening / First Minutes",
+                "insights": [duplicate],
+            },
+        ]
+
+        with mock.patch.object(
+            retrieval_query,
+            "_retrieve_aoe2_civ_overview_sections",
+            return_value=sections,
+        ), mock.patch.object(
             retrieval_query,
             "llm_chat",
             return_value="Detailed Malay answer",
@@ -541,15 +591,15 @@ class Aoe2PipelineTests(unittest.TestCase):
                 "How should I play Malay from opening through win condition in detail?",
                 game="aoe2",
                 subject="Malay",
-                top_k=12,
-                show_sources=False,
+                show_sources=True,
             )
 
-        self.assertEqual(answer, "Detailed Malay answer")
-        self.assertEqual(calls[0]["top_k"], 24)
-        self.assertGreaterEqual(calls[1]["top_k"], 12)
-        self.assertIn("Opening / First Minutes", mocked_llm.call_args.kwargs["system"])
-        self.assertIn("Use a clean opening", mocked_llm.call_args.kwargs["user"])
+        self.assertIn("Detailed Malay answer", answer)
+        self.assertEqual(answer.count("Use a clean opening"), 1)
+        self.assertIn("### Opening / First Minutes", mocked_llm.call_args.kwargs["system"])
+        self.assertIn("## Core Identity / Gameplan", mocked_llm.call_args.kwargs["user"])
+        self.assertIn("## Opening / First Minutes", mocked_llm.call_args.kwargs["user"])
+        self.assertIn("Detail mode: yes", mocked_llm.call_args.kwargs["user"])
 
     def test_detect_aoe2_intent_marks_civ_matchups(self) -> None:
         self.assertEqual(
