@@ -14,3 +14,7 @@ subtitles/
 
 cookies.txt
 proxies.txt
+node_modules/
+.next/
+apps/web/node_modules/
+apps/web/.next/

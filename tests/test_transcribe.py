@@ -34,7 +34,7 @@ def extract_id(raw: str) -> str:
     raise ValueError(f"Could not parse video ID from: {raw!r}")
 
 
-def test_video(video_id: str) -> None:
+def check_video(video_id: str) -> None:
     print(f"\n{'─' * 60}")
     print(f"Video ID : {video_id}")
     print(f"URL      : https://www.youtube.com/watch?v={video_id}")
@@ -77,7 +77,7 @@ def test_video(video_id: str) -> None:
         print(f"RESULT   : ERROR — {e}")
 
 
-def test_from_db(limit_per_role: int = 3) -> None:
+def check_from_db(limit_per_role: int = 3) -> None:
     try:
         from database import get_connection
     except ImportError:
@@ -109,7 +109,7 @@ def test_from_db(limit_per_role: int = 3) -> None:
     print(f"Testing {len(selected)} videos from DB ({limit_per_role} per role max)…")
     for row in selected:
         print(f"\n  Role: {row['role']}")
-        test_video(row["video_id"])
+        check_video(row["video_id"])
 
 
 def main() -> None:
@@ -120,7 +120,7 @@ def main() -> None:
         sys.exit(0)
 
     if args == ["--from-db"]:
-        test_from_db()
+        check_from_db()
         return
 
     video_ids = []
@@ -136,7 +136,7 @@ def main() -> None:
 
     print(f"Testing {len(video_ids)} video(s)…")
     for vid in video_ids:
-        test_video(vid)
+        check_video(vid)
 
     print(f"\n{'─' * 60}")
     print("Done.")

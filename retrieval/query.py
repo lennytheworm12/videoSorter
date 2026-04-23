@@ -39,6 +39,7 @@ from pipeline.aoe2_crossref import get_applicable_insights
 from core.llm import chat as llm_chat
 from core.db_paths import all_content_db_paths
 from core.game_registry import DEFAULT_GAME, canonical_aoe2_civilization, find_aoe2_civilizations, game_label, normalize_game
+from cloud import vector_store
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 TOP_K = 35
@@ -773,6 +774,55 @@ def retrieve(
     game = normalize_game(game)
     if subject is None:
         subject = champion
+
+    if vector_store.enabled():
+        model = _get_retrieval_model()
+        query_vec = model.encode(question, convert_to_numpy=True, normalize_embeddings=True)
+        candidate_count = max(top_k * 4, 60)
+        rows = vector_store.search_insights(
+            query_vec,
+            game=game,
+            role=role,
+            champion=champion,
+            subject=subject,
+            insight_type=insight_type,
+            top_k=candidate_count,
+        )
+        preferred_map = {
+            insight: max(0.0, 0.12 - (index * 0.02))
+            for index, insight in enumerate(preferred_types or [])
+        }
+        rows.sort(
+            key=lambda r: (
+                0.5 * float(r.get("score") or 0.0)
+                + 0.5 * (
+                    0.6 * float(r.get("confidence") or 0.5)
+                    + 0.4 * float(r.get("source_score") or 0.5)
+                )
+                + preferred_map.get(r.get("insight_type"), 0.0)
+            ) * _source_weight(r),
+            reverse=True,
+        )
+        return [
+            {
+                "text": row["text"],
+                "insight_type": row["insight_type"],
+                "role": row["role"],
+                "subject": row.get("subject"),
+                "subject_type": row.get("subject_type"),
+                "champion": row.get("champion"),
+                "game": row.get("game", game),
+                "rank": row.get("rank"),
+                "website_rating": row.get("website_rating"),
+                "source": row.get("source", "discord"),
+                "source_weight": round(float(_source_weight(row)), 4),
+                "score": round(float(row.get("score") or 0.0), 4),
+                "confidence": round(float(row.get("confidence") or row.get("source_score") or 0.5), 4),
+                "retrieval_layer": "supabase",
+            }
+            for row in rows[:top_k]
+        ]
+
     ids, texts, metadata, matrix = load_all_vectors(
         game=game,
         role=role,
