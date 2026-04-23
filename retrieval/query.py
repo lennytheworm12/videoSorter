@@ -35,8 +35,10 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 
 from pipeline.embed import load_all_vectors
 from pipeline.champion_crossref import get_archetype_insights
+from pipeline.aoe2_crossref import get_applicable_insights
 from core.llm import chat as llm_chat
-from core.game_registry import DEFAULT_GAME, game_label, normalize_game
+from core.db_paths import all_content_db_paths
+from core.game_registry import AOE2_CIVILIZATIONS, DEFAULT_GAME, canonical_aoe2_civilization, game_label, normalize_game
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 TOP_K = 35
@@ -63,6 +65,8 @@ def _source_weight(meta: dict) -> float:
     source = meta.get("source") or "discord"
     if source == "discord":
         return 1.6
+    if source == "aoe2_crossref":
+        return 0.9
     if source == "aoe2_wiki":
         return 1.1
     if source in {"aoe2_video", "aoe2_coaching"}:
@@ -98,6 +102,9 @@ def _source_label(meta: dict) -> str:
         return "coaching"
     if source == "aoe2_video":
         return "youtube"
+    if source == "aoe2_crossref":
+        subject = meta.get("source_subject") or meta.get("subject")
+        return f"crossref{f' | {subject}' if subject else ''}"
     if source == "youtube_guide":
         return "youtube"
     return source
@@ -405,10 +412,43 @@ Relevant insights:
 Answer using only the insights above.
 """.strip()
 
+AOE2_MATCHUP_SYSTEM = """
+You are an Age of Empires II coaching assistant. You have insights about two
+civilizations plus shared general AoE2 strategy context.
+
+Explain how {subject_a} should play against {subject_b} using ONLY the provided
+insights. Synthesize the interaction instead of listing both civilizations in
+isolation. Do not invent advice not grounded in the retrieved text.
+
+Structure the answer when supported:
+- Opening / Early Game
+- Midgame Transitions
+- Key Interactions / Unit Choices
+- Win Condition
+
+Only include sections supported by the insights.
+""".strip()
+
+AOE2_MATCHUP_USER = """
+Player question: {question}
+
+=== {subject_a} insights ===
+{insights_a}
+
+=== {subject_b} insights ===
+{insights_b}
+
+=== Shared AoE2 context ===
+{general_insights}
+
+Using only the insights above, explain how {subject_a} should play against {subject_b}.
+""".strip()
+
 
 # ── Intent detection ──────────────────────────────────────────────────────────
 
 _CHAMPION_LOOKUP: dict[str, str] | None = None  # {normalized_lowercase: canonical}
+_AOE2_LOOKUP: dict[str, str] | None = None
 
 # Common shorthands and nicknames players actually type
 _CHAMPION_ALIASES: dict[str, str] = {
@@ -482,6 +522,56 @@ def _get_champion_lookup() -> dict[str, str]:
             lookup[alias] = canonical
         _CHAMPION_LOOKUP = lookup
     return _CHAMPION_LOOKUP
+
+
+def _get_aoe2_lookup() -> dict[str, str]:
+    global _AOE2_LOOKUP
+    if _AOE2_LOOKUP is None:
+        lookup: dict[str, str] = {}
+        for name in AOE2_CIVILIZATIONS:
+            lookup[name.lower()] = name
+            lookup[_normalize(name)] = name
+        _AOE2_LOOKUP = lookup
+    return _AOE2_LOOKUP
+
+
+def detect_aoe2_intent(question: str) -> dict:
+    """
+    Detect civilization-vs-civilization intent for AoE2 questions.
+
+    Returns:
+        {"type": "matchup", "a": "Franks", "b": "Hindustanis"}
+        {"type": "general"}
+    """
+    q = question.lower()
+    q_norm = _normalize(q)
+    lookup = _get_aoe2_lookup()
+
+    found_with_pos: list[tuple[int, str]] = []
+    seen_spans: list[tuple[int, int]] = []
+
+    for name_key in sorted(lookup, key=len, reverse=True):
+        for search_q in (q, q_norm):
+            m = re.search(r"\b" + re.escape(name_key) + r"\b", search_q)
+            if m:
+                start, end = m.start(), m.end()
+                if any(s <= start < e or s < end <= e for s, e in seen_spans):
+                    break
+                canonical = lookup[name_key]
+                if not any(c == canonical for _, c in found_with_pos):
+                    found_with_pos.append((start, canonical))
+                seen_spans.append((start, end))
+                break
+
+    found_with_pos.sort(key=lambda item: item[0])
+    found = [civilization for _, civilization in found_with_pos]
+    if len(found) < 2:
+        return {"type": "general"}
+
+    a, b = found[0], found[1]
+    if re.search(r"\b(into|vs\.?|versus|against)\b", q):
+        return {"type": "matchup", "a": a, "b": b}
+    return {"type": "matchup", "a": a, "b": b}
 
 
 def detect_intent(question: str) -> dict:
@@ -582,6 +672,7 @@ def retrieve(
     subject: str | None = None,
     insight_type: str | None = None,
     preferred_types: list[str] | None = None,
+    situation_tags: list[str] | None = None,
     game: str = DEFAULT_GAME,
     top_k: int = TOP_K,
 ) -> list[dict]:
@@ -602,6 +693,13 @@ def retrieve(
         insight_type=insight_type,
     )
     if not ids:
+        if game == "aoe2" and subject:
+            return get_applicable_insights(
+                subject,
+                preferred_types=preferred_types,
+                situation_tags=situation_tags,
+                top_k=top_k,
+            )
         return []
 
     n = len(ids)
@@ -661,6 +759,15 @@ def retrieve(
             "retrieval_layer": "direct",
         })
 
+    if game == "aoe2" and subject:
+        _blend_aoe2_applicable_insights(
+            results,
+            subject,
+            preferred_types=preferred_types or [],
+            situation_tags=situation_tags or [],
+            top_k=top_k,
+        )
+
     if game == "lol" and champion:
         _blend_archetype_insights(results, champion, top_k)
 
@@ -670,12 +777,18 @@ def retrieve(
 def _aoe2_query_profile(question: str) -> dict[str, object]:
     q = question.lower()
     preferred: list[str] = []
+    situation_tags: list[str] = []
     notes: list[str] = []
 
     def add(*insight_types: str) -> None:
         for insight_type in insight_types:
             if insight_type not in preferred:
                 preferred.append(insight_type)
+
+    def add_tag(*tags: str) -> None:
+        for tag in tags:
+            if tag not in situation_tags:
+                situation_tags.append(tag)
 
     age_patterns = [
         ("dark_age", r"\bdark age\b"),
@@ -686,12 +799,26 @@ def _aoe2_query_profile(question: str) -> dict[str, object]:
     for age_bucket, pattern in age_patterns:
         if re.search(pattern, q):
             add(age_bucket)
+            if age_bucket == "dark_age":
+                add_tag("dark_age")
+            elif age_bucket == "castle_age":
+                add_tag("castle_timing")
+            elif age_bucket == "imperial_age":
+                add_tag("imperial_transition")
             break
 
-    if re.search(r"\b(hotkey|hotkeys|control group|control groups|grouping|ui|interface|shortcut|shortcuts)\b", q):
-        add("game_mechanics", "micro")
+    if re.search(r"\b(hotkey|hotkeys|control group|control groups|grouping|ui|interface|shortcut|shortcuts|camera|keybind|keybinds|settings)\b", q):
+        add("controls_settings", "micro")
         notes.append(
-            "If the question is about hotkeys, control groups, or UI setup, lead with mechanics/setup advice before broader strategy."
+            "If the question is about hotkeys, control groups, or UI setup, lead with controls/settings advice before broader strategy."
+        )
+
+    if re.search(r"\b(wildlife|boar|boars|wolf|wolves|armor class|armour class|bonus damage|attack bonus|conversion|convert|monk conversion|elevation|hill bonus|high ground|projectile|projectiles|ballistics|minimum range|line of sight|pathing|collision|building armor|building armour|pierce armor|pierce armour)\b", q):
+        add("game_mechanics", "unit_compositions")
+        if re.search(r"\b(convert|conversion|monk conversion)\b", q):
+            add_tag("monks")
+        notes.append(
+            "If the question is about AoE2 interaction rules, explain the underlying game mechanics before giving composition or strategic advice."
         )
 
     if re.search(r"\b(micro|split micro|focus fire|formation|formations|stutter|kiting|dodge|quickwall|army control)\b", q):
@@ -702,14 +829,40 @@ def _aoe2_query_profile(question: str) -> dict[str, object]:
 
     if re.search(r"\b(defend|defense|defence|hold|survive|stabilize|stabilise|under attack|against pressure|vs pressure|stop a rush)\b", q):
         add("scouting", "economy_macro", "micro", "map_control", "matchup_advice")
+        add_tag("defense")
         notes.append(
             "Frame the answer around scouting the threat, stabilizing efficiently, and transitioning back to a healthy economy."
         )
     elif re.search(r"\b(attack|aggression|aggressive|pressure|push|timing attack|allin|all-in|raid|raiding)\b", q):
         add("build_orders", "feudal_age", "castle_age", "unit_compositions", "map_control", "micro")
+        add_tag("feudal_pressure")
+        if re.search(r"\b(raid|raiding)\b", q):
+            add_tag("raiding")
         notes.append(
             "Frame the answer around setup, timing, execution, and what to do if the initial attack does not end the game."
         )
+
+    if re.search(r"\b(boom|booming|eco|economy|villager|villagers|farm|farms|town center|tc uptime)\b", q):
+        add_tag("boom", "economy")
+
+    if re.search(r"\b(scout|scouting)\b", q):
+        add_tag("scouting")
+
+    if re.search(r"\b(relic|relics|hill|hills|map control|control the map)\b", q):
+        add_tag("map_control")
+
+    if re.search(r"\b(cavalry|cav|knight|scout cavalry|paladin|camel)\b", q):
+        add_tag("cavalry")
+    if re.search(r"\b(archer|archers|xbow|crossbow|cavalry archer|cav archer|skirm|skirmisher)\b", q):
+        add_tag("archers")
+    if re.search(r"\b(infantry|militia|maa|man at arms|longsword|champion line|spearman|pikeman|halberdier)\b", q):
+        add_tag("infantry")
+    if re.search(r"\b(siege|mangonel|onager|scorpion|ram|trebuchet|bbc|bombard cannon)\b", q):
+        add_tag("siege")
+    if re.search(r"\b(monk|monks|conversion|convert)\b", q):
+        add_tag("monks")
+    if re.search(r"\b(switch|transition|tech switch)\b", q):
+        add_tag("tech_switch")
 
     if not preferred:
         add("principles", "economy_macro")
@@ -720,6 +873,7 @@ def _aoe2_query_profile(question: str) -> dict[str, object]:
 
     return {
         "preferred_types": preferred,
+        "situation_tags": situation_tags,
         "guidance": guidance,
     }
 
@@ -766,6 +920,28 @@ def _blend_archetype_insights(results: list[dict], champion: str, top_k: int) ->
         for h in archetype_hits
         if h["text"] not in existing_texts
     ]
+    slots = max(0, top_k - len(results))
+    if slots > 0:
+        results.extend(additions[:slots])
+
+
+def _blend_aoe2_applicable_insights(
+    results: list[dict],
+    subject: str,
+    preferred_types: list[str],
+    situation_tags: list[str],
+    top_k: int,
+) -> None:
+    hits = get_applicable_insights(
+        subject,
+        preferred_types=preferred_types,
+        situation_tags=situation_tags,
+        top_k=top_k,
+    )
+    if not hits:
+        return
+    existing_texts = {row["text"] for row in results}
+    additions = [hit for hit in hits if hit["text"] not in existing_texts]
     slots = max(0, top_k - len(results))
     if slots > 0:
         results.extend(additions[:slots])
@@ -831,7 +1007,7 @@ def _fetch_specific_matchup_notes(
 
     hits: list[dict] = []
     seen_texts: set[str] = set()
-    for db_path in ("videos.db", "guide_test.db"):
+    for db_path in all_content_db_paths():
         if not pathlib.Path(db_path).exists():
             continue
         _db.DB_PATH = pathlib.Path(db_path)
@@ -887,6 +1063,84 @@ def _fetch_specific_matchup_notes(
             float(r.get("source_weight") or 1.0),
             float(r.get("confidence") or 0.0),
             float(r.get("website_rating") or 0.0),
+        ),
+        reverse=True,
+    )
+    return hits[:limit]
+
+
+def _fetch_specific_aoe2_matchup_notes(
+    subject_a: str,
+    subject_b: str,
+    limit: int = 8,
+) -> list[dict]:
+    import pathlib
+    import core.database as _db
+
+    subject_a = canonical_aoe2_civilization(subject_a) or subject_a
+    subject_b = canonical_aoe2_civilization(subject_b) or subject_b
+    enemy_patterns = {
+        subject_b.lower(),
+        _normalize(subject_b),
+    }
+
+    hits: list[dict] = []
+    seen_texts: set[str] = set()
+    for db_path in all_content_db_paths():
+        if not pathlib.Path(db_path).exists():
+            continue
+        _db.DB_PATH = pathlib.Path(db_path)
+        with _db.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT i.text, i.insight_type, i.confidence, i.source_score,
+                       i.subject, i.subject_type, v.game, COALESCE(v.source, 'discord') AS source
+                FROM insights i
+                JOIN videos v ON i.video_id = v.video_id
+                WHERE v.game = 'aoe2'
+                  AND LOWER(COALESCE(i.subject, v.subject)) = LOWER(?)
+                  AND i.insight_type = 'matchup_advice'
+                ORDER BY i.id
+                """,
+                (subject_a,),
+            ).fetchall()
+
+        for row in rows:
+            text = row["text"]
+            text_norm = _normalize(text)
+            text_low = text.lower()
+            if not any(
+                re.search(r"\b" + re.escape(name) + r"\b", text_low)
+                or re.search(r"\b" + re.escape(name) + r"\b", text_norm)
+                for name in enemy_patterns
+            ):
+                continue
+            if text in seen_texts:
+                continue
+            seen_texts.add(text)
+            meta = dict(row)
+            meta["source_subject"] = subject_a
+            hits.append({
+                "text": text,
+                "insight_type": "matchup_advice",
+                "role": None,
+                "subject": row["subject"],
+                "subject_type": row["subject_type"],
+                "champion": None,
+                "game": "aoe2",
+                "rank": None,
+                "website_rating": None,
+                "source": row["source"],
+                "score": 1.0,
+                "confidence": round(float(row["confidence"] or row["source_score"] or 0.75), 4),
+                "source_weight": round(float(_source_weight(meta)), 4),
+                "retrieval_layer": "exact_matchup",
+            })
+
+    hits.sort(
+        key=lambda item: (
+            float(item.get("source_weight") or 1.0),
+            float(item.get("confidence") or 0.0),
         ),
         reverse=True,
     )
@@ -964,6 +1218,78 @@ def retrieve_duo(
     insights_b.extend(w for w in windows_b if w["text"] not in existing_b)
 
     return insights_a, insights_b
+
+
+def _retrieve_aoe2_duo(
+    question: str,
+    subject_a: str,
+    subject_b: str,
+    top_k: int,
+) -> tuple[list[dict], list[dict], list[dict]]:
+    per_side = max(top_k // 2, 6)
+    profile = _aoe2_query_profile(question)
+
+    matchup_notes_a = _fetch_specific_aoe2_matchup_notes(subject_a, subject_b, limit=max(4, per_side // 2))
+    matchup_notes_b = _fetch_specific_aoe2_matchup_notes(subject_b, subject_a, limit=max(4, per_side // 2))
+
+    insights_a = matchup_notes_a + retrieve(
+        question,
+        subject=subject_a,
+        preferred_types=profile["preferred_types"],
+        situation_tags=profile["situation_tags"],
+        game="aoe2",
+        top_k=per_side,
+    )
+    _blend_aoe2_applicable_insights(
+        insights_a,
+        subject_a,
+        preferred_types=profile["preferred_types"],
+        situation_tags=profile["situation_tags"],
+        top_k=max(per_side + 4, top_k),
+    )
+
+    insights_b = matchup_notes_b + retrieve(
+        question,
+        subject=subject_b,
+        preferred_types=profile["preferred_types"],
+        situation_tags=profile["situation_tags"],
+        game="aoe2",
+        top_k=per_side,
+    )
+    _blend_aoe2_applicable_insights(
+        insights_b,
+        subject_b,
+        preferred_types=profile["preferred_types"],
+        situation_tags=profile["situation_tags"],
+        top_k=max(per_side + 4, top_k),
+    )
+
+    general_insights = retrieve(
+        question,
+        subject=None,
+        preferred_types=profile["preferred_types"],
+        situation_tags=profile["situation_tags"],
+        game="aoe2",
+        top_k=max(4, top_k // 3),
+    )
+
+    deduped_a: list[dict] = []
+    seen_a: set[str] = set()
+    for row in insights_a:
+        if row["text"] in seen_a:
+            continue
+        seen_a.add(row["text"])
+        deduped_a.append(row)
+
+    deduped_b: list[dict] = []
+    seen_b: set[str] = set()
+    for row in insights_b:
+        if row["text"] in seen_b:
+            continue
+        seen_b.add(row["text"])
+        deduped_b.append(row)
+
+    return deduped_a[:per_side], deduped_b[:per_side], general_insights
 
 
 def _fetch_stat_notes(champion: str, top_n: int = 3) -> list[str]:
@@ -1065,6 +1391,7 @@ def _format_insights(insights: list[dict]) -> str:
     for r in insights:
         layer_tag = {
             "archetype": " [archetype]",
+            "aoe2_crossref": " [crossref]",
             "ability_enrichment": " [ability]",
             "exact_matchup": " [exact-matchup]",
         }.get(r.get("retrieval_layer", ""), "")
@@ -1155,8 +1482,13 @@ def answer(
         subject = champion
 
     if game != "lol":
+        if game == "aoe2" and not subject:
+            intent = detect_aoe2_intent(question)
+            if intent["type"] == "matchup":
+                return _answer_aoe2_duo(question, intent, top_k=top_k, show_sources=show_sources)
         aoe2_profile = _aoe2_query_profile(question) if game == "aoe2" else {
             "preferred_types": None,
+            "situation_tags": None,
             "guidance": "",
         }
         insights = retrieve(
@@ -1165,6 +1497,7 @@ def answer(
             subject=subject,
             insight_type=insight_type,
             preferred_types=aoe2_profile["preferred_types"],
+            situation_tags=aoe2_profile["situation_tags"],
             game=game,
             top_k=top_k,
         )
@@ -1175,6 +1508,7 @@ def answer(
                 subject=None,
                 insight_type=insight_type,
                 preferred_types=aoe2_profile["preferred_types"],
+                situation_tags=aoe2_profile["situation_tags"],
                 game=game,
                 top_k=max(4, top_k // 3),
             )
@@ -1341,6 +1675,44 @@ def _answer_duo(
     return generated
 
 
+def _answer_aoe2_duo(
+    question: str,
+    intent: dict,
+    top_k: int,
+    show_sources: bool,
+) -> str:
+    a, b = intent["a"], intent["b"]
+    insights_a, insights_b, general_insights = _retrieve_aoe2_duo(question, a, b, top_k=top_k)
+
+    if not insights_a and not insights_b and not general_insights:
+        return f"No insights found for {a} or {b}. Make sure embed.py has been run."
+
+    fmt_a = _format_insights(insights_a)
+    fmt_b = _format_insights(insights_b)
+    fmt_general = _format_insights(general_insights)
+
+    generated = llm_chat(
+        system=AOE2_MATCHUP_SYSTEM.format(subject_a=a, subject_b=b),
+        user=AOE2_MATCHUP_USER.format(
+            question=question,
+            subject_a=a,
+            subject_b=b,
+            insights_a=fmt_a,
+            insights_b=fmt_b,
+            general_insights=fmt_general,
+        ),
+        temperature=0.2,
+    )
+
+    if show_sources:
+        generated += f"\n\n---\nSources for {a}:\n" + _sources_block(insights_a, prefix="  ")
+        generated += f"\nSources for {b}:\n" + _sources_block(insights_b, prefix="  ")
+        if general_insights:
+            generated += "\nShared AoE2 context:\n" + _sources_block(general_insights, prefix="  ")
+
+    return generated
+
+
 def _sources_block(insights: list[dict], prefix: str = "") -> str:
     lines = []
     for r in insights:
@@ -1376,7 +1748,7 @@ def main() -> None:
     print(f"\nQuestion: {question}")
 
     if args.intent:
-        intent = detect_intent(question)
+        intent = detect_aoe2_intent(question) if normalize_game(args.game) == "aoe2" else detect_intent(question)
         print(f"Intent: {intent}")
         return
 
@@ -1393,7 +1765,8 @@ def main() -> None:
 
     if args.retrieve_only:
         profile = _aoe2_query_profile(question) if normalize_game(args.game) == "aoe2" else {
-            "preferred_types": None
+            "preferred_types": None,
+            "situation_tags": None,
         }
         results = retrieve(
             question,
@@ -1402,6 +1775,7 @@ def main() -> None:
             subject=args.subject or args.champion,
             insight_type=args.insight_type,
             preferred_types=profile["preferred_types"],
+            situation_tags=profile["situation_tags"],
             game=args.game,
             top_k=args.top_k,
         )

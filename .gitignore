@@ -4,9 +4,13 @@ __pycache__/
 auth_state.json
 playwright/.cache/
 videos.db
+knowledge.db
 trace.zip
 audio/
 subtitles/
+.codex
+.codex/
+.ipynb_checkpoints/
 
 cookies.txt
 proxies.txt

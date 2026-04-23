@@ -15,15 +15,15 @@ Usage:
     uv run python -m scrape.youtube_scrape --status             # show DB counts
 """
 
-import os
 import re
 import time
 import random
 import argparse
 import yt_dlp
 
-# Write to isolated test DB until guide prompts are validated
-os.environ.setdefault("DB_PATH", "guide_test.db")
+from core.db_paths import activate_knowledge_db
+
+activate_knowledge_db()
 
 from core.database import get_connection, insert_video, init_db
 from core.champions import load_champion_names
@@ -60,7 +60,7 @@ def _champion_valid_roles(champion: str) -> set[str]:
     import sqlite3
     roles: list[str] = []
 
-    # Check guide_test.db video counts first
+    # Check the secondary knowledge DB video counts first.
     with get_connection() as conn:
         rows = conn.execute(
             """

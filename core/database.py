@@ -1,20 +1,56 @@
 """SQLite database setup and insert/query helpers for videoSorter."""
 
 import os
+import re
 import sqlite3
 import pathlib
 from typing import Optional
 
 # Override with DB_PATH env var to target a different database file.
-# Used by the YouTube guide pipeline (guide_test.db) to avoid mixing
-# unvalidated guide insights with the main coaching dataset.
+# Secondary knowledge ingestion defaults to knowledge.db so broader scraped
+# content stays separate from the primary Discord/coaching dataset in videos.db.
 DB_PATH = pathlib.Path(os.environ.get("DB_PATH", "videos.db"))
+
+
+_AOE2_CONTROLS_SETTINGS_RE = re.compile(
+    r"\b("
+    r"hotkey|hotkeys|keybind|keybinds|control group|control groups|grouping|"
+    r"ui|interface|camera|settings|shortcut|shortcuts|"
+    r"select all|go to tc|idle villager|"
+    r"shift queue|shift-queue|waypoint|waypoints|minimap"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # lets you access columns by name
     return conn
+
+
+def _migrate_aoe2_insight_types(conn: sqlite3.Connection) -> None:
+    """Rewrite old AoE2 insight keys into clearer canonical names."""
+    rows = conn.execute(
+        """
+        SELECT i.id, i.text
+        FROM insights AS i
+        JOIN videos AS v ON v.video_id = i.video_id
+        WHERE i.insight_type = 'game_mechanics'
+          AND v.game = 'aoe2'
+        """
+    ).fetchall()
+    migrate_ids = [
+        row["id"]
+        for row in rows
+        if _AOE2_CONTROLS_SETTINGS_RE.search((row["text"] or "").lower())
+    ]
+    if not migrate_ids:
+        return
+    conn.executemany(
+        "UPDATE insights SET insight_type = 'controls_settings' WHERE id = ?",
+        [(insight_id,) for insight_id in migrate_ids],
+    )
 
 
 def init_db() -> None:
@@ -174,6 +210,10 @@ def init_db() -> None:
                 rated_at              TEXT DEFAULT (datetime('now'))
             )
         """)
+        try:
+            _migrate_aoe2_insight_types(conn)
+        except Exception:
+            pass
         conn.commit()
 
 

@@ -1,5 +1,5 @@
 """
-Scrape top-rated Diamond+ MOBAFire written guides and store them in guide_test.db.
+Scrape top-rated Diamond+ MOBAFire written guides and store them in knowledge.db.
 
 This treats written guides as a guide source parallel to youtube_guide, but skips
 transcription entirely by saving the cleaned guide text directly into the
@@ -17,7 +17,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 import random
 import re
 import sqlite3
@@ -30,7 +29,9 @@ from typing import Iterable
 
 from bs4 import BeautifulSoup
 
-os.environ.setdefault("DB_PATH", "guide_test.db")
+from core.db_paths import activate_knowledge_db
+
+activate_knowledge_db()
 
 from core.champions import load_champion_names
 from core.database import get_connection, init_db, insert_video, set_transcription
@@ -872,7 +873,7 @@ def _reset_mobafire_guides(champion: str | None = None) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Scrape top MOBAFire guides into guide_test.db")
+    parser = argparse.ArgumentParser(description="Scrape top MOBAFire guides into knowledge.db")
     parser.add_argument("--champion", help="Only scrape one champion")
     parser.add_argument("--index-url", help="Override the MOBAFire listing URL for --champion")
     parser.add_argument("--limit", type=int, default=3, help="Max qualifying guides per champion")

@@ -1,11 +1,14 @@
 """
-Dump Aatrox insights from guide_test.db for before/after comparison.
+Dump Aatrox insights from knowledge.db for before/after comparison.
 
 Usage:
     uv run python snapshots/dump_guide_insights.py [champion]
 """
-import os, sys
-os.environ["DB_PATH"] = "guide_test.db"
+import sys
+
+from core.db_paths import activate_knowledge_db
+
+activate_knowledge_db()
 
 from core.database import get_connection
 

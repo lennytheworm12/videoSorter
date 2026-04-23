@@ -3,6 +3,7 @@ Manually import Age of Empires II source rows from CSV or JSON.
 
 This is the v1 ingestion path for AoE2. It supports:
   - video rows that still need transcription (`source=aoe2_video`)
+  - coaching / replay-review rows that still need transcription (`source=aoe2_coaching`)
   - wiki/reference rows that already include raw text (`source=aoe2_wiki`)
 
 Examples:
@@ -16,12 +17,13 @@ import argparse
 import csv
 import hashlib
 import json
-import os
 import pathlib
 import re
 from datetime import datetime, timezone
 
-os.environ.setdefault("DB_PATH", "guide_test.db")
+from core.db_paths import activate_knowledge_db
+
+activate_knowledge_db()
 
 from core.database import get_connection, init_db, insert_video, set_transcription
 from core.game_registry import canonical_aoe2_civilization
@@ -142,9 +144,9 @@ def import_rows(rows: list[dict], default_source: str | None = None) -> tuple[in
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Import AoE2 videos/wiki rows into guide_test.db")
+    parser = argparse.ArgumentParser(description="Import AoE2 videos/wiki rows into knowledge.db")
     parser.add_argument("--input", required=True, help="CSV or JSON file with AoE2 source rows")
-    parser.add_argument("--source", choices=["aoe2_video", "aoe2_wiki"],
+    parser.add_argument("--source", choices=["aoe2_video", "aoe2_coaching", "aoe2_wiki"],
                         help="Default source label when rows do not provide one")
     args = parser.parse_args()
 

@@ -9,7 +9,6 @@ Safe to re-run — already-transcribed videos are skipped.
 """
 
 import os
-import re
 import time
 import random
 import pathlib
@@ -22,142 +21,65 @@ from youtube_transcript_api._errors import (
     VideoUnavailable,
 )
 from core.database import get_videos_by_status, set_status, set_transcription
+from core.youtube_network import YouTubeNetworkPolicy
 
 load_dotenv()
 
 SUBTITLE_DIR = pathlib.Path("subtitles")
 SUBTITLE_DIR.mkdir(exist_ok=True)
+from youtube_transcript_api.proxies import GenericProxyConfig
 
-# ── Proxy config (optional) ───────────────────────────────────────────────────
-# Set PROXY_LIST in .env as a comma-separated list of proxies.
-# Accepts two formats:
-#   ProxyEmpire: host:port:username:password
-#   Standard:    http://username:password@host:port
-_proxy_index = 0
-
-def _parse_proxy(raw: str) -> str:
-    """Convert host:port:user:pass or standard URL to http://user:pass@host:port."""
-    raw = raw.strip()
-    if raw.startswith("http"):
-        return raw
-    parts = raw.split(":")
-    if len(parts) == 4:
-        host, port, user, password = parts
-        return f"http://{user}:{password}@{host}:{port}"
-    raise ValueError(f"Unrecognised proxy format: {raw}")
-
-# Load from proxies.txt (one per line) or PROXY_LIST env var (comma-separated)
-_proxy_file = pathlib.Path("proxies.txt")
-if _proxy_file.exists():
-    _raw_entries = [l.strip() for l in _proxy_file.read_text().splitlines() if l.strip() and not l.startswith("#")]
-else:
-    _raw_entries = [p.strip() for p in os.environ.get("PROXY_LIST", "").split(",") if p.strip()]
-
-_PROXY_LIST = [_parse_proxy(p) for p in _raw_entries]
-
-def _get_proxy_url() -> str | None:
-    """Return the next proxy URL in round-robin order."""
-    global _proxy_index
-    if not _PROXY_LIST:
-        return None
-    url = _PROXY_LIST[_proxy_index % len(_PROXY_LIST)]
-    _proxy_index += 1
-    return url
-
-if _PROXY_LIST:
-    from youtube_transcript_api.proxies import GenericProxyConfig
-    print(f"[transcribe] {len(_PROXY_LIST)} proxy(ies) loaded (rotating)")
-else:
-    print("[transcribe] No proxy configured — direct connection")
+NETWORK_POLICY = YouTubeNetworkPolicy()
+print(NETWORK_POLICY.describe())
 
 # Random delay range between transcript fetches to avoid rate limiting.
 # Override with TRANSCRIPT_DELAY_MIN / TRANSCRIPT_DELAY_MAX env vars.
 INTER_VIDEO_DELAY_MIN = int(os.environ.get("TRANSCRIPT_DELAY_MIN", "40"))
 INTER_VIDEO_DELAY_MAX = int(os.environ.get("TRANSCRIPT_DELAY_MAX", "60"))
-
-# On a 429 response, wait this many seconds before each retry attempt
-RETRY_DELAYS = [30, 60]  # two retries: 30s then 60s
-
-
-def _is_rate_limited(exc: Exception) -> bool:
-    msg = str(exc).lower()
-    return "429" in msg or "too many requests" in msg or ("ip" in msg and "block" in msg)
-
-
-def _is_proxy_error(exc: Exception) -> bool:
-    msg = str(exc).lower()
-    return any(k in msg for k in ("502", "bad gateway", "proxyerror", "tunnel connection failed", "unable to connect to proxy"))
-
-
-def _should_retry(attempt: int, exc: Exception) -> bool:
-    """
-    Decide whether to retry and how long to wait.
-    - Proxy errors: cycle to next proxy immediately (no sleep)
-    - Rate limits: sleep before retrying
-    Returns True if the caller should retry, False to give up.
-    """
-    if attempt >= len(RETRY_DELAYS):
-        return False
-
-    if _is_proxy_error(exc):
-        print(f"    [proxy error] cycling to next proxy (attempt {attempt + 1})…", flush=True)
-        return True  # _get_proxy_url() will advance the index on the next call
-
-    if _is_rate_limited(exc):
-        wait = RETRY_DELAYS[attempt]
-        m = re.search(r"retry[^\d]*(\d+(?:\.\d+)?)\s*s", str(exc), re.IGNORECASE)
-        if m:
-            wait = max(wait, int(float(m.group(1))) + 2)
-        print(f"    [rate limit] waiting {wait}s before retry {attempt + 1}…", flush=True)
-        time.sleep(wait)
-        return True
-
-    return False
-
+INTER_VIDEO_DELAY = INTER_VIDEO_DELAY_MIN
 
 def fetch_via_transcript_api(video_id: str) -> str | None:
     """
-    Pull auto-generated or manual captions from YouTube.
-    Always tries direct connection first; falls back to proxy on rate limit.
-    Retries up to len(RETRY_DELAYS) times on rate-limit errors.
+    Pull auto-generated or manual captions from YouTube using shared network policy.
     """
-    for attempt in range(len(RETRY_DELAYS) + 1):
+    def _operation(proxy_url: str | None) -> str:
+        route = "proxy" if proxy_url else "local IP"
+        proxy_config = (
+            GenericProxyConfig(http_url=proxy_url, https_url=proxy_url)
+            if proxy_url else None
+        )
+        api = YouTubeTranscriptApi(proxy_config=proxy_config)
+        transcript_list = api.list(video_id)
+
         try:
-            # First attempt: always try direct (no proxy) to save proxy quota.
-            # Subsequent attempts after a rate limit: use rotating proxy.
-            if attempt == 0:
-                proxy_config = None
-            else:
-                proxy_url = _get_proxy_url()
-                proxy_config = GenericProxyConfig(http_url=proxy_url, https_url=proxy_url) if proxy_url else None
-            api = YouTubeTranscriptApi(proxy_config=proxy_config)
-            transcript_list = api.list(video_id)
+            transcript = transcript_list.find_manually_created_transcript(["en"])
+            caption_type = "manual"
+        except NoTranscriptFound:
+            transcript = transcript_list.find_generated_transcript(["en"])
+            caption_type = "auto-generated"
 
-            try:
-                transcript = transcript_list.find_manually_created_transcript(["en"])
-            except NoTranscriptFound:
-                transcript = transcript_list.find_generated_transcript(["en"])
+        segments = transcript.fetch()
+        text = " ".join(seg.text.strip() for seg in segments)
+        print(
+            f"    [transcript api] fetched {caption_type} English captions via {route}",
+            flush=True,
+        )
+        return text
 
-            segments = transcript.fetch()
-            text = " ".join(seg.text.strip() for seg in segments)
-            return text
-
-        except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable) as e:
-            print(f"    [transcript api] unavailable: {e}")
-            return None
-        except Exception as e:
-            if _should_retry(attempt, e):
-                continue
-            print(f"    [transcript api] unexpected error: {e}")
-            return None
-
-    return None
+    try:
+        return NETWORK_POLICY.run("transcript api", _operation)
+    except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable) as exc:
+        print(f"    [transcript api] unavailable: {exc}")
+        return None
+    except Exception as exc:
+        print(f"    [transcript api] unexpected error: {exc}")
+        return None
 
 
 def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
     """
     Fallback: download auto-subtitle .vtt file with yt-dlp and parse it.
-    Retries up to len(RETRY_DELAYS) times on rate-limit errors.
+    Uses the same local-first network policy as the transcript API path.
     """
     out_template = str(SUBTITLE_DIR / f"{video_id}.%(ext)s")
 
@@ -172,17 +94,20 @@ def fetch_via_yt_dlp(video_id: str, video_url: str) -> str | None:
         "cookiefile": "cookies.txt",  # Netscape-format cookies exported from browser
     }
 
-    for attempt in range(len(RETRY_DELAYS) + 1):
-        try:
-            ydl_opts = {**base_opts, **({"proxy": _get_proxy_url()} if _PROXY_LIST else {})}
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video_url])
-            break
-        except Exception as e:
-            if _should_retry(attempt, e):
-                continue
-            print(f"    [yt-dlp] download error: {e}")
-            return None
+    def _operation(proxy_url: str | None) -> None:
+        route = "proxy" if proxy_url else "local IP"
+        ydl_opts = dict(base_opts)
+        if proxy_url:
+            ydl_opts["proxy"] = proxy_url
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([video_url])
+        print(f"    [yt-dlp] downloaded subtitle track via {route}", flush=True)
+
+    try:
+        NETWORK_POLICY.run("yt-dlp", _operation)
+    except Exception as exc:
+        print(f"    [yt-dlp] download error: {exc}")
+        return None
 
     vtt_path = SUBTITLE_DIR / f"{video_id}.en.vtt"
     if not vtt_path.exists():
@@ -216,8 +141,16 @@ def parse_vtt(path: pathlib.Path) -> str:
     return " ".join(deduped)
 
 
-def run() -> None:
+def run(
+    sources: list[str] | tuple[str, ...] | None = None,
+    game: str | None = None,
+) -> None:
     videos = get_videos_by_status("pending")
+    if sources:
+        allowed = set(sources)
+        videos = [video for video in videos if (video["source"] or "discord") in allowed]
+    if game:
+        videos = [video for video in videos if (video["game"] or "lol") == game]
     print(f"Videos to transcribe: {len(videos)}")
 
     ok = failed = 0

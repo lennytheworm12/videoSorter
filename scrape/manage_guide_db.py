@@ -1,5 +1,5 @@
 """
-Review and remove videos from guide_test.db.
+Review and remove videos from knowledge.db.
 
 Usage:
     uv run python -m scrape.manage_guide_db --list              # all videos grouped by champion
@@ -8,8 +8,11 @@ Usage:
     uv run python -m scrape.manage_guide_db --interactive       # step through each champion
 """
 
-import os, argparse
-os.environ.setdefault("DB_PATH", "guide_test.db")
+import argparse
+
+from core.db_paths import activate_knowledge_db
+
+activate_knowledge_db()
 
 from core.database import get_connection, init_db
 
@@ -141,7 +144,7 @@ def interactive(start_champion: str | None = None) -> None:
         ).fetchall()]
 
     if not champions:
-        print("No champions in guide_test.db.")
+        print("No champions in knowledge.db.")
         return
 
     idx = 0
@@ -187,7 +190,7 @@ def bulk_remove_by_keyword(keyword: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Manage guide_test.db videos")
+    parser = argparse.ArgumentParser(description="Manage knowledge.db videos")
     parser.add_argument("--list", nargs="?", const="ALL", metavar="CHAMPION",
                         help="List videos (optionally for one champion)")
     parser.add_argument("--remove", metavar="VIDEO_ID", help="Remove a video and its insights")

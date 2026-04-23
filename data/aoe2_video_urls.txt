@@ -1,0 +1,33 @@
+# Paste one YouTube video or playlist URL per line.
+# Blank lines and comment lines are ignored.
+#
+# Examples:
+# https://www.youtube.com/watch?v=VIDEO_ID
+# https://www.youtube.com/playlist?list=PLAYLIST_ID
+
+coaching|https://www.youtube.com/watch?v=vuumj8Ydzno&list=PL2FJAAVz1MevQmi-UiUjdu8ck8Tdm_c5I&index=48
+coaching|https://www.youtube.com/watch?v=ojZGqJikGQg&list=PL2FJAAVz1MevQmi-UiUjdu8ck8Tdm_c5I&index=65&pp=iAQB
+coaching|https://www.youtube.com/watch?v=kCJZ4QYpUQE&list=PL2FJAAVz1MevQmi-UiUjdu8ck8Tdm_c5I&index=66&pp=iAQB
+coaching|https://youtu.be/4SEmydjmskg?si=w_bKWUuacwEN0Etb
+coaching|https://youtu.be/8T5f1rzDGO4?si=vjoBhP3QUKY8EmRe
+coaching|https://youtu.be/tNcE0tkqYI0?si=6_1LesJJKlyzKv6O
+coaching|https://youtu.be/_O6wxT4gmB8?si=Ck06sOslbeTGytym
+
+https://www.youtube.com/playlist?list=PL2FJAAVz1MevTa_pGs5HhOATduAS1_RG2
+https://www.youtube.com/playlist?list=PL2FJAAVz1Mesa4tKNuzekqxqoKufRlPvK
+https://www.youtube.com/playlist?list=PL2FJAAVz1MevUmDrUV4gYpgdoQnOzxNAh
+https://www.youtube.com/playlist?list=PL2FJAAVz1MetaRB_xUStdtlWzrDNplAWw
+https://www.youtube.com/playlist?list=PL2FJAAVz1Mesv2RCswq15NSAq0186hm9_
+https://www.youtube.com/playlist?list=PL2FJAAVz1MesjoP5KVk6Kp9bSCkTgdKlp
+https://www.youtube.com/playlist?list=PL2FJAAVz1Meujd2u7N8GD8fOwEfR9qXuV
+https://www.youtube.com/playlist?list=PLQ8BgSJQQkY0CubQVTAkDhjaQLzYiGKk0
+https://www.youtube.com/playlist?list=PLQ8BgSJQQkY3VRQMZ3mJAhdWn9YLum8k6
+https://www.youtube.com/playlist?list=PLQ8BgSJQQkY3XiYdhsAp1tcPAAJob9CJb
+coaching|https://www.youtube.com/playlist?list=PLQ8BgSJQQkY2RrQWBsQ_Oc9R5v0gATozQ
+https://www.youtube.com/playlist?list=PL6co4ILAvwICgozZOn3Q01DlsDRnoJw52
+https://www.youtube.com/playlist?list=PL6co4ILAvwIBtobSlWNFMYQH9oRP98LOb
+https://www.youtube.com/playlist?list=PL6co4ILAvwICD6a10NDNOr1tCIey_MftO
+https://www.youtube.com/playlist?list=PL6co4ILAvwIDNC8TfoJSIRFNn01f2x_4V
+https://youtu.be/ZSv2TR8h0sM?si=iDkhHBb46S8F5VGa
+https://youtu.be/VxwHrzdOMmE?si=vzh38jTqpyRzdRzH
+https://youtu.be/n_-Q6S_EdMI?si=EfmnnhbO49g4YdLC

@@ -17,6 +17,7 @@ import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
 from core.database import get_connection, init_db
+from core.db_paths import all_content_db_paths
 
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -73,7 +74,11 @@ def embed_insights() -> None:
     print(f"Done — {len(ids)} insights embedded.")
 
 
-_ALL_DBS = ["videos.db", "guide_test.db"]
+_ALL_DBS: list[str] | None = None
+
+
+def _db_paths() -> list[str]:
+    return list(_ALL_DBS) if _ALL_DBS is not None else all_content_db_paths()
 
 
 def _load_vectors_from_db(
@@ -161,7 +166,7 @@ def load_all_vectors(
 ) -> tuple[list, list[str], list[dict], np.ndarray]:
     """
     Load insight IDs, texts, metadata, and vectors from all DBs.
-    Merges videos.db and guide_test.db transparently.
+    Merges videos.db and knowledge.db transparently.
 
     Returns:
         ids       — list of insight row IDs (prefixed with db path)
@@ -171,7 +176,7 @@ def load_all_vectors(
     """
     all_ids, all_texts, all_meta, all_vecs = [], [], [], []
 
-    for db_path in _ALL_DBS:
+    for db_path in _db_paths():
         if not pathlib.Path(db_path).exists():
             continue
         ids, texts, meta, vecs = _load_vectors_from_db(
@@ -192,7 +197,7 @@ def load_all_vectors(
 if __name__ == "__main__":
     import pathlib
     import core.database as _db
-    for _path in ["videos.db", "guide_test.db"]:
+    for _path in _db_paths():
         _db.DB_PATH = pathlib.Path(_path)
         print(f"\n--- {_path} ---")
         init_db()

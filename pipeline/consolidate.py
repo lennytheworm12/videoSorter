@@ -21,16 +21,21 @@ What it does:
 import math
 import logging
 import numpy as np
+import pathlib
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
+import core.database as _db
 from core.database import get_connection
+from core.db_paths import all_content_db_paths
 
 # Cosine similarity threshold to treat two insights as the same point
 DEDUP_THRESHOLD = 0.88
 
 # repetition_count at which within_video_weight saturates to 1.0
 MAX_REPS = 4
+
+_ALL_DBS: list[str] | None = None
 
 
 def within_video_weight(repetition_count: int) -> float:
@@ -45,6 +50,10 @@ def _add_columns() -> None:
         if "is_duplicate" not in cols:
             conn.execute("ALTER TABLE insights ADD COLUMN is_duplicate INTEGER DEFAULT 0")
         conn.commit()
+
+
+def _db_paths() -> list[str]:
+    return list(_ALL_DBS) if _ALL_DBS is not None else all_content_db_paths()
 
 
 def consolidate() -> None:
@@ -142,5 +151,14 @@ def consolidate() -> None:
             print(f"  repeated {n}x : {counts.count(n):4d} clusters  (weight={w:.2f})")
 
 
+def consolidate_all_databases() -> None:
+    for db_path in _db_paths():
+        if not pathlib.Path(db_path).exists():
+            continue
+        _db.DB_PATH = pathlib.Path(db_path)
+        print(f"\n--- {db_path} ---")
+        consolidate()
+
+
 if __name__ == "__main__":
-    consolidate()
+    consolidate_all_databases()

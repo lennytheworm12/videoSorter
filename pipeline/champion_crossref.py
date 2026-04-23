@@ -43,7 +43,7 @@ def _archetype_db_paths() -> list[pathlib.Path]:
     """
     Read archetype mappings from the active DB first, then fall back to videos.db.
 
-    guide_test.db intentionally stores guide-derived insights separately, but the
+    knowledge.db intentionally stores guide-derived insights separately, but the
     archetype table often only exists in videos.db. Cross-ref should reuse that
     canonical mapping instead of requiring the table to be duplicated.
     """
@@ -276,7 +276,7 @@ def generalize_insights(dry_run: bool = False) -> None:
         }
 
     # Load champion_identity insights and attach archetype in Python so we can fall
-    # back to the canonical videos.db archetype table when guide_test.db is empty.
+    # back to the canonical videos.db archetype table when knowledge.db is empty.
     with get_connection() as conn:
         rows = conn.execute("""
             SELECT i.id, i.text, v.champion, v.role
@@ -422,7 +422,7 @@ def get_archetype_insights(
     Used by query.py as the layer-2 archetype fallback.
     """
     # Get this champion's archetype (role-agnostic: first match), falling back to
-    # the canonical mapping in videos.db when guide_test.db has no archetype rows.
+    # the canonical mapping in videos.db when knowledge.db has no archetype rows.
     archetype = _lookup_archetype(champion)
     if not archetype:
         return []

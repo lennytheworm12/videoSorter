@@ -175,12 +175,24 @@ AOE2_CANONICAL_QUESTIONS = [
      ["map_control", "economy_macro", "principles"],
      "Map control and territory"),
 
+    ("How should I micro my army and control fights more effectively?",
+     ["micro", "unit_compositions", "principles"],
+     "Army control and fight execution"),
+
+    ("How should I defend against early aggression or pressure?",
+     ["scouting", "economy_macro", "micro"],
+     "Defense and stabilizing under pressure"),
+
+    ("How should I execute an early attack or timing push?",
+     ["build_orders", "feudal_age", "micro"],
+     "Early aggression and attack execution"),
+
     ("How does [civilization] play into [civilization]?",
      ["matchup_advice", "civilization_identity", "unit_compositions"],
      "Civilization-versus-civilization adjustment"),
 
     ("What fundamental AoE2 habits should a beginner focus on first?",
-     ["game_mechanics", "principles", "economy_macro"],
+     ["principles", "economy_macro", "scouting"],
      "Beginner fundamentals and clean execution"),
 ]
 
@@ -250,7 +262,7 @@ Return a JSON object with these fields:
     "normalized": "the best matching canonical template, with civilization names filled in when clearly present",
     "subject": "exact civilization name if one is clearly present, else null",
     "role": null,
-    "insight_types": ["ordered list of 2-3 most relevant insight type keys from: civilization_identity, game_mechanics, principles, build_orders, dark_age, feudal_age, castle_age, imperial_age, economy_macro, scouting, unit_compositions, map_control, matchup_advice, general_advice"],
+    "insight_types": ["ordered list of 2-3 most relevant insight type keys from: civilization_identity, game_mechanics, controls_settings, micro, principles, build_orders, dark_age, feudal_age, castle_age, imperial_age, economy_macro, scouting, unit_compositions, map_control, matchup_advice, general_advice"],
     "reasoning": "one sentence explaining the mapping"
 }}
 
@@ -258,6 +270,12 @@ Rules:
 - Use "subject" only for a named civilization, not a strategy archetype.
 - If the question is about general fundamentals, leave subject as null.
 - Prefer the most specific canonical phrasing that fits the player's intent.
+- Use "controls_settings" for hotkeys, control groups, camera setup, UI usage,
+  and command efficiency.
+- Use "game_mechanics" for wildlife behavior, armor classes, counters, attack
+  bonuses, conversion, projectile behavior, pathing quirks, and general unit or
+  building interaction rules.
+- Use "micro" for fight execution and unit control rather than settings/setup.
 """.strip()
 
 
