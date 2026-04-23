@@ -464,10 +464,29 @@ Write the answer using the required section headings.
 If detail mode is yes, make each well-supported section 2-3 sentences.
 """.strip()
 
+AOE2_CIV_OVERVIEW_SPLIT_SYSTEM = (
+    AOE2_CIV_OVERVIEW_SYSTEM
+    + "\n- You are receiving only part of the required sections. Answer only "
+    "the requested sections, using the exact headings provided in the evidence."
+)
+AOE2_CIV_OVERVIEW_SPLIT_USER = """
+Player question: {question}
+Civilization: {subject}
+Detail mode: yes
+Requested sections for this call: {section_names}
+
+Grouped retrieved insights:
+{sectioned_insights}
+
+Write only the requested sections, using their exact headings.
+Make each well-supported section 2-3 sentences.
+""".strip()
+
 AOE2_CIV_OVERVIEW_SECTION_TOP_K = 5
 AOE2_CIV_OVERVIEW_COMPACT_SECTION_TOP_K = 3
 AOE2_CIV_OVERVIEW_SECTION_CANDIDATE_TOP_K = 10
 AOE2_CIV_OVERVIEW_MAX_PER_INSIGHT_TYPE = 2
+AOE2_CIV_OVERVIEW_SPLIT_INDEX = 4
 AOE2_CIV_OVERVIEW_SECTIONS = (
     {
         "name": "Core Identity / Gameplan",
@@ -1137,6 +1156,34 @@ def _section_sources_block(sections: list[dict], prefix: str = "") -> str:
             + _sources_block(insights, prefix=prefix + "  ")
         )
     return "\n".join(blocks)
+
+
+def _answer_aoe2_civ_overview_split(
+    question: str,
+    subject: str,
+    sections: list[dict],
+) -> str:
+    answers: list[str] = []
+    for selected_sections in (
+        sections[:AOE2_CIV_OVERVIEW_SPLIT_INDEX],
+        sections[AOE2_CIV_OVERVIEW_SPLIT_INDEX:],
+    ):
+        if not selected_sections:
+            continue
+        section_names = ", ".join(section["name"] for section in selected_sections)
+        answers.append(
+            llm_chat(
+                system=AOE2_CIV_OVERVIEW_SPLIT_SYSTEM,
+                user=AOE2_CIV_OVERVIEW_SPLIT_USER.format(
+                    question=question,
+                    subject=subject,
+                    section_names=section_names,
+                    sectioned_insights=_format_aoe2_civ_overview_sections(selected_sections),
+                ),
+                temperature=0.2,
+            ).strip()
+        )
+    return "\n\n".join(answer for answer in answers if answer)
 
 
 def _blend_archetype_insights(results: list[dict], champion: str, top_k: int) -> None:
@@ -1980,16 +2027,19 @@ def _answer_aoe2_civ_overview(
     if not all_insights:
         return f"No relevant insights found for {subject}. Make sure embed.py has been run."
 
-    generated = llm_chat(
-        system=AOE2_CIV_OVERVIEW_SYSTEM,
-        user=AOE2_CIV_OVERVIEW_USER.format(
-            question=question,
-            subject=subject,
-            detail_mode="yes" if profile.get("detail") else "no",
-            sectioned_insights=_format_aoe2_civ_overview_sections(sections),
-        ),
-        temperature=0.2,
-    )
+    if profile.get("detail"):
+        generated = _answer_aoe2_civ_overview_split(question, subject, sections)
+    else:
+        generated = llm_chat(
+            system=AOE2_CIV_OVERVIEW_SYSTEM,
+            user=AOE2_CIV_OVERVIEW_USER.format(
+                question=question,
+                subject=subject,
+                detail_mode="no",
+                sectioned_insights=_format_aoe2_civ_overview_sections(sections),
+            ),
+            temperature=0.2,
+        )
     if show_sources:
         generated += "\n\n---\nSources by section:\n" + _section_sources_block(sections, prefix="  ")
     return generated
