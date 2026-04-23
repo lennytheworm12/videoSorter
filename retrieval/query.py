@@ -467,6 +467,7 @@ If detail mode is yes, make each well-supported section 2-3 sentences.
 AOE2_CIV_OVERVIEW_SECTION_TOP_K = 5
 AOE2_CIV_OVERVIEW_COMPACT_SECTION_TOP_K = 3
 AOE2_CIV_OVERVIEW_SECTION_CANDIDATE_TOP_K = 10
+AOE2_CIV_OVERVIEW_MAX_PER_INSIGHT_TYPE = 2
 AOE2_CIV_OVERVIEW_SECTIONS = (
     {
         "name": "Core Identity / Gameplan",
@@ -1001,6 +1002,54 @@ def _merge_ranked_results(*result_sets: list[dict], limit: int) -> list[dict]:
     return merged[:limit]
 
 
+def _diversify_section_results(
+    hits: list[dict],
+    preferred_types: list[str],
+    limit: int,
+) -> list[dict]:
+    selected: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    type_counts: dict[str, int] = {}
+    preferred = set(preferred_types)
+
+    def add(row: dict, enforce_type_cap: bool = True) -> bool:
+        key = (row.get("text") or "", row.get("insight_type") or "")
+        if key in seen:
+            return False
+        insight_type = row.get("insight_type") or ""
+        if enforce_type_cap and type_counts.get(insight_type, 0) >= AOE2_CIV_OVERVIEW_MAX_PER_INSIGHT_TYPE:
+            return False
+        seen.add(key)
+        type_counts[insight_type] = type_counts.get(insight_type, 0) + 1
+        selected.append(row)
+        return True
+
+    for insight_type in preferred_types:
+        for row in hits:
+            if row.get("insight_type") == insight_type and add(row):
+                break
+        if len(selected) >= limit:
+            return selected[:limit]
+
+    for row in hits:
+        if row.get("insight_type") in preferred:
+            add(row)
+        if len(selected) >= limit:
+            return selected[:limit]
+
+    for row in hits:
+        add(row)
+        if len(selected) >= limit:
+            return selected[:limit]
+
+    for row in hits:
+        add(row, enforce_type_cap=False)
+        if len(selected) >= limit:
+            return selected[:limit]
+
+    return selected[:limit]
+
+
 def _retrieve_aoe2_civ_overview_sections(
     question: str,
     subject: str,
@@ -1036,6 +1085,11 @@ def _retrieve_aoe2_civ_overview_sections(
         hits = _merge_ranked_results(
             subject_hits,
             general_hits,
+            limit=candidate_limit * 2,
+        )
+        hits = _diversify_section_results(
+            hits,
+            preferred_types=preferred_types,
             limit=section_limit,
         )
         sections.append({

@@ -549,6 +549,28 @@ class Aoe2PipelineTests(unittest.TestCase):
         self.assertIn("imperial_age", calls[10]["preferred_types"])
         self.assertTrue(all(len(section["insights"]) == 5 for section in sections))
 
+    def test_aoe2_civ_overview_diversifies_section_insight_types(self) -> None:
+        hits = [
+            {"text": f"identity {i}", "insight_type": "civilization_identity"}
+            for i in range(5)
+        ] + [
+            {"text": "opening build", "insight_type": "build_orders"},
+            {"text": "dark timing", "insight_type": "dark_age"},
+            {"text": "economy setup", "insight_type": "economy_macro"},
+        ]
+
+        selected = retrieval_query._diversify_section_results(
+            hits,
+            preferred_types=["build_orders", "dark_age", "economy_macro"],
+            limit=5,
+        )
+
+        selected_types = [row["insight_type"] for row in selected]
+        self.assertIn("build_orders", selected_types)
+        self.assertIn("dark_age", selected_types)
+        self.assertIn("economy_macro", selected_types)
+        self.assertLessEqual(selected_types.count("civilization_identity"), 2)
+
     def test_aoe2_civ_overview_answer_uses_grouped_section_prompt_and_sources(self) -> None:
         duplicate = {
             "text": "Use a clean opening with constant villager production.",
