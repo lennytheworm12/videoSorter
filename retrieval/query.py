@@ -70,7 +70,7 @@ def _source_weight(meta: dict) -> float:
     if source == "aoe2_wiki":
         return 1.1
     if source == "aoe2_pdf":
-        return 1.2
+        return 2.0
     if source in {"aoe2_video", "aoe2_coaching"}:
         return 1.0
     if source == "mobafire_guide":

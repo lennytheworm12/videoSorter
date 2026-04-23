@@ -233,6 +233,68 @@ class ScoreClustersTests(unittest.TestCase):
         self.assertEqual(len(results), 2)
         self.assertGreaterEqual(results[0]["confidence"], results[1]["confidence"])
 
+    def test_retrieve_weights_aoe2_pdf_as_north_star_source(self) -> None:
+        embed._ALL_DBS = [str(self._db_path)]
+
+        for video_id, source in (("pdf", "aoe2_pdf"), ("youtube", "aoe2_video")):
+            insert_video(
+                video_id=video_id,
+                video_url=f"https://example.com/{video_id}",
+                video_title=video_id,
+                description="",
+                game="aoe2",
+                role="general",
+                subject=None,
+                champion=None,
+                message_timestamp="2026-04-22T00:00:00+00:00",
+                source=source,
+            )
+
+        pdf_id = insert_insight(
+            "pdf",
+            "build_orders",
+            "Use a clean scout opening with constant villager production.",
+            subject=None,
+            subject_type="general",
+        )
+        youtube_id = insert_insight(
+            "youtube",
+            "build_orders",
+            "Use a clean scout opening with constant villager production.",
+            subject=None,
+            subject_type="general",
+        )
+
+        with get_connection() as conn:
+            blob = np.array([1.0, 0.0, 0.0], dtype=np.float32).tobytes()
+            conn.execute(
+                "UPDATE insights SET embedding = ?, source_score = ?, confidence = ? WHERE id = ?",
+                (blob, 0.5, 0.5, pdf_id),
+            )
+            conn.execute(
+                "UPDATE insights SET embedding = ?, source_score = ?, confidence = ? WHERE id = ?",
+                (blob, 0.5, 0.5, youtube_id),
+            )
+            conn.commit()
+
+        class FakeModel:
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+            def encode(self, text, convert_to_numpy=True, normalize_embeddings=True):
+                return np.array([1.0, 0.0, 0.0], dtype=np.float32)
+
+        with mock.patch.object(retrieval_query, "SentenceTransformer", FakeModel):
+            results = retrieval_query.retrieve(
+                "clean scout opening",
+                game="aoe2",
+                subject=None,
+                top_k=2,
+            )
+
+        self.assertEqual(results[0]["source"], "aoe2_pdf")
+        self.assertEqual(results[0]["source_weight"], 2.0)
+
 
 if __name__ == "__main__":
     unittest.main()
