@@ -442,6 +442,10 @@ Rules:
 - If a section has limited evidence, keep it brief instead of inventing details.
 - For detailed questions, include concrete checkpoints, transitions, and mistakes
   when the evidence supports them.
+- For detailed questions, make Core Identity / Gameplan and Opening / First
+  Minutes dense when the section evidence supports it. Preserve useful build
+  order timings, age-up windows, unit transitions, and early scouting/economy
+  checkpoints instead of summarizing them away.
 - Prioritize pdf guide evidence when it appears, because it is the north-star guide.
 """.strip()
 
@@ -457,6 +461,8 @@ Write the answer using the required section headings.
 """.strip()
 
 AOE2_CIV_OVERVIEW_SECTION_TOP_K = 5
+AOE2_CIV_OVERVIEW_COMPACT_SECTION_TOP_K = 3
+AOE2_CIV_OVERVIEW_SECTION_CANDIDATE_TOP_K = 10
 AOE2_CIV_OVERVIEW_SECTIONS = (
     {
         "name": "Core Identity / Gameplan",
@@ -994,8 +1000,15 @@ def _merge_ranked_results(*result_sets: list[dict], limit: int) -> list[dict]:
 def _retrieve_aoe2_civ_overview_sections(
     question: str,
     subject: str,
+    detail_mode: bool = True,
 ) -> list[dict]:
     sections: list[dict] = []
+    section_limit = (
+        AOE2_CIV_OVERVIEW_SECTION_TOP_K
+        if detail_mode
+        else AOE2_CIV_OVERVIEW_COMPACT_SECTION_TOP_K
+    )
+    candidate_limit = max(AOE2_CIV_OVERVIEW_SECTION_CANDIDATE_TOP_K, section_limit * 2)
     for spec in AOE2_CIV_OVERVIEW_SECTIONS:
         section_question = spec["query"].format(subject=subject)
         preferred_types = list(spec["preferred_types"])
@@ -1006,28 +1019,26 @@ def _retrieve_aoe2_civ_overview_sections(
             preferred_types=preferred_types,
             situation_tags=situation_tags,
             game="aoe2",
-            top_k=AOE2_CIV_OVERVIEW_SECTION_TOP_K,
+            top_k=candidate_limit,
         )
-        hits = subject_hits
-        if len(hits) < 3:
-            general_hits = retrieve(
-                section_question,
-                subject=None,
-                preferred_types=preferred_types,
-                situation_tags=situation_tags,
-                game="aoe2",
-                top_k=AOE2_CIV_OVERVIEW_SECTION_TOP_K,
-            )
-            hits = _merge_ranked_results(
-                subject_hits,
-                general_hits,
-                limit=AOE2_CIV_OVERVIEW_SECTION_TOP_K,
-            )
+        general_hits = retrieve(
+            section_question,
+            subject=None,
+            preferred_types=preferred_types,
+            situation_tags=situation_tags,
+            game="aoe2",
+            top_k=candidate_limit,
+        )
+        hits = _merge_ranked_results(
+            subject_hits,
+            general_hits,
+            limit=section_limit,
+        )
         sections.append({
             "name": spec["name"],
             "question": section_question,
             "preferred_types": preferred_types,
-            "insights": hits[:AOE2_CIV_OVERVIEW_SECTION_TOP_K],
+            "insights": hits[:section_limit],
         })
     return sections
 
@@ -1055,6 +1066,19 @@ def _flatten_section_insights(sections: list[dict]) -> list[dict]:
             seen.add(key)
             flattened.append(row)
     return flattened
+
+
+def _section_sources_block(sections: list[dict], prefix: str = "") -> str:
+    blocks: list[str] = []
+    for section in sections:
+        insights = section.get("insights") or []
+        if not insights:
+            continue
+        blocks.append(
+            f"{prefix}{section['name']}:\n"
+            + _sources_block(insights, prefix=prefix + "  ")
+        )
+    return "\n".join(blocks)
 
 
 def _blend_archetype_insights(results: list[dict], champion: str, top_k: int) -> None:
@@ -1889,7 +1913,11 @@ def _answer_aoe2_civ_overview(
     profile: dict[str, object],
     show_sources: bool,
 ) -> str:
-    sections = _retrieve_aoe2_civ_overview_sections(question, subject)
+    sections = _retrieve_aoe2_civ_overview_sections(
+        question,
+        subject,
+        detail_mode=bool(profile.get("detail")),
+    )
     all_insights = _flatten_section_insights(sections)
     if not all_insights:
         return f"No relevant insights found for {subject}. Make sure embed.py has been run."
@@ -1905,7 +1933,7 @@ def _answer_aoe2_civ_overview(
         temperature=0.2,
     )
     if show_sources:
-        generated += "\n\n---\nSources:\n" + _sources_block(all_insights, prefix="  ")
+        generated += "\n\n---\nSources by section:\n" + _section_sources_block(sections, prefix="  ")
     return generated
 
 

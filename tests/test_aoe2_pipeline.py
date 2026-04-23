@@ -508,9 +508,10 @@ class Aoe2PipelineTests(unittest.TestCase):
         def fake_retrieve(*args, **kwargs):
             calls.append(kwargs)
             insight_type = kwargs["preferred_types"][0]
+            scope = "subject" if kwargs.get("subject") else "general"
             return [
                 {
-                    "text": f"{insight_type} section insight {i}",
+                    "text": f"{scope} {insight_type} section insight {i}",
                     "insight_type": insight_type,
                     "score": 0.9,
                     "confidence": 0.8,
@@ -518,7 +519,7 @@ class Aoe2PipelineTests(unittest.TestCase):
                     "source": "aoe2_pdf",
                     "retrieval_layer": "direct",
                 }
-                for i in range(5)
+                for i in range(10)
             ]
 
         with mock.patch.object(retrieval_query, "retrieve", side_effect=fake_retrieve):
@@ -539,11 +540,13 @@ class Aoe2PipelineTests(unittest.TestCase):
                 "Common Mistakes",
             ],
         )
-        self.assertEqual(len(calls), len(retrieval_query.AOE2_CIV_OVERVIEW_SECTIONS))
-        self.assertTrue(all(call["top_k"] == 5 for call in calls))
-        self.assertIn("build_orders", calls[1]["preferred_types"])
-        self.assertIn("feudal_age", calls[3]["preferred_types"])
-        self.assertIn("imperial_age", calls[5]["preferred_types"])
+        self.assertEqual(len(calls), len(retrieval_query.AOE2_CIV_OVERVIEW_SECTIONS) * 2)
+        self.assertTrue(all(call["top_k"] == 10 for call in calls))
+        self.assertTrue(all(calls[i]["subject"] == "Malay" for i in range(0, len(calls), 2)))
+        self.assertTrue(all(calls[i]["subject"] is None for i in range(1, len(calls), 2)))
+        self.assertIn("build_orders", calls[2]["preferred_types"])
+        self.assertIn("feudal_age", calls[6]["preferred_types"])
+        self.assertIn("imperial_age", calls[10]["preferred_types"])
         self.assertTrue(all(len(section["insights"]) == 5 for section in sections))
 
     def test_aoe2_civ_overview_answer_uses_grouped_section_prompt_and_sources(self) -> None:
@@ -595,7 +598,10 @@ class Aoe2PipelineTests(unittest.TestCase):
             )
 
         self.assertIn("Detailed Malay answer", answer)
-        self.assertEqual(answer.count("Use a clean opening"), 1)
+        self.assertEqual(answer.count("Use a clean opening"), 2)
+        self.assertIn("Sources by section:", answer)
+        self.assertIn("  Core Identity / Gameplan:", answer)
+        self.assertIn("  Opening / First Minutes:", answer)
         self.assertIn("### Opening / First Minutes", mocked_llm.call_args.kwargs["system"])
         self.assertIn("## Core Identity / Gameplan", mocked_llm.call_args.kwargs["user"])
         self.assertIn("## Opening / First Minutes", mocked_llm.call_args.kwargs["user"])
