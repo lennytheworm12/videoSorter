@@ -29,6 +29,19 @@ FRONTEND_VARS = (
 )
 
 
+def _read_env_file(path: pathlib.Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    result: dict[str, str] = {}
+    for line in path.read_text(errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        result[key.strip()] = value.strip()
+    return result
+
+
 def _status_line(name: str, value: str | None) -> str:
     return f"  {'ok' if value else 'missing':7} {name}"
 
@@ -37,6 +50,7 @@ def check_setup() -> int:
     root = project_root()
     frontend_env = root / "apps" / "web" / ".env.local"
     schema = root / "supabase" / "schema.sql"
+    frontend_env_values = _read_env_file(frontend_env)
 
     print("Cloud MVP setup status\n")
     print(f"Root .env:              {'found' if (root / '.env').exists() else 'missing'}")
@@ -53,7 +67,9 @@ def check_setup() -> int:
     print("\nFrontend env vars:")
     frontend_missing = 0
     for name in FRONTEND_VARS:
-        value = os.environ.get(name)
+        value = os.environ.get(name) or frontend_env_values.get(name)
+        if name == "NEXT_PUBLIC_SUPABASE_ANON_KEY":
+            value = value or frontend_env_values.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
         print(_status_line(name, value))
         frontend_missing += int(not value)
 
@@ -64,7 +80,7 @@ def check_setup() -> int:
     if backend_missing:
         print("  - Fill the backend Supabase vars in .env.")
     if frontend_missing:
-        print("  - Create apps/web/.env.local from apps/web/.env.local.example.")
+        print("  - Fill apps/web/.env.local from apps/web/.env.local.example.")
     if not backend_missing:
         print("  - Preview sync with: uv run python -m cloud.migrate_supabase --dry-run")
         print("  - Apply sync with:   uv run python -m cloud.migrate_supabase --apply")

@@ -51,9 +51,17 @@ def _validate_runtime_config() -> None:
     if _auth_required():
         missing = [
             name
-            for name in ("SUPABASE_URL", "SUPABASE_ANON_KEY")
+            for name in ("SUPABASE_URL",)
             if not os.environ.get(name)
         ]
+        has_public_key = bool(
+            os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+            or os.environ.get("SUPABASE_ANON_KEY")
+            or os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+            or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        )
+        if not has_public_key:
+            missing.append("SUPABASE_PUBLISHABLE_KEY or SUPABASE_ANON_KEY")
         if missing:
             raise RuntimeError(
                 "REQUIRE_AUTH=true but missing auth env vars: " + ", ".join(missing)
@@ -93,7 +101,12 @@ def _validate_supabase_token(authorization: str | None = Header(default=None)) -
         raise HTTPException(status_code=401, detail="Missing bearer token")
 
     supabase_url = os.environ.get("SUPABASE_URL")
-    anon_key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    anon_key = (
+        os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+        or os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+        or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    )
     if not supabase_url or not anon_key:
         raise HTTPException(status_code=500, detail="Supabase auth env vars are not configured")
 

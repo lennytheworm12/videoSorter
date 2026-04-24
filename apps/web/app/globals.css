@@ -51,10 +51,10 @@ button:disabled {
 }
 
 .hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 380px);
+  gap: 28px;
+  align-items: stretch;
   margin-bottom: 28px;
 }
 
@@ -72,6 +72,69 @@ button:disabled {
   max-width: 720px;
   color: var(--muted);
   font-size: 1.08rem;
+}
+
+.heroCopy {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.heroPoster {
+  display: block;
+  width: min(100%, 560px);
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  box-shadow: 0 24px 60px rgba(34, 26, 17, 0.14);
+}
+
+.heroActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.heroPhoto {
+  position: relative;
+  min-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: 34px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.46), transparent 32%),
+    linear-gradient(145deg, rgba(255, 247, 228, 0.85), rgba(219, 200, 172, 0.92));
+  box-shadow: 0 26px 80px rgba(34, 26, 17, 0.16);
+}
+
+.heroPhoto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.heroFallback {
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  height: 100%;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(115, 48, 24, 0.22), transparent 28%),
+    radial-gradient(circle at 85% 30%, rgba(36, 76, 56, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(250, 241, 224, 0.94), rgba(223, 204, 174, 0.98));
+}
+
+.heroFallback strong {
+  font-size: 1.4rem;
+  letter-spacing: -0.04em;
+}
+
+.heroFallback span {
+  max-width: 24ch;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .eyebrow {
@@ -182,21 +245,147 @@ textarea:focus {
 }
 
 .answerText {
-  white-space: pre-wrap;
   font-size: 1.04rem;
   line-height: 1.68;
 }
 
-.sources pre {
-  overflow: auto;
-  max-height: 520px;
-  padding: 16px;
-  border-radius: 18px;
-  color: #f4eadb;
-  background: #19251d;
+.answerText > :first-child {
+  margin-top: 0;
+}
+
+.answerText > :last-child {
+  margin-bottom: 0;
+}
+
+.answerText p,
+.answerText ul,
+.answerText hr,
+.answerText h2,
+.answerText h3,
+.answerText h4 {
+  margin: 0 0 1rem;
+}
+
+.answerText h2,
+.answerText h3,
+.answerText h4,
+.answerHeading {
+  color: var(--green);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.answerText h2 {
+  font-size: 1.8rem;
+}
+
+.answerText h3 {
+  font-size: 1.4rem;
+}
+
+.answerText h4,
+.answerHeading {
+  font-size: 1.1rem;
+}
+
+.answerList {
+  padding-left: 1.4rem;
+}
+
+.answerList li + li {
+  margin-top: 0.45rem;
+}
+
+.answerList ul {
+  margin-top: 0.45rem;
+}
+
+.answerText code {
+  padding: 0.08rem 0.35rem;
+  border-radius: 0.45rem;
+  background: rgba(36, 76, 56, 0.08);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
+  font-size: 0.92em;
+}
+
+.answerRule {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.sources {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.sourcesHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.sourcesIntro {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 0.96rem !important;
+}
+
+.sourceToggle {
+  flex-shrink: 0;
+}
+
+.sourceList {
+  display: grid;
+  gap: 12px;
+  max-height: 540px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.sourceItem {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(23, 32, 26, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.sourceItem p {
+  margin: 0;
+  font-size: 0.94rem;
   line-height: 1.5;
+}
+
+.sourceTopline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sourceCategory,
+.sourceMetrics {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.sourceCategory {
+  color: white;
+  background: var(--green);
+  text-transform: capitalize;
+}
+
+.sourceMetrics {
+  color: var(--accent-dark);
+  background: rgba(181, 90, 42, 0.12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .notice {
@@ -217,5 +406,10 @@ textarea:focus {
   .hero h1,
   .panel h1 {
     font-size: clamp(2.6rem, 14vw, 4.5rem);
+  }
+
+  .sourcesHeader {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 }
