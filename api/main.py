@@ -41,8 +41,24 @@ _QUERY_COUNT_BY_DAY_AND_IP: dict[tuple[str, str], int] = {}
 
 
 def _cors_origins() -> list[str]:
-    raw = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
+    raw = os.environ.get(
+        "CORS_ORIGINS",
+        ",".join(
+            [
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://lennytheworm12.github.io",
+            ]
+        ),
+    )
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def _cors_origin_regex() -> str:
+    return os.environ.get(
+        "CORS_ORIGIN_REGEX",
+        r"^https://[a-zA-Z0-9-]+\.github\.io$|^http://localhost(:\d+)?$|^http://127\.0\.0\.1(:\d+)?$",
+    )
 
 
 def _auth_required() -> bool:
@@ -102,7 +118,8 @@ app = FastAPI(title="videoSorter Query API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
-    allow_credentials=True,
+    allow_origin_regex=_cors_origin_regex(),
+    allow_credentials=_auth_required(),
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
