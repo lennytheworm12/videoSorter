@@ -2,7 +2,7 @@ services:
   - type: web
     name: videosorter-api
     runtime: python
-    plan: starter
+    plan: free
     autoDeploy: true
     healthCheckPath: /health
     buildCommand: pip install uv && uv sync --frozen

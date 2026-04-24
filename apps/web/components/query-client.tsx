@@ -19,6 +19,8 @@ type QueryResponse = {
 
 const queryApiUrl = process.env.NEXT_PUBLIC_QUERY_API_URL ?? "http://localhost:8000";
 
+type AuthStatus = "loading" | "signed_out" | "signed_in";
+
 type ListNode = {
   text: string;
   children: ListNode[];
@@ -166,26 +168,99 @@ function siteUrl() {
   return new URL(suffix, window.location.origin).toString();
 }
 
+function cleanAuthCallbackUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  const authParams = [
+    "code",
+    "error",
+    "error_code",
+    "error_description",
+    "state",
+  ];
+  let mutated = false;
+  for (const key of authParams) {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      mutated = true;
+    }
+  }
+  if (!mutated) return;
+  const nextPath = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, "", nextPath);
+}
+
 export function QueryClient() {
   const abortRef = useRef<AbortController | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [email, setEmail] = useState("");
   const [game, setGame] = useState<"aoe2" | "lol">("aoe2");
   const [question, setQuestion] = useState("how should I play Khmer in detail");
   const [splitDetail, setSplitDetail] = useState(false);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [isStartingGoogleSignIn, setIsStartingGoogleSignIn] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+    if (!supabase) {
+      setAuthStatus("signed_out");
+      return;
+    }
+    const client = supabase;
+
+    let active = true;
+
+    async function hydrateSession() {
+      setAuthStatus("loading");
+      setError(null);
+
+      const currentUrl = typeof window === "undefined" ? null : new URL(window.location.href);
+      const callbackError = currentUrl?.searchParams.get("error_description") ?? currentUrl?.searchParams.get("error");
+      if (callbackError && active) {
+        setError(decodeURIComponent(callbackError.replace(/\+/g, " ")));
+      }
+
+      const code = currentUrl?.searchParams.get("code");
+      if (code) {
+        const { error: exchangeError } = await client.auth.exchangeCodeForSession(code);
+        if (!active) return;
+        if (exchangeError) {
+          setError(exchangeError.message);
+        } else {
+          cleanAuthCallbackUrl();
+        }
+      }
+
+      const { data, error: sessionError } = await client.auth.getSession();
+      if (!active) return;
+      if (sessionError) {
+        setError(sessionError.message);
+      }
+      setSession(data.session);
+      setAuthStatus(data.session ? "signed_in" : "signed_out");
+    }
+
+    hydrateSession().catch((err: unknown) => {
+      if (!active) return;
+      setError(err instanceof Error ? err.message : String(err));
+      setAuthStatus("signed_out");
     });
-    return () => data.subscription.unsubscribe();
+
+    const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      setAuthStatus(nextSession ? "signed_in" : "signed_out");
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -202,16 +277,54 @@ export function QueryClient() {
 
   async function signIn() {
     setError(null);
-    if (!supabase) {
+    setNotice(null);
+    const client = supabase;
+    if (!client) {
       setError("Supabase env vars are missing.");
       return;
     }
-    const { error: signInError } = await supabase.auth.signInWithOtp({
+    if (isSendingMagicLink) return;
+
+    setIsSendingMagicLink(true);
+    const { error: signInError } = await client.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: siteUrl() }
     });
-    if (signInError) setError(signInError.message);
-    else setError("Magic link sent. Check your email.");
+    setIsSendingMagicLink(false);
+    if (signInError) {
+      const message = signInError.message.toLowerCase().includes("rate limit")
+        ? "Email rate limit exceeded. Use Google sign-in or wait a minute before requesting another link."
+        : signInError.message;
+      setError(message);
+      return;
+    }
+    setNotice("Magic link sent. Open it once in this browser to create a reusable session.");
+  }
+
+  async function signInWithGoogle() {
+    setError(null);
+    setNotice(null);
+    const client = supabase;
+    if (!client) {
+      setError("Supabase env vars are missing.");
+      return;
+    }
+    if (isStartingGoogleSignIn) return;
+
+    setIsStartingGoogleSignIn(true);
+    const { error: signInError } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: siteUrl(),
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+    if (signInError) {
+      setIsStartingGoogleSignIn(false);
+      setError(signInError.message);
+    }
   }
 
   async function askQuestion() {
@@ -270,22 +383,51 @@ export function QueryClient() {
     );
   }
 
-  if (!session) {
+  if (authStatus === "loading") {
+    return (
+      <main className="shell">
+        <section className="panel auth authLoading">
+          <p className="eyebrow">Lenny&apos;s wise game wizard</p>
+          <h1>Checking your saved session.</h1>
+          <p>
+            If you already signed in on this browser, Lenny should let you straight back in without another email.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (authStatus !== "signed_in" || !session) {
     return (
       <main className="shell">
         <section className="panel auth">
           <p className="eyebrow">Lenny&apos;s wise game wizard</p>
           <h1>Sign in to ask Lenny for matchup and strategy help.</h1>
-          <div className="authRow">
-            <input
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              type="email"
-            />
-            <button onClick={signIn}>Send magic link</button>
+          <p className="authLead">
+            Google is the fastest path. Email magic link stays here as a fallback if you prefer it.
+          </p>
+          <div className="authStack">
+            <button className="googleButton" disabled={isStartingGoogleSignIn} onClick={signInWithGoogle}>
+              <span className="googleMark" aria-hidden="true">G</span>
+              {isStartingGoogleSignIn ? "Redirecting to Google..." : "Continue with Google"}
+            </button>
+            <div className="authDivider">
+              <span>or use email</span>
+            </div>
+            <div className="authRow">
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+              />
+              <button disabled={isSendingMagicLink || email.trim().length < 3} onClick={signIn}>
+                {isSendingMagicLink ? "Sending..." : "Send magic link"}
+              </button>
+            </div>
           </div>
-          {error && <p className="notice">{error}</p>}
+          {notice && <p className="notice">{notice}</p>}
+          {error && <p className="notice error">{error}</p>}
         </section>
       </main>
     );

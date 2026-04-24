@@ -8,6 +8,10 @@ rows into Supabase for hosted query serving.
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the Supabase SQL editor.
 3. Copy the project database connection string and auth keys.
+4. In `Authentication` -> `Providers`, enable Google if you want one-click sign-in.
+5. Add redirect URLs for:
+   - `http://localhost:3000/`
+   - `https://lennytheworm12.github.io/videoSorter/`
 
 Required backend env:
 
@@ -61,6 +65,7 @@ The repo includes [`render.yaml`](/home/bphan944/PersonalProjects/videoSorter/re
 In Render:
 
 1. Create a new Blueprint or Web Service from this GitHub repo.
+2. Use the free plan from [`render.yaml`](/home/bphan944/PersonalProjects/videoSorter/render.yaml:1).
 2. Set the unsynced env vars:
    - `SUPABASE_DATABASE_URL`
    - `SUPABASE_URL`
@@ -68,7 +73,9 @@ In Render:
    - `GOOGLE_API_KEY`
    - `GOOGLE_API_KEY_TWO` (optional fallback)
    - `CORS_ORIGINS`
-3. Set `CORS_ORIGINS` to your GitHub Pages site URL.
+3. Use the Supabase `Session Pooler` connection string for `SUPABASE_DATABASE_URL`, not the direct `db.<project>.supabase.co:5432` host.
+4. Set `CORS_ORIGINS` to your GitHub Pages site URL.
+5. After the first successful deploy, copy the Render service URL.
 
 The backend will fail fast on startup if hosted env vars are missing.
 
@@ -104,6 +111,7 @@ In GitHub:
    - `NEXT_PUBLIC_QUERY_API_URL`
 3. Add repository secret:
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Set `NEXT_PUBLIC_QUERY_API_URL` to your Render backend root URL, for example `https://videosorter-api.onrender.com`.
 
 The workflow builds the static export with a repo-name base path and deploys `apps/web/out`.
 

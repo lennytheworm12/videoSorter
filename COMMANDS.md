@@ -178,6 +178,14 @@ render.yaml
 .github/workflows/deploy-web.yml
 ```
 
+Hosted setup notes:
+
+```text
+- In Supabase Auth, enable Google and add redirect URLs for local dev and GitHub Pages.
+- In Render, use the Supabase Session Pooler URI for SUPABASE_DATABASE_URL.
+- In GitHub repo variables, set NEXT_PUBLIC_QUERY_API_URL to the Render backend root URL.
+```
+
 ---
 
 ## Environment variables (.env)
