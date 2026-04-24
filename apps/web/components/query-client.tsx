@@ -398,6 +398,7 @@ function cleanAuthCallbackUrl() {
 
 export function QueryClient() {
   const abortRef = useRef<AbortController | null>(null);
+  const statusDockRef = useRef<HTMLDivElement | null>(null);
   const probesRef = useRef<BackendProbe[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
@@ -414,6 +415,7 @@ export function QueryClient() {
   const [runtimePrimary, setRuntimePrimary] = useState<RuntimePrimaryConfig | null>(null);
   const [backendProbes, setBackendProbes] = useState<BackendProbe[]>([]);
   const [isRefreshingBackends, setIsRefreshingBackends] = useState(true);
+  const [expandedStatus, setExpandedStatus] = useState<BackendKey | null>(null);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
   const guide = GAME_GUIDES[game];
@@ -425,6 +427,16 @@ export function QueryClient() {
   const fallbackProbe = backendProbes.find((probe) => probe.target.key === "fallback") ?? null;
   const primaryLabel = primaryProbe ? healthLabel(primaryProbe) : "Strong backend";
   const fallbackLabel = fallbackProbe ? healthLabel(fallbackProbe) : "Fallback backend";
+  const strongSummary = selectedBackend?.target.key === "primary"
+    ? `${primaryLabel} is currently serving queries.`
+    : hasPrimaryTarget
+      ? `${primaryLabel} is configured but not currently serving queries.`
+      : "No strong backend is configured right now.";
+  const fallbackSummary = selectedBackend?.target.key === "fallback"
+    ? `${fallbackLabel} is currently serving queries. Results may be weaker.`
+    : hasFallbackTarget
+      ? `${fallbackLabel} is available as backup.`
+      : "No fallback backend is configured.";
 
   useEffect(() => {
     if (!authRequired) {
@@ -531,6 +543,23 @@ export function QueryClient() {
       abortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent | TouchEvent) {
+      if (!expandedStatus || !statusDockRef.current) return;
+      const target = event.target;
+      if (target instanceof Node && !statusDockRef.current.contains(target)) {
+        setExpandedStatus(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [expandedStatus]);
 
   useEffect(() => {
     let active = true;
@@ -811,57 +840,77 @@ export function QueryClient() {
               Test split detailed AoE2 answer
             </label>
           )}
+          <div className="statusDock" ref={statusDockRef}>
+            {[
+              {
+                key: "primary" as const,
+                chip: "S",
+                title: "Strong",
+                label: primaryLabel,
+                probe: primaryProbe,
+                configured: hasPrimaryTarget,
+                active: selectedBackend?.target.key === "primary",
+                summary: strongSummary,
+              },
+              {
+                key: "fallback" as const,
+                chip: "F",
+                title: "Fallback",
+                label: fallbackLabel,
+                probe: fallbackProbe,
+                configured: hasFallbackTarget,
+                active: selectedBackend?.target.key === "fallback",
+                summary: fallbackSummary,
+              },
+            ].map((item) => {
+              const online = Boolean(item.probe?.reachable);
+              const statusText = online ? "online" : "offline";
+              const expanded = expandedStatus === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={[
+                    "statusChip",
+                    online ? "statusChipOnline" : "statusChipOffline",
+                    item.active ? "statusChipActive" : "",
+                    expanded ? "statusChipExpanded" : "",
+                    item.key === "fallback" ? "statusChipFallback" : "statusChipStrong",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-expanded={expanded}
+                  aria-label={`${item.title} backend ${statusText}`}
+                  onClick={() =>
+                    setExpandedStatus((current) => (current === item.key ? null : item.key))
+                  }
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setExpandedStatus((current) => (current === item.key ? null : current));
+                    }
+                  }}
+                >
+                  <span className="statusChipBadge">{item.chip}</span>
+                  <div className="statusChipPanel">
+                    <div className="statusChipTop">
+                      <strong>{item.title}</strong>
+                      <span
+                        className={[
+                          "statusTag",
+                          online ? "statusTagOnline" : "statusTagOffline",
+                        ].join(" ")}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+                    <p>{item.configured ? item.label : `${item.title} backend not configured`}</p>
+                    <p className="statusChipSummary">{item.summary}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <section
-          className={[
-            "backendStatus",
-            !selectedBackend ? "backendStatusOffline" : "",
-            selectedBackend?.target.key === "fallback" ? "backendStatusFallback" : ""
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          <div>
-            <p className="eyebrow">Backend status</p>
-            <strong>
-              {isRefreshingBackends && !backendProbes.length
-                ? "Checking available backends"
-                : selectedBackend?.target.key === "primary"
-                  ? `${primaryLabel} online`
-                  : selectedBackend?.target.key === "fallback"
-                    ? hasPrimaryTarget
-                      ? `${primaryLabel} offline, using ${fallbackLabel}`
-                      : `${fallbackLabel} online`
-                    : "No backend available"}
-            </strong>
-            <p>
-              {selectedBackend?.target.key === "primary"
-                ? `${primaryLabel} is answering queries. ${fallbackProbe?.reachable ? `${fallbackLabel} is available as backup.` : hasFallbackTarget ? "Fallback is currently unavailable." : "No fallback backend is configured."}`
-                : selectedBackend?.target.key === "fallback"
-                  ? hasPrimaryTarget
-                    ? `The stronger backend is unavailable, so the app is using ${fallbackLabel}. Results may be worse until the strong backend returns.`
-                    : `${fallbackLabel} is the only configured backend for this frontend.`
-                  : "Neither backend responded to health checks. Queries are disabled until one comes back online."}
-            </p>
-          </div>
-          <div className="backendPills">
-            {backendProbes.map((probe) => (
-              <span
-                className={[
-                  "backendPill",
-                  probe.reachable ? "backendPillOnline" : "backendPillOffline"
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                key={`${probe.target.key}-${probe.target.url}`}
-                title={probe.error || probe.target.url}
-              >
-                {probe.target.key === "primary" ? "Strong" : "Fallback"}:{" "}
-                {probe.reachable ? healthLabel(probe) : "offline"}
-              </span>
-            ))}
-          </div>
-        </section>
         <details className="tipsPanel">
           <summary>How to query better</summary>
           <div className="tipsBody">

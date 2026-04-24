@@ -245,65 +245,156 @@ textarea:focus {
   gap: 18px;
 }
 
-.backendStatus {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid rgba(36, 76, 56, 0.18);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.44);
-}
-
-.backendStatus strong {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-size: 1.15rem;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
-.backendStatus p {
-  margin: 0;
-}
-
-.backendStatusFallback {
-  border-color: rgba(181, 90, 42, 0.28);
-  background: rgba(181, 90, 42, 0.08);
-}
-
-.backendStatusOffline {
-  border-color: rgba(163, 45, 27, 0.24);
-  background: rgba(163, 45, 27, 0.06);
-}
-
-.backendPills {
+.statusDock {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  align-items: flex-start;
-  justify-content: flex-end;
+  align-items: center;
+  margin-left: auto;
 }
 
-.backendPill,
+.statusChip,
 .answerMetaPill {
   display: inline-flex;
   align-items: center;
+}
+
+.statusChip {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: 999px;
+  background: transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.statusChip:hover,
+.statusChip:focus-visible,
+.statusChipExpanded {
+  transform: translateY(-1px);
+}
+
+.statusChip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(181, 90, 42, 0.16);
+}
+
+.statusChipActive {
+  box-shadow: 0 0 0 3px rgba(23, 32, 26, 0.12);
+}
+
+.statusChipBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   padding: 0.42rem 0.8rem;
   font-size: 0.75rem;
   line-height: 1;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.backendPillOnline {
+.statusChipStrong .statusChipBadge {
+  border-radius: 999px;
+}
+
+.statusChipFallback .statusChipBadge {
+  border-radius: 14px;
+}
+
+.statusChipOnline .statusChipBadge {
   color: white;
   background: var(--green);
 }
 
-.backendPillOffline {
+.statusChipOffline .statusChipBadge {
   color: #a32d1b;
-  background: rgba(163, 45, 27, 0.1);
+  background: rgba(163, 45, 27, 0.12);
+}
+
+.statusChipPanel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 3;
+  width: min(280px, calc(100vw - 48px));
+  padding: 14px 16px;
+  border: 1px solid rgba(23, 32, 26, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 252, 243, 0.96);
+  box-shadow: 0 18px 50px rgba(40, 31, 20, 0.16);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+  text-align: left;
+}
+
+.statusChip:hover .statusChipPanel,
+.statusChip:focus-visible .statusChipPanel,
+.statusChipExpanded .statusChipPanel {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.statusChipTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 0.45rem;
+}
+
+.statusChipTop strong {
+  font-size: 1rem;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.statusChipPanel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.statusChipPanel p + p {
+  margin-top: 0.45rem;
+}
+
+.statusChipSummary {
+  max-width: 28ch;
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.68rem;
+  line-height: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.statusTagOnline {
+  color: white;
+  background: var(--green);
+}
+
+.statusTagOffline {
+  color: #a32d1b;
+  background: rgba(163, 45, 27, 0.12);
 }
 
 .tipsPanel {
@@ -588,12 +679,15 @@ textarea:focus {
     display: grid;
   }
 
-  .backendStatus {
-    grid-template-columns: 1fr;
+  .statusDock {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
   }
 
-  .backendPills {
-    justify-content: flex-start;
+  .statusChipPanel {
+    left: 0;
+    right: auto;
   }
 
   .tipsExamples {
