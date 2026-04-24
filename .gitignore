@@ -1,5 +1,6 @@
 .env
 .env.local
+.env.cloud.local
 .venv/
 __pycache__/
 auth_state.json
@@ -19,4 +20,5 @@ node_modules/
 .next/
 apps/web/node_modules/
 apps/web/.next/
+apps/web/out/
 apps/web/.env.local

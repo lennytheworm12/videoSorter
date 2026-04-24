@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import os
 import urllib.error
 import urllib.request
@@ -38,7 +39,44 @@ def _cors_origins() -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
-app = FastAPI(title="videoSorter Query API")
+def _auth_required() -> bool:
+    return os.environ.get("REQUIRE_AUTH", "false").strip().lower() in {"1", "true", "yes"}
+
+
+def _vector_backend() -> str:
+    return os.environ.get("VECTOR_BACKEND", "sqlite").strip().lower()
+
+
+def _validate_runtime_config() -> None:
+    if _auth_required():
+        missing = [
+            name
+            for name in ("SUPABASE_URL", "SUPABASE_ANON_KEY")
+            if not os.environ.get(name)
+        ]
+        if missing:
+            raise RuntimeError(
+                "REQUIRE_AUTH=true but missing auth env vars: " + ", ".join(missing)
+            )
+
+    if _vector_backend() == "supabase" and not os.environ.get("SUPABASE_DATABASE_URL"):
+        raise RuntimeError(
+            "VECTOR_BACKEND=supabase requires SUPABASE_DATABASE_URL"
+        )
+
+    if not os.environ.get("GOOGLE_API_KEY"):
+        raise RuntimeError(
+            "GOOGLE_API_KEY is required for the hosted query API"
+        )
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _validate_runtime_config()
+    yield
+
+
+app = FastAPI(title="videoSorter Query API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
@@ -46,10 +84,6 @@ app.add_middleware(
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
-
-
-def _auth_required() -> bool:
-    return os.environ.get("REQUIRE_AUTH", "false").strip().lower() in {"1", "true", "yes"}
 
 
 def _validate_supabase_token(authorization: str | None = Header(default=None)) -> dict:
@@ -96,7 +130,11 @@ def _split_answer_sources(text: str) -> tuple[str, list[str]]:
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "vector_backend": os.environ.get("VECTOR_BACKEND", "sqlite")}
+    return {
+        "ok": True,
+        "vector_backend": _vector_backend(),
+        "auth_required": _auth_required(),
+    }
 
 
 @app.post("/api/query", response_model=QueryResponse)

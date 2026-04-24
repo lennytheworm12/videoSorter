@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: videosorter-api
+    runtime: python
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: pip install uv && uv sync --frozen
+    startCommand: .venv/bin/uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.16
+      - key: VECTOR_BACKEND
+        value: supabase
+      - key: REQUIRE_AUTH
+        value: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY_TWO
+        sync: false

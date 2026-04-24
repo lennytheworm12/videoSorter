@@ -171,6 +171,13 @@ npm install
 npm run dev
 ```
 
+Hosted deployment files:
+
+```text
+render.yaml
+.github/workflows/deploy-web.yml
+```
+
 ---
 
 ## Environment variables (.env)

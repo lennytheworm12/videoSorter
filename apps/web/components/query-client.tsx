@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { hasSupabaseConfig, supabase } from "../lib/supabase";
+import { basePath, hasSupabaseConfig, supabase } from "../lib/supabase";
 
 type QueryResponse = {
   answer: string;
@@ -17,6 +17,12 @@ type QueryResponse = {
 };
 
 const queryApiUrl = process.env.NEXT_PUBLIC_QUERY_API_URL ?? "http://localhost:8000";
+
+function siteUrl() {
+  if (typeof window === "undefined") return undefined;
+  const suffix = basePath || "/";
+  return new URL(suffix, window.location.origin).toString();
+}
 
 export function QueryClient() {
   const [session, setSession] = useState<Session | null>(null);
@@ -45,7 +51,7 @@ export function QueryClient() {
     }
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin }
+      options: { emailRedirectTo: siteUrl() }
     });
     if (signInError) setError(signInError.message);
     else setError("Magic link sent. Check your email.");
