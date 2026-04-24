@@ -33,6 +33,45 @@ type ParsedSource = {
   text: string;
 };
 
+const GAME_GUIDES = {
+  lol: {
+    title: "League query guide",
+    concise: [
+      "How do I lane as Riven into Ambessa?",
+      "What is Aatrox's win condition into Darius?",
+      "How should I teamfight as Kai'Sa?"
+    ],
+    detailed: [
+      "How do I play Riven into Ambessa in detail?",
+      "Give me an in-depth guide for Aatrox into Darius.",
+      "How should I play Jinx step by step from lane to teamfights?"
+    ],
+    notes: [
+      "Use exact champion names when possible for the best matchup retrieval.",
+      "Add keywords like `in detail`, `in-depth`, `step by step`, or `full guide` when you want a longer answer.",
+      "Leave those detail keywords out when you want a shorter, more concise response."
+    ]
+  },
+  aoe2: {
+    title: "AoE2 query guide",
+    concise: [
+      "How should I open with Franks?",
+      "What is the core identity of Malay?",
+      "How do I defend early pressure with better micro?"
+    ],
+    detailed: [
+      "How should I play Khmer in detail?",
+      "Give me an in-depth guide for Byzantines.",
+      "How do I play Hindustanis step by step from opening through win condition?"
+    ],
+    notes: [
+      "Use exact civilization names for the best cross-reference and matchup retrieval.",
+      "Add `in detail`, `in-depth`, `step by step`, or `full guide` when you want the fuller civilization overview path.",
+      "Ask shorter direct questions when you want a concise answer focused on one phase, unit, or problem."
+    ]
+  }
+} as const;
+
 function renderInlineMarkdown(text: string): ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g).filter(Boolean);
   return parts.map((part, index) => {
@@ -207,6 +246,7 @@ export function QueryClient() {
   const [isRefreshingAuth, setIsRefreshingAuth] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
+  const guide = GAME_GUIDES[game];
 
   useEffect(() => {
     if (!authRequired) {
@@ -506,6 +546,53 @@ export function QueryClient() {
             </label>
           )}
         </div>
+        <details className="tipsPanel">
+          <summary>How to query better</summary>
+          <div className="tipsBody">
+            <div>
+              <p className="tipsLabel">{guide.title}</p>
+              <ul className="tipsList">
+                {guide.notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="tipsExamples">
+              <div>
+                <p className="tipsLabel">Concise examples</p>
+                <ul className="tipsList">
+                  {guide.concise.map((example) => (
+                    <li key={example}>
+                      <button
+                        className="exampleButton"
+                        type="button"
+                        onClick={() => setQuestion(example)}
+                      >
+                        {example}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="tipsLabel">Detailed examples</p>
+                <ul className="tipsList">
+                  {guide.detailed.map((example) => (
+                    <li key={example}>
+                      <button
+                        className="exampleButton"
+                        type="button"
+                        onClick={() => setQuestion(example)}
+                      >
+                        {example}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </details>
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}

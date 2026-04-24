@@ -245,6 +245,73 @@ textarea:focus {
   gap: 18px;
 }
 
+.tipsPanel {
+  border: 1px solid rgba(23, 32, 26, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.tipsPanel summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tipsPanel summary::-webkit-details-marker {
+  display: none;
+}
+
+.tipsBody {
+  display: grid;
+  gap: 18px;
+  padding: 0 18px 18px;
+}
+
+.tipsExamples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tipsLabel {
+  margin: 0 0 10px;
+  color: var(--accent-dark) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tipsList {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+
+.tipsList li + li {
+  margin-top: 0.55rem;
+}
+
+.exampleButton {
+  padding: 0;
+  color: var(--green);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-weight: 600;
+  text-align: left;
+}
+
+.exampleButton:hover {
+  text-decoration: underline;
+}
+
 .controls label {
   display: grid;
   min-width: 220px;
@@ -446,6 +513,10 @@ textarea:focus {
   .sourcesHeader {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .tipsExamples {
+    grid-template-columns: 1fr;
   }
 
   .auth h1 {
