@@ -106,6 +106,5 @@ class CloudMigrationTests(unittest.TestCase):
         self.assertEqual(insights[0]["local_id"], 1)
         self.assertEqual(len(insights[0]["embedding"]), VECTOR_DIMENSION)
 
-
 if __name__ == "__main__":
     unittest.main()

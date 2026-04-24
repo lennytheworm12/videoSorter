@@ -10,6 +10,8 @@ embedded rows into Supabase for hosted query serving.
 3. Copy the project database connection string and auth keys.
 4. If you re-enable auth later, configure the relevant provider and redirect
    URLs in Supabase Auth.
+5. `runtime_config` is also used for dynamic frontend discovery of your current
+   ngrok-backed strong backend.
 
 Backend env shape:
 
@@ -85,6 +87,18 @@ Render deployment:
    - `BACKEND_LABEL=Home strong backend`
    - `BACKEND_QUALITY=strong`
 
+### Publishing a changing ngrok URL
+
+If you do not own a domain and use free ngrok, publish the current tunnel URL
+into Supabase:
+
+```bash
+uv run python -m cloud.ngrok_publish --watch
+```
+
+This watches `http://127.0.0.1:4040/api/tunnels` and updates the public
+`runtime_config` row used by the frontend.
+
 ## 4. Frontend
 
 Local frontend env:
@@ -93,7 +107,6 @@ Local frontend env:
 cp apps/web/.env.local.example apps/web/.env.local
 NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'
 NEXT_PUBLIC_SUPABASE_ANON_KEY='...'
-NEXT_PUBLIC_PRIMARY_QUERY_API_URL='https://your-strong-backend.example.com'
 NEXT_PUBLIC_FALLBACK_QUERY_API_URL='http://localhost:8000'
 NEXT_PUBLIC_BASE_PATH=''
 ```
@@ -111,12 +124,13 @@ GitHub Pages deployment:
 1. Enable GitHub Pages for the repo using `GitHub Actions`.
 2. Add repository variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_PRIMARY_QUERY_API_URL`
    - `NEXT_PUBLIC_FALLBACK_QUERY_API_URL`
 3. Add repository secret:
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 4. Point `NEXT_PUBLIC_FALLBACK_QUERY_API_URL` at the Render backend root URL.
-5. Point `NEXT_PUBLIC_PRIMARY_QUERY_API_URL` at your stronger home backend URL when it exists.
+5. Optionally set `NEXT_PUBLIC_PRIMARY_QUERY_API_URL` only if you want a static
+   override; otherwise the frontend will discover the current ngrok URL from
+   Supabase at runtime.
 
 The workflow in [`.github/workflows/deploy-web.yml`](../.github/workflows/deploy-web.yml)
 builds `apps/web/out` and publishes it to GitHub Pages.

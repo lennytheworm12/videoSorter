@@ -42,6 +42,12 @@ create table if not exists public.insights (
     foreign key (source_db, video_id) references public.videos(source_db, video_id)
 );
 
+create table if not exists public.runtime_config (
+    key text primary key,
+    value jsonb not null,
+    updated_at timestamptz default now()
+);
+
 create index if not exists videos_game_idx on public.videos (game);
 create index if not exists videos_source_idx on public.videos (source);
 create index if not exists videos_subject_idx on public.videos (lower(coalesce(subject, champion)));
@@ -52,6 +58,15 @@ create index if not exists insights_subject_idx on public.insights (lower(subjec
 create index if not exists insights_embedding_hnsw_idx
     on public.insights using hnsw (embedding vector_cosine_ops)
     where embedding is not null;
+
+alter table public.runtime_config enable row level security;
+
+drop policy if exists runtime_config_public_read on public.runtime_config;
+create policy runtime_config_public_read
+    on public.runtime_config
+    for select
+    to anon, authenticated
+    using (true);
 
 create or replace function public.match_insights(
     query_embedding vector(384),

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { basePath, hasSupabaseConfig, supabase } from "../lib/supabase";
+import { basePath, fetchRuntimeConfig, hasSupabaseConfig, supabase } from "../lib/supabase";
 
 type QueryResponse = {
   answer: string;
@@ -46,6 +46,14 @@ type BackendProbe = {
   reachable: boolean;
   health: BackendHealth | null;
   error: string | null;
+};
+
+type RuntimePrimaryConfig = {
+  url?: string | null;
+  online?: boolean | null;
+  backend_label?: string | null;
+  backend_quality?: string | null;
+  source?: string | null;
 };
 
 const primaryQueryApiUrl = normalizeApiUrl(process.env.NEXT_PUBLIC_PRIMARY_QUERY_API_URL ?? "");
@@ -110,9 +118,18 @@ function normalizeApiUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
 
-function backendTargets(): BackendTarget[] {
+function backendTargetsFromRuntime(config: RuntimePrimaryConfig | null): BackendTarget[] {
   const targets: BackendTarget[] = [];
-  if (primaryQueryApiUrl) {
+  const runtimePrimaryUrl = normalizeApiUrl(config?.online ? config?.url ?? "" : "");
+  if (runtimePrimaryUrl) {
+    targets.push({
+      key: "primary",
+      url: runtimePrimaryUrl,
+      defaultLabel: (config?.backend_label ?? "").trim() || "Strong backend",
+      defaultQuality: config?.backend_quality === "fallback" ? "fallback" : "strong"
+    });
+  }
+  if (primaryQueryApiUrl && (!runtimePrimaryUrl || primaryQueryApiUrl !== runtimePrimaryUrl)) {
     targets.push({
       key: "primary",
       url: primaryQueryApiUrl,
@@ -120,7 +137,11 @@ function backendTargets(): BackendTarget[] {
       defaultQuality: "strong"
     });
   }
-  if (fallbackQueryApiUrl && (!primaryQueryApiUrl || fallbackQueryApiUrl !== primaryQueryApiUrl)) {
+  if (
+    fallbackQueryApiUrl &&
+    (!runtimePrimaryUrl || fallbackQueryApiUrl !== runtimePrimaryUrl) &&
+    (!primaryQueryApiUrl || fallbackQueryApiUrl !== primaryQueryApiUrl)
+  ) {
     targets.push({
       key: "fallback",
       url: fallbackQueryApiUrl,
@@ -390,12 +411,13 @@ export function QueryClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isRefreshingAuth, setIsRefreshingAuth] = useState(false);
+  const [runtimePrimary, setRuntimePrimary] = useState<RuntimePrimaryConfig | null>(null);
   const [backendProbes, setBackendProbes] = useState<BackendProbe[]>([]);
   const [isRefreshingBackends, setIsRefreshingBackends] = useState(true);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
   const guide = GAME_GUIDES[game];
-  const targets = backendTargets();
+  const targets = backendTargetsFromRuntime(runtimePrimary);
   const hasPrimaryTarget = targets.some((target) => target.key === "primary");
   const hasFallbackTarget = targets.some((target) => target.key === "fallback");
   const selectedBackend = activeBackend(backendProbes);
@@ -513,6 +535,34 @@ export function QueryClient() {
   useEffect(() => {
     let active = true;
 
+    async function refreshRuntimePrimary() {
+      try {
+        const config = await fetchRuntimeConfig<RuntimePrimaryConfig>("primary_backend");
+        if (!active) return;
+        setRuntimePrimary(config);
+      } catch {
+        if (!active) return;
+        setRuntimePrimary(null);
+      }
+    }
+    refreshRuntimePrimary().catch(() => {
+      if (!active) return;
+      setRuntimePrimary(null);
+    });
+
+    const intervalId = window.setInterval(() => {
+      refreshRuntimePrimary().catch(() => undefined);
+    }, 45000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
     async function refreshBackendHealth() {
       if (targets.length === 0) {
         if (!active) return;
@@ -547,7 +597,7 @@ export function QueryClient() {
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [targets.length]);
+  }, [targets]);
 
   useEffect(() => {
     if (game !== "aoe2") {

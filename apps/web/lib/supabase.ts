@@ -19,3 +19,16 @@ export const supabase = hasSupabaseConfig
       },
     })
   : null;
+
+export async function fetchRuntimeConfig<T>(key: string): Promise<T | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("runtime_config")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return (data?.value as T | undefined) ?? null;
+}
