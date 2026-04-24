@@ -203,7 +203,7 @@ export function QueryClient() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
-  const [isStartingGoogleSignIn, setIsStartingGoogleSignIn] = useState(false);
+  const [isRefreshingAuth, setIsRefreshingAuth] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
 
@@ -263,6 +263,46 @@ export function QueryClient() {
     };
   }, []);
 
+  async function refreshExistingSession() {
+    const client = supabase;
+    if (!client) {
+      setError("Supabase env vars are missing.");
+      return;
+    }
+
+    setIsRefreshingAuth(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const currentUrl = typeof window === "undefined" ? null : new URL(window.location.href);
+      const code = currentUrl?.searchParams.get("code");
+      if (code) {
+        const { error: exchangeError } = await client.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          setError(exchangeError.message);
+          return;
+        }
+        cleanAuthCallbackUrl();
+      }
+
+      const { data, error: sessionError } = await client.auth.getSession();
+      if (sessionError) {
+        setError(sessionError.message);
+        return;
+      }
+      if (data.session) {
+        setSession(data.session);
+        setAuthStatus("signed_in");
+        setNotice("Existing session restored.");
+        return;
+      }
+      setNotice("No saved session found in this browser yet. Use the email link once first.");
+    } finally {
+      setIsRefreshingAuth(false);
+    }
+  }
+
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -299,32 +339,6 @@ export function QueryClient() {
       return;
     }
     setNotice("Magic link sent. Open it once in this browser to create a reusable session.");
-  }
-
-  async function signInWithGoogle() {
-    setError(null);
-    setNotice(null);
-    const client = supabase;
-    if (!client) {
-      setError("Supabase env vars are missing.");
-      return;
-    }
-    if (isStartingGoogleSignIn) return;
-
-    setIsStartingGoogleSignIn(true);
-    const { error: signInError } = await client.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: siteUrl(),
-        queryParams: {
-          prompt: "select_account",
-        },
-      },
-    });
-    if (signInError) {
-      setIsStartingGoogleSignIn(false);
-      setError(signInError.message);
-    }
   }
 
   async function askQuestion() {
@@ -404,16 +418,10 @@ export function QueryClient() {
           <p className="eyebrow">Lenny&apos;s wise game wizard</p>
           <h1>Sign in to ask Lenny for matchup and strategy help.</h1>
           <p className="authLead">
-            Google is the fastest path. Email magic link stays here as a fallback if you prefer it.
+            Send yourself one magic link, click it once in this browser, then use Log in to restore the saved
+            session without resending email.
           </p>
           <div className="authStack">
-            <button className="googleButton" disabled={isStartingGoogleSignIn} onClick={signInWithGoogle}>
-              <span className="googleMark" aria-hidden="true">G</span>
-              {isStartingGoogleSignIn ? "Redirecting to Google..." : "Continue with Google"}
-            </button>
-            <div className="authDivider">
-              <span>or use email</span>
-            </div>
             <div className="authRow">
               <input
                 value={email}
@@ -423,6 +431,9 @@ export function QueryClient() {
               />
               <button disabled={isSendingMagicLink || email.trim().length < 3} onClick={signIn}>
                 {isSendingMagicLink ? "Sending..." : "Send magic link"}
+              </button>
+              <button className="ghost authLoginButton" disabled={isRefreshingAuth} onClick={refreshExistingSession}>
+                {isRefreshingAuth ? "Checking..." : "Log in"}
               </button>
             </div>
           </div>

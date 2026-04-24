@@ -186,51 +186,6 @@ button:disabled {
   margin-top: 20px;
 }
 
-.googleButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 58px;
-  padding: 14px 22px;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(23, 32, 26, 0.14);
-}
-
-.googleMark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  color: white;
-  background: linear-gradient(135deg, #4285f4, #34a853 55%, #fbbc05 75%, #ea4335);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.92rem;
-  font-weight: 800;
-}
-
-.authDivider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.authDivider::before,
-.authDivider::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid var(--line);
-}
-
 .authRow,
 .controls {
   display: flex;
@@ -272,6 +227,10 @@ textarea:focus {
 
 .authRow button {
   flex: 0 0 auto;
+}
+
+.authLoginButton {
+  min-width: 132px;
 }
 
 .ghost {
@@ -499,7 +458,7 @@ textarea:focus {
   }
 
   .authRow button,
-  .googleButton {
+  .authLoginButton {
     width: 100%;
   }
 }
