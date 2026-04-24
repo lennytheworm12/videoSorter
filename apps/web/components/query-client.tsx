@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { basePath, fetchRuntimeConfig, hasSupabaseConfig, supabase } from "../lib/supabase";
 
@@ -380,6 +380,77 @@ function parseSourceLine(line: string): ParsedSource {
   return { metrics: null, category: null, text: trimmed };
 }
 
+const ResultSection = memo(
+  function ResultSection({
+    result,
+    showSources,
+    setShowSources,
+  }: {
+    result: QueryResponse;
+    showSources: boolean;
+    setShowSources: Dispatch<SetStateAction<boolean>>;
+  }) {
+    return (
+      <section className="answerGrid">
+        <article className="panel answer">
+          <p className="eyebrow">Answer</p>
+          <p className="normalized">{result.normalized_question}</p>
+          <div className="answerMetaRow">
+            {result.metadata.backend_label ? (
+              <span className="answerMetaPill">{result.metadata.backend_label}</span>
+            ) : null}
+            {result.metadata.backend_quality ? (
+              <span className="answerMetaPill">{result.metadata.backend_quality}</span>
+            ) : null}
+            {result.metadata.retrieval_mode ? (
+              <span className="answerMetaPill">{result.metadata.retrieval_mode}</span>
+            ) : null}
+          </div>
+          <div className="answerText">{renderAnswer(result.answer)}</div>
+        </article>
+        <aside className="panel sources">
+          <div className="sourcesHeader">
+            <div>
+              <p className="eyebrow">Evidence</p>
+              <p className="sourcesIntro">
+                Inspect the rows behind the answer when you want to audit where it came from.
+              </p>
+            </div>
+            <button
+              className="ghost sourceToggle"
+              onClick={() => setShowSources((current) => !current)}
+              type="button"
+            >
+              {showSources ? "Hide sources" : `Show sources (${result.sources.length})`}
+            </button>
+          </div>
+          {showSources ? (
+            result.sources.length === 0 ? (
+              <p>No source rows returned.</p>
+            ) : (
+              <div className="sourceList">
+                {result.sources.map((line, index) => {
+                  const source = parseSourceLine(line);
+                  return (
+                    <article className="sourceItem" key={`${index}-${line}`}>
+                      <div className="sourceTopline">
+                        {source.category ? <span className="sourceCategory">{source.category}</span> : null}
+                        {source.metrics ? <span className="sourceMetrics">{source.metrics}</span> : null}
+                      </div>
+                      <p>{source.text}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            )
+          ) : null}
+        </aside>
+      </section>
+    );
+  },
+  (prev, next) => prev.result === next.result && prev.showSources === next.showSources
+);
+
 function siteUrl() {
   if (typeof window === "undefined") return undefined;
   const suffix = basePath || "/";
@@ -411,7 +482,6 @@ function cleanAuthCallbackUrl() {
 export function QueryClient() {
   const abortRef = useRef<AbortController | null>(null);
   const statusDockRef = useRef<HTMLDivElement | null>(null);
-  const probesRef = useRef<BackendProbe[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [email, setEmail] = useState("");
@@ -427,6 +497,7 @@ export function QueryClient() {
   const [runtimePrimary, setRuntimePrimary] = useState<RuntimePrimaryConfig | null>(null);
   const [backendProbes, setBackendProbes] = useState<BackendProbe[]>([]);
   const [isRefreshingBackends, setIsRefreshingBackends] = useState(true);
+  const [lastBackendCheckAt, setLastBackendCheckAt] = useState<number | null>(null);
   const [expandedStatus, setExpandedStatus] = useState<BackendKey | null>(null);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
@@ -449,6 +520,41 @@ export function QueryClient() {
     : hasFallbackTarget
       ? `${fallbackLabel} is available as backup.`
       : "No fallback backend is configured.";
+  const lastBackendCheckLabel = lastBackendCheckAt
+    ? new Date(lastBackendCheckAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
+
+  async function refreshBackendState({ showLoading = false }: { showLoading?: boolean } = {}): Promise<BackendProbe[]> {
+    if (showLoading) {
+      setIsRefreshingBackends(true);
+    }
+
+    let nextRuntimePrimary: RuntimePrimaryConfig | null = null;
+    try {
+      nextRuntimePrimary = await fetchRuntimeConfig<RuntimePrimaryConfig>("primary_backend");
+    } catch {
+      nextRuntimePrimary = null;
+    }
+    setRuntimePrimary(nextRuntimePrimary);
+
+    const nextTargets = backendTargetsFromRuntime(nextRuntimePrimary);
+    if (nextTargets.length === 0) {
+      const empty: BackendProbe[] = [];
+      setBackendProbes(empty);
+      setIsRefreshingBackends(false);
+      setLastBackendCheckAt(Date.now());
+      return empty;
+    }
+
+    try {
+      const probes = await Promise.all(nextTargets.map((target) => fetchBackendHealth(target)));
+      setBackendProbes(probes);
+      setLastBackendCheckAt(Date.now());
+      return probes;
+    } finally {
+      setIsRefreshingBackends(false);
+    }
+  }
 
   useEffect(() => {
     if (!authRequired) {
@@ -576,69 +682,24 @@ export function QueryClient() {
   useEffect(() => {
     let active = true;
 
-    async function refreshRuntimePrimary() {
-      try {
-        const config = await fetchRuntimeConfig<RuntimePrimaryConfig>("primary_backend");
-        if (!active) return;
-        setRuntimePrimary(config);
-      } catch {
-        if (!active) return;
-        setRuntimePrimary(null);
+    refreshBackendState({ showLoading: true }).catch(() => {
+      if (active) {
+        setIsRefreshingBackends(false);
       }
-    }
-    refreshRuntimePrimary().catch(() => {
-      if (!active) return;
-      setRuntimePrimary(null);
     });
 
-    const intervalId = window.setInterval(() => {
-      refreshRuntimePrimary().catch(() => undefined);
-    }, 45000);
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      refreshBackendState().catch(() => undefined);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function refreshBackendHealth() {
-      if (targets.length === 0) {
-        if (!active) return;
-        const empty: BackendProbe[] = [];
-        probesRef.current = empty;
-        setBackendProbes(empty);
-        setIsRefreshingBackends(false);
-        return;
-      }
-
-      if (!probesRef.current.length) {
-        setIsRefreshingBackends(true);
-      }
-
-      const probes = await Promise.all(targets.map((target) => fetchBackendHealth(target)));
-      if (!active) return;
-      probesRef.current = probes;
-      setBackendProbes(probes);
-      setIsRefreshingBackends(false);
-    }
-
-    refreshBackendHealth().catch(() => {
-      if (!active) return;
-      setIsRefreshingBackends(false);
-    });
-
-    const intervalId = window.setInterval(() => {
-      refreshBackendHealth().catch(() => undefined);
-    }, 45000);
-
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
-  }, [targets]);
 
   useEffect(() => {
     if (game !== "aoe2") {
@@ -676,10 +737,6 @@ export function QueryClient() {
     if (isSubmitting) return;
     const trimmedQuestion = question.trim();
     if (trimmedQuestion.length < 2) return;
-    if (!selectedBackend) {
-      setError("No query backend is currently reachable.");
-      return;
-    }
 
     setIsSubmitting(true);
     setError(null);
@@ -691,6 +748,13 @@ export function QueryClient() {
     abortRef.current = controller;
 
     try {
+      const probes = await refreshBackendState();
+      const currentBackend = activeBackend(probes);
+      if (!currentBackend) {
+        setError("No query backend is currently reachable.");
+        return;
+      }
+
       const payload = {
         game,
         question: trimmedQuestion,
@@ -698,22 +762,23 @@ export function QueryClient() {
         split_detail: splitDetail
       };
       let response: QueryResponse;
-      let usedProbe = selectedBackend;
+      let usedProbe = currentBackend;
 
-      const fallbackTarget = fallbackProbe?.reachable ? fallbackProbe.target : null;
+      const currentFallbackProbe = probes.find((probe) => probe.target.key === "fallback" && probe.reachable) ?? null;
+      const fallbackTarget = currentFallbackProbe?.target ?? null;
       const canFallback =
-        selectedBackend.target.key === "primary" &&
+        currentBackend.target.key === "primary" &&
         !!fallbackTarget &&
-        fallbackTarget.url !== selectedBackend.target.url;
+        fallbackTarget.url !== currentBackend.target.url;
 
       try {
-        response = await postQuery(selectedBackend.target, payload, token, controller.signal);
+        response = await postQuery(currentBackend.target, payload, token, controller.signal);
       } catch (fetchError) {
         if (!canFallback || !shouldRetryWithFallback(fetchError)) {
           throw fetchError;
         }
         response = await postQuery(fallbackTarget!, payload, token, controller.signal);
-        usedProbe = fallbackProbe ?? usedProbe;
+        usedProbe = currentFallbackProbe ?? usedProbe;
         setNotice(
           `${primaryLabel} is offline or unstable. Using ${fallbackLabel} with weaker retrieval.`
         );
@@ -917,11 +982,27 @@ export function QueryClient() {
                     </div>
                     <p>{item.configured ? item.label : `${item.title} backend not configured`}</p>
                     <p className="statusChipSummary">{item.summary}</p>
+                    <p className="statusChecked">
+                      {isRefreshingBackends
+                        ? "Checking now..."
+                        : lastBackendCheckLabel
+                          ? `Checked ${lastBackendCheckLabel}`
+                          : "Not checked yet"}
+                    </p>
                   </div>
                 </button>
               );
             })}
           </div>
+          <button
+            className="ghost statusRecheckButton"
+            type="button"
+            onClick={() => {
+              refreshBackendState({ showLoading: true }).catch(() => undefined);
+            }}
+          >
+            {isRefreshingBackends ? "Checking..." : "Refresh status"}
+          </button>
         </div>
         <details className="tipsPanel">
           <summary>How to query better</summary>
@@ -991,63 +1072,7 @@ export function QueryClient() {
         {error && <p className="notice error">{error}</p>}
       </section>
 
-      {result && (
-        <section className="answerGrid">
-          <article className="panel answer">
-            <p className="eyebrow">Answer</p>
-            <p className="normalized">{result.normalized_question}</p>
-            <div className="answerMetaRow">
-              {result.metadata.backend_label ? (
-                <span className="answerMetaPill">{result.metadata.backend_label}</span>
-              ) : null}
-              {result.metadata.backend_quality ? (
-                <span className="answerMetaPill">{result.metadata.backend_quality}</span>
-              ) : null}
-              {result.metadata.retrieval_mode ? (
-                <span className="answerMetaPill">{result.metadata.retrieval_mode}</span>
-              ) : null}
-            </div>
-            <div className="answerText">{renderAnswer(result.answer)}</div>
-          </article>
-          <aside className="panel sources">
-            <div className="sourcesHeader">
-              <div>
-                <p className="eyebrow">Evidence</p>
-                <p className="sourcesIntro">
-                  Inspect the rows behind the answer when you want to audit where it came from.
-                </p>
-              </div>
-              <button
-                className="ghost sourceToggle"
-                onClick={() => setShowSources((current) => !current)}
-                type="button"
-              >
-                {showSources ? "Hide sources" : `Show sources (${result.sources.length})`}
-              </button>
-            </div>
-            {showSources ? (
-              result.sources.length === 0 ? (
-                <p>No source rows returned.</p>
-              ) : (
-                <div className="sourceList">
-                  {result.sources.map((line, index) => {
-                    const source = parseSourceLine(line);
-                    return (
-                      <article className="sourceItem" key={`${index}-${line}`}>
-                        <div className="sourceTopline">
-                          {source.category ? <span className="sourceCategory">{source.category}</span> : null}
-                          {source.metrics ? <span className="sourceMetrics">{source.metrics}</span> : null}
-                        </div>
-                        <p>{source.text}</p>
-                      </article>
-                    );
-                  })}
-                </div>
-              )
-            ) : null}
-          </aside>
-        </section>
-      )}
+      {result ? <ResultSection result={result} showSources={showSources} setShowSources={setShowSources} /> : null}
     </main>
   );
 }
