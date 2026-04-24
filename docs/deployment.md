@@ -22,6 +22,8 @@ SUPABASE_ANON_KEY='...'
 VECTOR_BACKEND=supabase
 REQUIRE_AUTH=false
 DAILY_QUERY_LIMIT=100
+BACKEND_LABEL='Render fallback backend'
+BACKEND_QUALITY='fallback'
 ```
 
 Check local setup status:
@@ -76,7 +78,12 @@ Render deployment:
 4. In public mode, keep:
    - `REQUIRE_AUTH=false`
    - `DAILY_QUERY_LIMIT=100`
+   - `BACKEND_LABEL=Render fallback backend`
+   - `BACKEND_QUALITY=fallback`
 5. Set `CORS_ORIGINS` to the GitHub Pages site origin.
+6. If you run a stronger home backend, give it its own public URL and set:
+   - `BACKEND_LABEL=Home strong backend`
+   - `BACKEND_QUALITY=strong`
 
 ## 4. Frontend
 
@@ -86,7 +93,8 @@ Local frontend env:
 cp apps/web/.env.local.example apps/web/.env.local
 NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'
 NEXT_PUBLIC_SUPABASE_ANON_KEY='...'
-NEXT_PUBLIC_QUERY_API_URL='http://localhost:8000'
+NEXT_PUBLIC_PRIMARY_QUERY_API_URL='https://your-strong-backend.example.com'
+NEXT_PUBLIC_FALLBACK_QUERY_API_URL='http://localhost:8000'
 NEXT_PUBLIC_BASE_PATH=''
 ```
 
@@ -103,10 +111,12 @@ GitHub Pages deployment:
 1. Enable GitHub Pages for the repo using `GitHub Actions`.
 2. Add repository variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_QUERY_API_URL`
+   - `NEXT_PUBLIC_PRIMARY_QUERY_API_URL`
+   - `NEXT_PUBLIC_FALLBACK_QUERY_API_URL`
 3. Add repository secret:
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Point `NEXT_PUBLIC_QUERY_API_URL` at the Render backend root URL.
+4. Point `NEXT_PUBLIC_FALLBACK_QUERY_API_URL` at the Render backend root URL.
+5. Point `NEXT_PUBLIC_PRIMARY_QUERY_API_URL` at your stronger home backend URL when it exists.
 
 The workflow in [`.github/workflows/deploy-web.yml`](../.github/workflows/deploy-web.yml)
 builds `apps/web/out` and publishes it to GitHub Pages.

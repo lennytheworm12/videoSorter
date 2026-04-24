@@ -14,10 +14,44 @@ type QueryResponse = {
     subject?: string | null;
     role?: string | null;
     reasoning?: string | null;
+    backend_label?: string | null;
+    backend_quality?: string | null;
+    retrieval_mode?: string | null;
+    semantic_enabled?: boolean | null;
   };
 };
 
-const queryApiUrl = process.env.NEXT_PUBLIC_QUERY_API_URL ?? "http://localhost:8000";
+type BackendKey = "primary" | "fallback";
+
+type BackendHealth = {
+  ok: boolean;
+  backend_label?: string;
+  backend_quality?: string;
+  retrieval_mode?: string;
+  semantic_enabled?: boolean;
+  vector_backend?: string;
+  auth_required?: boolean;
+  daily_query_limit?: number;
+};
+
+type BackendTarget = {
+  key: BackendKey;
+  url: string;
+  defaultLabel: string;
+  defaultQuality: "strong" | "fallback";
+};
+
+type BackendProbe = {
+  target: BackendTarget;
+  reachable: boolean;
+  health: BackendHealth | null;
+  error: string | null;
+};
+
+const primaryQueryApiUrl = normalizeApiUrl(process.env.NEXT_PUBLIC_PRIMARY_QUERY_API_URL ?? "");
+const fallbackQueryApiUrl = normalizeApiUrl(
+  process.env.NEXT_PUBLIC_FALLBACK_QUERY_API_URL ?? process.env.NEXT_PUBLIC_QUERY_API_URL ?? "http://localhost:8000"
+);
 const authRequired = (process.env.NEXT_PUBLIC_REQUIRE_AUTH ?? "false").toLowerCase() === "true";
 
 type AuthStatus = "loading" | "signed_out" | "signed_in";
@@ -71,6 +105,117 @@ const GAME_GUIDES = {
     ]
   }
 } as const;
+
+function normalizeApiUrl(url: string): string {
+  return url.trim().replace(/\/+$/, "");
+}
+
+function backendTargets(): BackendTarget[] {
+  const targets: BackendTarget[] = [];
+  if (primaryQueryApiUrl) {
+    targets.push({
+      key: "primary",
+      url: primaryQueryApiUrl,
+      defaultLabel: "Strong backend",
+      defaultQuality: "strong"
+    });
+  }
+  if (fallbackQueryApiUrl && (!primaryQueryApiUrl || fallbackQueryApiUrl !== primaryQueryApiUrl)) {
+    targets.push({
+      key: "fallback",
+      url: fallbackQueryApiUrl,
+      defaultLabel: "Fallback backend",
+      defaultQuality: "fallback"
+    });
+  }
+  return targets;
+}
+
+function activeBackend(probes: BackendProbe[]): BackendProbe | null {
+  return (
+    probes.find((probe) => probe.target.key === "primary" && probe.reachable) ??
+    probes.find((probe) => probe.target.key === "fallback" && probe.reachable) ??
+    null
+  );
+}
+
+function healthLabel(probe: BackendProbe | null): string {
+  if (!probe) return "No backend";
+  return probe.health?.backend_label?.trim() || probe.target.defaultLabel;
+}
+
+function healthQuality(probe: BackendProbe | null): string {
+  if (!probe) return "offline";
+  return probe.health?.backend_quality?.trim() || probe.target.defaultQuality;
+}
+
+async function fetchBackendHealth(target: BackendTarget): Promise<BackendProbe> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 3500);
+  try {
+    const response = await fetch(`${target.url}/health`, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const health = (await response.json()) as BackendHealth;
+    return {
+      target,
+      reachable: Boolean(health.ok),
+      health,
+      error: null
+    };
+  } catch (error) {
+    return {
+      target,
+      reachable: false,
+      health: null,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+type QueryRequestError = Error & { status?: number };
+
+function shouldRetryWithFallback(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return false;
+  }
+  const status = (error as QueryRequestError | undefined)?.status;
+  if (status === undefined) {
+    return true;
+  }
+  return status === 429 || status >= 500;
+}
+
+async function postQuery(
+  target: BackendTarget,
+  payload: Record<string, unknown>,
+  token: string | null,
+  signal: AbortSignal
+): Promise<QueryResponse> {
+  const response = await fetch(`${target.url}/api/query`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload),
+    signal
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    const error = new Error(text || `HTTP ${response.status}`) as QueryRequestError;
+    error.status = response.status;
+    throw error;
+  }
+  return (await response.json()) as QueryResponse;
+}
 
 function renderInlineMarkdown(text: string): ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g).filter(Boolean);
@@ -232,6 +377,7 @@ function cleanAuthCallbackUrl() {
 
 export function QueryClient() {
   const abortRef = useRef<AbortController | null>(null);
+  const probesRef = useRef<BackendProbe[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [email, setEmail] = useState("");
@@ -244,9 +390,19 @@ export function QueryClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isRefreshingAuth, setIsRefreshingAuth] = useState(false);
+  const [backendProbes, setBackendProbes] = useState<BackendProbe[]>([]);
+  const [isRefreshingBackends, setIsRefreshingBackends] = useState(true);
   const [showSources, setShowSources] = useState(false);
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
   const guide = GAME_GUIDES[game];
+  const targets = backendTargets();
+  const hasPrimaryTarget = targets.some((target) => target.key === "primary");
+  const hasFallbackTarget = targets.some((target) => target.key === "fallback");
+  const selectedBackend = activeBackend(backendProbes);
+  const primaryProbe = backendProbes.find((probe) => probe.target.key === "primary") ?? null;
+  const fallbackProbe = backendProbes.find((probe) => probe.target.key === "fallback") ?? null;
+  const primaryLabel = primaryProbe ? healthLabel(primaryProbe) : "Strong backend";
+  const fallbackLabel = fallbackProbe ? healthLabel(fallbackProbe) : "Fallback backend";
 
   useEffect(() => {
     if (!authRequired) {
@@ -355,6 +511,45 @@ export function QueryClient() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
+    async function refreshBackendHealth() {
+      if (targets.length === 0) {
+        if (!active) return;
+        const empty: BackendProbe[] = [];
+        probesRef.current = empty;
+        setBackendProbes(empty);
+        setIsRefreshingBackends(false);
+        return;
+      }
+
+      if (!probesRef.current.length) {
+        setIsRefreshingBackends(true);
+      }
+
+      const probes = await Promise.all(targets.map((target) => fetchBackendHealth(target)));
+      if (!active) return;
+      probesRef.current = probes;
+      setBackendProbes(probes);
+      setIsRefreshingBackends(false);
+    }
+
+    refreshBackendHealth().catch(() => {
+      if (!active) return;
+      setIsRefreshingBackends(false);
+    });
+
+    const intervalId = window.setInterval(() => {
+      refreshBackendHealth().catch(() => undefined);
+    }, 45000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [targets.length]);
+
+  useEffect(() => {
     if (game !== "aoe2") {
       setSplitDetail(false);
     }
@@ -390,35 +585,56 @@ export function QueryClient() {
     if (isSubmitting) return;
     const trimmedQuestion = question.trim();
     if (trimmedQuestion.length < 2) return;
+    if (!selectedBackend) {
+      setError("No query backend is currently reachable.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
     setResult(null);
     setShowSources(false);
-    const token = authRequired ? session?.access_token : null;
+    const token = authRequired ? session?.access_token ?? null : null;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const response = await fetch(`${queryApiUrl}/api/query`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          game,
-          question: trimmedQuestion,
-          show_sources: true,
-          split_detail: splitDetail
-        }),
-        signal: controller.signal
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
+      const payload = {
+        game,
+        question: trimmedQuestion,
+        show_sources: true,
+        split_detail: splitDetail
+      };
+      let response: QueryResponse;
+      let usedProbe = selectedBackend;
+
+      const fallbackTarget = fallbackProbe?.reachable ? fallbackProbe.target : null;
+      const canFallback =
+        selectedBackend.target.key === "primary" &&
+        !!fallbackTarget &&
+        fallbackTarget.url !== selectedBackend.target.url;
+
+      try {
+        response = await postQuery(selectedBackend.target, payload, token, controller.signal);
+      } catch (fetchError) {
+        if (!canFallback || !shouldRetryWithFallback(fetchError)) {
+          throw fetchError;
+        }
+        response = await postQuery(fallbackTarget!, payload, token, controller.signal);
+        usedProbe = fallbackProbe ?? usedProbe;
+        setNotice(
+          `${primaryLabel} is offline or unstable. Using ${fallbackLabel} with weaker retrieval.`
+        );
       }
-      setResult((await response.json()) as QueryResponse);
+      setResult({
+        ...response,
+        metadata: {
+          ...response.metadata,
+          backend_label: response.metadata.backend_label ?? healthLabel(usedProbe),
+          backend_quality: response.metadata.backend_quality ?? healthQuality(usedProbe)
+        }
+      });
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -435,7 +651,7 @@ export function QueryClient() {
           <h1>Set Supabase frontend environment variables.</h1>
           <p>
             Add <code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>,
-            and <code>NEXT_PUBLIC_QUERY_API_URL</code> before using the private web UI.
+            and at least one query backend URL before using the web UI.
           </p>
         </section>
       </main>
@@ -546,6 +762,56 @@ export function QueryClient() {
             </label>
           )}
         </div>
+        <section
+          className={[
+            "backendStatus",
+            !selectedBackend ? "backendStatusOffline" : "",
+            selectedBackend?.target.key === "fallback" ? "backendStatusFallback" : ""
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <div>
+            <p className="eyebrow">Backend status</p>
+            <strong>
+              {isRefreshingBackends && !backendProbes.length
+                ? "Checking available backends"
+                : selectedBackend?.target.key === "primary"
+                  ? `${primaryLabel} online`
+                  : selectedBackend?.target.key === "fallback"
+                    ? hasPrimaryTarget
+                      ? `${primaryLabel} offline, using ${fallbackLabel}`
+                      : `${fallbackLabel} online`
+                    : "No backend available"}
+            </strong>
+            <p>
+              {selectedBackend?.target.key === "primary"
+                ? `${primaryLabel} is answering queries. ${fallbackProbe?.reachable ? `${fallbackLabel} is available as backup.` : hasFallbackTarget ? "Fallback is currently unavailable." : "No fallback backend is configured."}`
+                : selectedBackend?.target.key === "fallback"
+                  ? hasPrimaryTarget
+                    ? `The stronger backend is unavailable, so the app is using ${fallbackLabel}. Results may be worse until the strong backend returns.`
+                    : `${fallbackLabel} is the only configured backend for this frontend.`
+                  : "Neither backend responded to health checks. Queries are disabled until one comes back online."}
+            </p>
+          </div>
+          <div className="backendPills">
+            {backendProbes.map((probe) => (
+              <span
+                className={[
+                  "backendPill",
+                  probe.reachable ? "backendPillOnline" : "backendPillOffline"
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                key={`${probe.target.key}-${probe.target.url}`}
+                title={probe.error || probe.target.url}
+              >
+                {probe.target.key === "primary" ? "Strong" : "Fallback"}:{" "}
+                {probe.reachable ? healthLabel(probe) : "offline"}
+              </span>
+            ))}
+          </div>
+        </section>
         <details className="tipsPanel">
           <summary>How to query better</summary>
           <div className="tipsBody">
@@ -601,7 +867,7 @@ export function QueryClient() {
         />
         <button
           className="primary"
-          disabled={isSubmitting || question.trim().length < 2}
+          disabled={isSubmitting || question.trim().length < 2 || !selectedBackend}
           onClick={() => {
             askQuestion().catch((err: unknown) => {
               if (err instanceof DOMException && err.name === "AbortError") return;
@@ -619,6 +885,17 @@ export function QueryClient() {
           <article className="panel answer">
             <p className="eyebrow">Answer</p>
             <p className="normalized">{result.normalized_question}</p>
+            <div className="answerMetaRow">
+              {result.metadata.backend_label ? (
+                <span className="answerMetaPill">{result.metadata.backend_label}</span>
+              ) : null}
+              {result.metadata.backend_quality ? (
+                <span className="answerMetaPill">{result.metadata.backend_quality}</span>
+              ) : null}
+              {result.metadata.retrieval_mode ? (
+                <span className="answerMetaPill">{result.metadata.retrieval_mode}</span>
+              ) : null}
+            </div>
             <div className="answerText">{renderAnswer(result.answer)}</div>
           </article>
           <aside className="panel sources">

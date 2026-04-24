@@ -16,6 +16,10 @@ services:
         value: false
       - key: DAILY_QUERY_LIMIT
         value: 100
+      - key: BACKEND_LABEL
+        value: Render fallback backend
+      - key: BACKEND_QUALITY
+        value: fallback
       - key: CORS_ORIGINS
         sync: false
       - key: SUPABASE_DATABASE_URL

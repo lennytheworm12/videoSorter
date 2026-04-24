@@ -245,6 +245,67 @@ textarea:focus {
   gap: 18px;
 }
 
+.backendStatus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid rgba(36, 76, 56, 0.18);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.backendStatus strong {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 1.15rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.backendStatus p {
+  margin: 0;
+}
+
+.backendStatusFallback {
+  border-color: rgba(181, 90, 42, 0.28);
+  background: rgba(181, 90, 42, 0.08);
+}
+
+.backendStatusOffline {
+  border-color: rgba(163, 45, 27, 0.24);
+  background: rgba(163, 45, 27, 0.06);
+}
+
+.backendPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.backendPill,
+.answerMetaPill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.42rem 0.8rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.backendPillOnline {
+  color: white;
+  background: var(--green);
+}
+
+.backendPillOffline {
+  color: #a32d1b;
+  background: rgba(163, 45, 27, 0.1);
+}
+
 .tipsPanel {
   border: 1px solid rgba(23, 32, 26, 0.1);
   border-radius: 22px;
@@ -344,6 +405,18 @@ textarea:focus {
 .normalized {
   color: var(--accent-dark) !important;
   font-style: italic;
+}
+
+.answerMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 1rem;
+}
+
+.answerMetaPill {
+  color: var(--accent-dark);
+  background: rgba(181, 90, 42, 0.12);
 }
 
 .answerText {
@@ -513,6 +586,14 @@ textarea:focus {
   .sourcesHeader {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .backendStatus {
+    grid-template-columns: 1fr;
+  }
+
+  .backendPills {
+    justify-content: flex-start;
   }
 
   .tipsExamples {

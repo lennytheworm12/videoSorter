@@ -7,10 +7,16 @@ from starlette.requests import Request
 
 from api.main import (
     _QUERY_COUNT_BY_DAY_AND_IP,
+    _backend_label,
+    _backend_quality,
     _daily_query_limit,
     _enforce_daily_query_limit,
+    _retrieval_mode,
     _split_answer_sources,
     _validate_runtime_config,
+    health,
+    query,
+    QueryRequest,
 )
 
 
@@ -71,6 +77,70 @@ class ApiTests(unittest.TestCase):
     def test_daily_query_limit_defaults_to_100(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(_daily_query_limit(), 100)
+
+    def test_backend_metadata_helpers_use_env_overrides(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BACKEND_LABEL": "Home backend",
+                "BACKEND_QUALITY": "strong",
+                "RETRIEVAL_MODE": "semantic-remote",
+            },
+            clear=True,
+        ):
+            self.assertEqual(_backend_label(), "Home backend")
+            self.assertEqual(_backend_quality(), "strong")
+            self.assertEqual(_retrieval_mode(), "semantic-remote")
+
+    def test_health_includes_backend_metadata(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BACKEND_LABEL": "Render fallback",
+                "BACKEND_QUALITY": "fallback",
+                "RETRIEVAL_MODE": "bm25-fallback",
+                "VECTOR_BACKEND": "supabase",
+                "REQUIRE_AUTH": "false",
+                "DAILY_QUERY_LIMIT": "100",
+            },
+            clear=True,
+        ):
+            payload = health()
+
+        self.assertEqual(payload["backend_label"], "Render fallback")
+        self.assertEqual(payload["backend_quality"], "fallback")
+        self.assertEqual(payload["retrieval_mode"], "bm25-fallback")
+        self.assertFalse(payload["semantic_enabled"])
+
+    def test_query_includes_backend_metadata(self) -> None:
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "headers": [],
+            "client": ("203.0.113.10", 1234),
+        }
+        request = Request(scope)
+        _QUERY_COUNT_BY_DAY_AND_IP.clear()
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BACKEND_LABEL": "Home backend",
+                "BACKEND_QUALITY": "strong",
+                "RETRIEVAL_MODE": "semantic-remote",
+                "DAILY_QUERY_LIMIT": "100",
+            },
+            clear=False,
+        ), mock.patch("api.main.normalize", return_value={"normalized": "Aatrox into Darius", "role": "top", "reasoning": "normalized"}), mock.patch(
+            "api.main.rag_answer",
+            return_value="Answer text\n\n---\nSources:\n- one",
+        ):
+            response = query(QueryRequest(question="raw question"), request, {"id": "test"})
+
+        self.assertEqual(response.answer, "Answer text")
+        self.assertEqual(response.metadata["backend_label"], "Home backend")
+        self.assertEqual(response.metadata["backend_quality"], "strong")
+        self.assertEqual(response.metadata["retrieval_mode"], "semantic-remote")
+        self.assertTrue(response.metadata["semantic_enabled"])
 
     def test_enforce_daily_query_limit_blocks_after_limit(self) -> None:
         scope = {

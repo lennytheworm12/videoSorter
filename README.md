@@ -110,6 +110,7 @@ older commands continue to work, but the preferred entrypoints now live under
 ## Hosted Stack Notes
 
 - The GitHub Pages frontend is static and queries the Render-hosted FastAPI API.
+- The frontend can be configured with both a strong primary backend and a weaker fallback backend.
 - The hosted backend can run in public mode with a daily query cap.
 - Use the Supabase `Session Pooler` URI for hosted database access.
 

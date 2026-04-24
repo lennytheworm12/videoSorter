@@ -75,6 +75,26 @@ def _daily_query_limit() -> int:
         return 100
 
 
+def _backend_label() -> str:
+    return os.environ.get("BACKEND_LABEL", "Query backend").strip() or "Query backend"
+
+
+def _backend_quality() -> str:
+    return os.environ.get("BACKEND_QUALITY", "standard").strip().lower() or "standard"
+
+
+def _retrieval_mode() -> str:
+    raw = os.environ.get("RETRIEVAL_MODE", "").strip().lower()
+    if raw:
+        return raw
+    vector_backend = _vector_backend()
+    if vector_backend == "supabase":
+        return "semantic"
+    if vector_backend == "sqlite":
+        return "semantic-local"
+    return vector_backend or "unknown"
+
+
 def _validate_runtime_config() -> None:
     if _auth_required():
         missing = [
@@ -206,6 +226,10 @@ def _enforce_daily_query_limit(request: Request) -> None:
 def health() -> dict:
     return {
         "ok": True,
+        "backend_label": _backend_label(),
+        "backend_quality": _backend_quality(),
+        "retrieval_mode": _retrieval_mode(),
+        "semantic_enabled": _retrieval_mode().startswith("semantic"),
         "vector_backend": _vector_backend(),
         "auth_required": _auth_required(),
         "daily_query_limit": _daily_query_limit(),
@@ -241,5 +265,9 @@ def query(
             "subject": subject,
             "role": parsed.get("role"),
             "reasoning": parsed.get("reasoning"),
+            "backend_label": _backend_label(),
+            "backend_quality": _backend_quality(),
+            "retrieval_mode": _retrieval_mode(),
+            "semantic_enabled": _retrieval_mode().startswith("semantic"),
         },
     )
