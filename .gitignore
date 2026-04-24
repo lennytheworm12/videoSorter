@@ -4,7 +4,11 @@
 .venv/
 __pycache__/
 auth_state.json
+*_auth_state.json
+*.session.json
+*.storage_state.json
 playwright/.cache/
+playwright/.auth/
 videos.db
 knowledge.db
 trace.zip
@@ -16,6 +20,10 @@ subtitles/
 
 cookies.txt
 proxies.txt
+discord_messages*.json
+discord_messages*.jsonl
+discord_exports/
+scrape_exports/
 node_modules/
 .next/
 apps/web/node_modules/

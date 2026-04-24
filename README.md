@@ -3,7 +3,7 @@
 `videoSorter` is a multi-game knowledge pipeline and query system for two use
 cases:
 
-- `League of Legends`: ingest Discord-shared coaching videos and written guides,
+- `League of Legends`: ingest private/local coaching video sources and written guides,
   extract matchup and gameplay insights, and answer champion-specific questions.
 - `Age of Empires II`: ingest YouTube coaching/guides, wiki references, and PDF
   material, then answer civilization and strategy questions.
@@ -16,7 +16,7 @@ The project now supports both local CLI usage and a hosted stack built around:
 
 ## What The Repo Contains
 
-- Scrapers for Discord, YouTube, MOBAFire, AoE2 wiki pages, and PDFs
+- Scrapers for local/private coaching sources, YouTube, MOBAFire, AoE2 wiki pages, and PDFs
 - Analysis pipelines that chunk content, extract structured insights, embed them,
   score them, and build cross-reference layers
 - Retrieval + answer generation for local CLI use and the hosted API
@@ -86,7 +86,7 @@ older commands continue to work, but the preferred entrypoints now live under
 
 ### League of Legends
 
-1. Scrape Discord / guide sources into the local databases.
+1. Ingest local/private source material into the local databases.
 2. Transcribe or parse source material.
 3. Analyze into typed insights.
 4. Embed, deduplicate, and cluster-score those insights.
@@ -114,6 +114,7 @@ older commands continue to work, but the preferred entrypoints now live under
 - The strong backend can be discovered dynamically from Supabase when you use a rotating ngrok URL on your home machine.
 - The hosted backend can run in public mode with a daily query cap.
 - Use the Supabase `Session Pooler` URI for hosted database access.
+- Local scrape/session artifacts such as browser state, cookies, proxies, and raw Discord exports are intentionally untracked and should stay out of Git.
 
 ## Development Notes
 

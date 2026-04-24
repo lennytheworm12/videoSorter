@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import logging
 import os
-from threading import Lock
+from threading import Condition, Lock
+import time
 import urllib.error
 import urllib.request
 
@@ -17,7 +19,7 @@ from pydantic import BaseModel, Field
 from core.env import load_project_env
 from core.game_registry import DEFAULT_GAME, normalize_game
 from retrieval.questions import normalize
-from retrieval.query import answer as rag_answer
+from retrieval.query import answer as rag_answer, current_retrieval_mode
 
 load_project_env()
 
@@ -39,6 +41,9 @@ class QueryResponse(BaseModel):
 
 _QUERY_LIMIT_LOCK = Lock()
 _QUERY_COUNT_BY_DAY_AND_IP: dict[tuple[str, str], int] = {}
+_QUERY_SLOT_CONDITION = Condition(Lock())
+_ACTIVE_QUERY_COUNT = 0
+_WAITING_QUERY_COUNT = 0
 
 
 class _HealthAccessLogFilter(logging.Filter):
@@ -77,6 +82,10 @@ def _vector_backend() -> str:
     return os.environ.get("VECTOR_BACKEND", "sqlite").strip().lower()
 
 
+def _embedding_backend() -> str:
+    return os.environ.get("EMBEDDING_BACKEND", "local").strip().lower() or "local"
+
+
 def _daily_query_limit() -> int:
     raw = os.environ.get("DAILY_QUERY_LIMIT", "100").strip()
     try:
@@ -97,12 +106,38 @@ def _retrieval_mode() -> str:
     raw = os.environ.get("RETRIEVAL_MODE", "").strip().lower()
     if raw:
         return raw
-    vector_backend = _vector_backend()
-    if vector_backend == "supabase":
-        return "semantic"
-    if vector_backend == "sqlite":
+    embedding_backend = _embedding_backend()
+    if embedding_backend == "hf_remote":
+        return "semantic-hf-remote"
+    if embedding_backend == "bm25_only":
+        return "bm25-fallback"
+    if _vector_backend() == "sqlite":
         return "semantic-local"
-    return vector_backend or "unknown"
+    return "semantic-local"
+
+
+def _max_active_queries() -> int:
+    raw = os.environ.get("MAX_ACTIVE_QUERIES", "8").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 8
+
+
+def _max_queued_queries() -> int:
+    raw = os.environ.get("MAX_QUEUED_QUERIES", "8").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 8
+
+
+def _queue_wait_timeout_seconds() -> float:
+    raw = os.environ.get("QUEUE_WAIT_TIMEOUT_SECONDS", "20").strip()
+    try:
+        return max(1.0, float(raw))
+    except ValueError:
+        return 20.0
 
 
 def _validate_runtime_config() -> None:
@@ -128,6 +163,11 @@ def _validate_runtime_config() -> None:
     if _vector_backend() == "supabase" and not os.environ.get("SUPABASE_DATABASE_URL"):
         raise RuntimeError(
             "VECTOR_BACKEND=supabase requires SUPABASE_DATABASE_URL"
+        )
+
+    if _embedding_backend() == "hf_remote" and not os.environ.get("HF_TOKEN"):
+        raise RuntimeError(
+            "EMBEDDING_BACKEND=hf_remote requires HF_TOKEN"
         )
 
     if not os.environ.get("GOOGLE_API_KEY"):
@@ -241,18 +281,72 @@ def _enforce_daily_query_limit(request: Request) -> None:
         _QUERY_COUNT_BY_DAY_AND_IP[current_key] = next_count
 
 
+def _queue_snapshot() -> dict[str, int]:
+    with _QUERY_SLOT_CONDITION:
+        return {
+            "active_queries": _ACTIVE_QUERY_COUNT,
+            "queued_queries": _WAITING_QUERY_COUNT,
+            "max_active_queries": _max_active_queries(),
+            "max_queued_queries": _max_queued_queries(),
+        }
+
+
+@contextmanager
+def _acquire_query_slot() -> None:
+    max_active = _max_active_queries()
+    if max_active <= 0:
+        yield
+        return
+
+    global _ACTIVE_QUERY_COUNT, _WAITING_QUERY_COUNT
+    wait_timeout = _queue_wait_timeout_seconds()
+    start = time.monotonic()
+
+    with _QUERY_SLOT_CONDITION:
+        if _ACTIVE_QUERY_COUNT >= max_active:
+            if _WAITING_QUERY_COUNT >= _max_queued_queries():
+                raise HTTPException(
+                    status_code=503,
+                    detail="Query backend is saturated: active slots and queue are full.",
+                )
+            _WAITING_QUERY_COUNT += 1
+            try:
+                while _ACTIVE_QUERY_COUNT >= max_active:
+                    remaining = wait_timeout - (time.monotonic() - start)
+                    if remaining <= 0:
+                        raise HTTPException(
+                            status_code=503,
+                            detail="Query backend queue wait timeout exceeded.",
+                        )
+                    _QUERY_SLOT_CONDITION.wait(timeout=remaining)
+            finally:
+                _WAITING_QUERY_COUNT -= 1
+
+        _ACTIVE_QUERY_COUNT += 1
+
+    try:
+        yield
+    finally:
+        with _QUERY_SLOT_CONDITION:
+            _ACTIVE_QUERY_COUNT -= 1
+            _QUERY_SLOT_CONDITION.notify()
+
+
 @app.get("/health")
 def health() -> dict:
-    return {
+    payload = {
         "ok": True,
         "backend_label": _backend_label(),
         "backend_quality": _backend_quality(),
         "retrieval_mode": _retrieval_mode(),
         "semantic_enabled": _retrieval_mode().startswith("semantic"),
         "vector_backend": _vector_backend(),
+        "embedding_backend": _embedding_backend(),
         "auth_required": _auth_required(),
         "daily_query_limit": _daily_query_limit(),
     }
+    payload.update(_queue_snapshot())
+    return payload
 
 
 @app.post("/api/query", response_model=QueryResponse)
@@ -262,19 +356,21 @@ def query(
     _user: dict = Depends(_validate_supabase_token),
 ) -> QueryResponse:
     _enforce_daily_query_limit(request)
-    game = normalize_game(req.game)
-    parsed = normalize(req.question, game=game)
-    subject = parsed.get("subject") if game == "aoe2" else None
-    generated = rag_answer(
-        question=parsed["normalized"],
-        role=parsed.get("role"),
-        subject=subject,
-        game=game,
-        top_k=req.top_k,
-        show_sources=req.show_sources,
-        aoe2_split_detail=req.split_detail,
-    )
+    with _acquire_query_slot():
+        game = normalize_game(req.game)
+        parsed = normalize(req.question, game=game)
+        subject = parsed.get("subject") if game == "aoe2" else None
+        generated = rag_answer(
+            question=parsed["normalized"],
+            role=parsed.get("role"),
+            subject=subject,
+            game=game,
+            top_k=req.top_k,
+            show_sources=req.show_sources,
+            aoe2_split_detail=req.split_detail,
+        )
     answer_text, sources = _split_answer_sources(generated)
+    effective_retrieval_mode = current_retrieval_mode() or _retrieval_mode()
     return QueryResponse(
         answer=answer_text,
         sources=sources,
@@ -286,7 +382,7 @@ def query(
             "reasoning": parsed.get("reasoning"),
             "backend_label": _backend_label(),
             "backend_quality": _backend_quality(),
-            "retrieval_mode": _retrieval_mode(),
-            "semantic_enabled": _retrieval_mode().startswith("semantic"),
+            "retrieval_mode": effective_retrieval_mode,
+            "semantic_enabled": effective_retrieval_mode.startswith("semantic"),
         },
     )

@@ -222,7 +222,9 @@ class ScoreClustersTests(unittest.TestCase):
             def encode(self, text, convert_to_numpy=True, normalize_embeddings=True):
                 return np.array([1.0, 0.0, 0.0], dtype=np.float32)
 
-        with mock.patch.object(retrieval_query, "SentenceTransformer", FakeModel):
+        with mock.patch.object(retrieval_query.vector_store, "enabled", return_value=False), mock.patch.object(
+            retrieval_query, "_get_retrieval_model", return_value=FakeModel()
+        ):
             results = retrieval_query.retrieve(
                 "economy balance matters",
                 game="aoe2",
@@ -284,7 +286,9 @@ class ScoreClustersTests(unittest.TestCase):
             def encode(self, text, convert_to_numpy=True, normalize_embeddings=True):
                 return np.array([1.0, 0.0, 0.0], dtype=np.float32)
 
-        with mock.patch.object(retrieval_query, "SentenceTransformer", FakeModel):
+        with mock.patch.object(retrieval_query.vector_store, "enabled", return_value=False), mock.patch.object(
+            retrieval_query, "_get_retrieval_model", return_value=FakeModel()
+        ):
             results = retrieval_query.retrieve(
                 "clean scout opening",
                 game="aoe2",

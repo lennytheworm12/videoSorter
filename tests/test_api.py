@@ -5,7 +5,9 @@ from unittest import mock
 from fastapi import HTTPException
 from starlette.requests import Request
 
+import api.main as api_main
 from api.main import (
+    _acquire_query_slot,
     _QUERY_COUNT_BY_DAY_AND_IP,
     _backend_label,
     _backend_quality,
@@ -74,6 +76,21 @@ class ApiTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "GOOGLE_API_KEY"):
                 _validate_runtime_config()
 
+    def test_validate_runtime_config_requires_hf_token_for_remote_embeddings(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "REQUIRE_AUTH": "false",
+                "VECTOR_BACKEND": "supabase",
+                "EMBEDDING_BACKEND": "hf_remote",
+                "SUPABASE_DATABASE_URL": "postgresql://x",
+                "GOOGLE_API_KEY": "x",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HF_TOKEN"):
+                _validate_runtime_config()
+
     def test_daily_query_limit_defaults_to_100(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(_daily_query_limit(), 100)
@@ -100,6 +117,7 @@ class ApiTests(unittest.TestCase):
                 "BACKEND_QUALITY": "fallback",
                 "RETRIEVAL_MODE": "bm25-fallback",
                 "VECTOR_BACKEND": "supabase",
+                "EMBEDDING_BACKEND": "hf_remote",
                 "REQUIRE_AUTH": "false",
                 "DAILY_QUERY_LIMIT": "100",
             },
@@ -111,6 +129,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["backend_quality"], "fallback")
         self.assertEqual(payload["retrieval_mode"], "bm25-fallback")
         self.assertFalse(payload["semantic_enabled"])
+        self.assertEqual(payload["embedding_backend"], "hf_remote")
+        self.assertIn("active_queries", payload)
 
     def test_query_includes_backend_metadata(self) -> None:
         scope = {
@@ -133,14 +153,17 @@ class ApiTests(unittest.TestCase):
         ), mock.patch("api.main.normalize", return_value={"normalized": "Aatrox into Darius", "role": "top", "reasoning": "normalized"}), mock.patch(
             "api.main.rag_answer",
             return_value="Answer text\n\n---\nSources:\n- one",
+        ), mock.patch(
+            "api.main.current_retrieval_mode",
+            return_value="bm25-fallback",
         ):
             response = query(QueryRequest(question="raw question"), request, {"id": "test"})
 
         self.assertEqual(response.answer, "Answer text")
         self.assertEqual(response.metadata["backend_label"], "Home backend")
         self.assertEqual(response.metadata["backend_quality"], "strong")
-        self.assertEqual(response.metadata["retrieval_mode"], "semantic-remote")
-        self.assertTrue(response.metadata["semantic_enabled"])
+        self.assertEqual(response.metadata["retrieval_mode"], "bm25-fallback")
+        self.assertFalse(response.metadata["semantic_enabled"])
 
     def test_enforce_daily_query_limit_blocks_after_limit(self) -> None:
         scope = {
@@ -159,6 +182,30 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 429)
         self.assertIn("2 per day", str(ctx.exception.detail))
+
+    def test_acquire_query_slot_rejects_when_active_and_queue_are_full(self) -> None:
+        old_active = api_main._ACTIVE_QUERY_COUNT
+        old_waiting = api_main._WAITING_QUERY_COUNT
+        api_main._ACTIVE_QUERY_COUNT = 1
+        api_main._WAITING_QUERY_COUNT = 0
+        try:
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "MAX_ACTIVE_QUERIES": "1",
+                    "MAX_QUEUED_QUERIES": "0",
+                },
+                clear=False,
+            ):
+                with self.assertRaises(HTTPException) as ctx:
+                    with _acquire_query_slot():
+                        pass
+        finally:
+            api_main._ACTIVE_QUERY_COUNT = old_active
+            api_main._WAITING_QUERY_COUNT = old_waiting
+
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertIn("saturated", str(ctx.exception.detail))
 
 
 if __name__ == "__main__":

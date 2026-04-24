@@ -22,10 +22,15 @@ SUPABASE_DATABASE_URL='postgresql://...'
 SUPABASE_URL='https://your-project.supabase.co'
 SUPABASE_ANON_KEY='...'
 VECTOR_BACKEND=supabase
+EMBEDDING_BACKEND=hf_remote
 REQUIRE_AUTH=false
 DAILY_QUERY_LIMIT=100
+MAX_ACTIVE_QUERIES=8
+MAX_QUEUED_QUERIES=8
+QUEUE_WAIT_TIMEOUT_SECONDS=20
 BACKEND_LABEL='Render fallback backend'
 BACKEND_QUALITY='fallback'
+HF_TOKEN='...'
 ```
 
 Check local setup status:
@@ -74,18 +79,22 @@ Render deployment:
    - `SUPABASE_DATABASE_URL`
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
+   - `HF_TOKEN`
    - `GOOGLE_API_KEY`
    - optional `GOOGLE_API_KEY_TWO`
    - `CORS_ORIGINS`
 4. In public mode, keep:
    - `REQUIRE_AUTH=false`
    - `DAILY_QUERY_LIMIT=100`
+   - `EMBEDDING_BACKEND=hf_remote`
    - `BACKEND_LABEL=Render fallback backend`
    - `BACKEND_QUALITY=fallback`
 5. Set `CORS_ORIGINS` to the GitHub Pages site origin.
 6. If you run a stronger home backend, give it its own public URL and set:
    - `BACKEND_LABEL=Home strong backend`
    - `BACKEND_QUALITY=strong`
+   - `EMBEDDING_BACKEND=local`
+   - `MAX_ACTIVE_QUERIES=8`
 
 ### Publishing a changing ngrok URL
 

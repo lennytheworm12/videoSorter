@@ -5,10 +5,11 @@ All commands assume the project root as the working directory.
 ## Scraping And Imports
 
 ```bash
-# One-time: save a Discord login session for scraping
+# One-time local setup: save a browser login session for scraping
+# This creates local-only state files; do not commit them.
 uv run python scrape/login_and_save_state.py
 
-# Scrape Discord threads for a role
+# Scrape private/local thread sources for a role
 uv run python -m scrape.main --role support
 
 # Scrape AoE2 wiki reference pages

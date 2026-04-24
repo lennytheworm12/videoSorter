@@ -27,11 +27,9 @@ import html
 import logging
 import argparse
 import sqlite3
+import os
+from contextvars import ContextVar
 import numpy as np
-from sentence_transformers import SentenceTransformer
-
-logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
-logging.getLogger("transformers").setLevel(logging.ERROR)
 
 from pipeline.embed import load_all_vectors
 from pipeline.champion_crossref import get_archetype_insights
@@ -41,9 +39,11 @@ from core.db_paths import all_content_db_paths
 from core.game_registry import DEFAULT_GAME, canonical_aoe2_civilization, find_aoe2_civilizations, game_label, normalize_game
 from cloud import vector_store
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 TOP_K = 35
-_RETRIEVAL_MODEL: SentenceTransformer | None = None
+_RETRIEVAL_MODEL = None
+_HF_EMBED_CLIENT = None
+_CURRENT_RETRIEVAL_MODE: ContextVar[str] = ContextVar("current_retrieval_mode", default="unknown")
 RRF_K = 60
 RANK_WEIGHTS = {
     "": 1.0,
@@ -62,12 +62,74 @@ _ABILITY_TAG_PRIORITY = [
     "heal", "slow", "execute", "true_damage",
 ]
 
+def _embedding_backend() -> str:
+    return os.environ.get("EMBEDDING_BACKEND", "local").strip().lower() or "local"
 
-def _get_retrieval_model() -> SentenceTransformer:
+
+def _set_current_retrieval_mode(mode: str) -> None:
+    _CURRENT_RETRIEVAL_MODE.set(mode)
+
+
+def current_retrieval_mode() -> str:
+    return _CURRENT_RETRIEVAL_MODE.get()
+
+
+def _get_retrieval_model():
     global _RETRIEVAL_MODEL
     if _RETRIEVAL_MODEL is None:
+        from sentence_transformers import SentenceTransformer
+
+        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+        logging.getLogger("transformers").setLevel(logging.ERROR)
         _RETRIEVAL_MODEL = SentenceTransformer(MODEL_NAME)
     return _RETRIEVAL_MODEL
+
+
+def _normalize_query_vector(vector: np.ndarray | list[float] | list[list[float]]) -> np.ndarray:
+    arr = np.asarray(vector, dtype=np.float32)
+    if arr.ndim > 1:
+        if arr.shape[0] == 1:
+            arr = arr[0]
+        else:
+            arr = arr.mean(axis=0)
+    arr = arr.reshape(-1)
+    norm = float(np.linalg.norm(arr))
+    if norm <= 0:
+        raise RuntimeError("Query embedding norm was zero.")
+    return (arr / norm).astype(np.float32)
+
+
+def _get_hf_embed_client():
+    global _HF_EMBED_CLIENT
+    if _HF_EMBED_CLIENT is None:
+        from huggingface_hub import InferenceClient
+
+        token = os.environ.get("HF_TOKEN")
+        if not token:
+            raise RuntimeError("HF_TOKEN is required when EMBEDDING_BACKEND=hf_remote")
+        _HF_EMBED_CLIENT = InferenceClient(provider="hf-inference", api_key=token)
+    return _HF_EMBED_CLIENT
+
+
+def _encode_query_local(question: str) -> np.ndarray:
+    model = _get_retrieval_model()
+    vector = model.encode(question, convert_to_numpy=True, normalize_embeddings=True)
+    _set_current_retrieval_mode("semantic-local")
+    return _normalize_query_vector(vector)
+
+
+def _encode_query_remote(question: str) -> np.ndarray:
+    client = _get_hf_embed_client()
+    vector = client.feature_extraction(question, model=MODEL_NAME, normalize=True)
+    _set_current_retrieval_mode("semantic-hf-remote")
+    return _normalize_query_vector(vector)
+
+
+def _encode_query(question: str) -> np.ndarray:
+    backend = _embedding_backend()
+    if backend == "hf_remote":
+        return _encode_query_remote(question)
+    return _encode_query_local(question)
 
 
 def _source_weight(meta: dict) -> float:
@@ -776,25 +838,41 @@ def retrieve(
         subject = champion
 
     if vector_store.enabled():
-        model = _get_retrieval_model()
-        query_vec = model.encode(question, convert_to_numpy=True, normalize_embeddings=True)
         candidate_count = max(top_k * 4, 60)
-        rows = vector_store.search_insights(
-            query_vec,
-            game=game,
-            role=role,
-            champion=champion,
-            subject=subject,
-            insight_type=insight_type,
-            top_k=candidate_count,
-        )
+        try:
+            if _embedding_backend() == "bm25_only":
+                raise RuntimeError("Semantic embeddings disabled for hosted fallback.")
+            query_vec = _encode_query(question)
+            rows = vector_store.search_insights(
+                query_vec,
+                game=game,
+                role=role,
+                champion=champion,
+                subject=subject,
+                insight_type=insight_type,
+                top_k=candidate_count,
+            )
+            retrieval_layer = "supabase"
+        except Exception as exc:
+            logging.warning("Falling back to lexical hosted retrieval: %s", exc)
+            _set_current_retrieval_mode("bm25-fallback")
+            rows = vector_store.search_keyword_candidates(
+                question,
+                game=game,
+                role=role,
+                champion=champion,
+                subject=subject,
+                insight_type=insight_type,
+                top_k=candidate_count,
+            )
+            retrieval_layer = "supabase-lexical"
         preferred_map = {
             insight: max(0.0, 0.12 - (index * 0.02))
             for index, insight in enumerate(preferred_types or [])
         }
         rows.sort(
             key=lambda r: (
-                0.5 * float(r.get("score") or 0.0)
+                0.5 * float(r.get("score") or r.get("lexical_score") or 0.0)
                 + 0.5 * (
                     0.6 * float(r.get("confidence") or 0.5)
                     + 0.4 * float(r.get("source_score") or 0.5)
@@ -816,9 +894,9 @@ def retrieve(
                 "website_rating": row.get("website_rating"),
                 "source": row.get("source", "discord"),
                 "source_weight": round(float(_source_weight(row)), 4),
-                "score": round(float(row.get("score") or 0.0), 4),
+                "score": round(float(row.get("score") or row.get("lexical_score") or 0.0), 4),
                 "confidence": round(float(row.get("confidence") or row.get("source_score") or 0.5), 4),
-                "retrieval_layer": "supabase",
+                "retrieval_layer": retrieval_layer,
             }
             for row in rows[:top_k]
         ]
@@ -843,8 +921,7 @@ def retrieve(
     n = len(ids)
     fetch_k = min(n, max(top_k * 3, 50))
 
-    model = _get_retrieval_model()
-    query_vec = model.encode(question, convert_to_numpy=True, normalize_embeddings=True)
+    query_vec = _encode_query_local(question)
     cosine_scores = matrix @ query_vec
     semantic_ranked = np.argsort(cosine_scores)[::-1][:fetch_k].tolist()
 
@@ -1816,6 +1893,11 @@ def answer(
       - Synergy (X with/and Y) → retrieve both sides, synthesize combo
       - General               → single retrieve + answer
     """
+    _set_current_retrieval_mode(
+        "semantic-hf-remote" if vector_store.enabled() and _embedding_backend() == "hf_remote"
+        else "bm25-fallback" if vector_store.enabled() and _embedding_backend() == "bm25_only"
+        else "semantic-local"
+    )
     game = normalize_game(game)
     if subject is None:
         subject = champion
