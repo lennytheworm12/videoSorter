@@ -58,13 +58,20 @@ button:disabled {
   margin-bottom: 28px;
 }
 
-.hero h1,
-.panel h1 {
+.hero h1 {
   margin: 0;
   max-width: 780px;
   font-size: clamp(2.8rem, 7vw, 6.2rem);
   line-height: 0.9;
   letter-spacing: -0.06em;
+}
+
+.panel h1 {
+  margin: 0;
+  max-width: 26ch;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
 }
 
 .hero p,
@@ -158,6 +165,10 @@ button:disabled {
 
 .auth {
   margin-top: 12vh;
+}
+
+.auth h1 {
+  max-width: 14ch;
 }
 
 .authRow,
