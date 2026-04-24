@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import logging
 import os
 from threading import Lock
 import urllib.error
@@ -38,6 +39,15 @@ class QueryResponse(BaseModel):
 
 _QUERY_LIMIT_LOCK = Lock()
 _QUERY_COUNT_BY_DAY_AND_IP: dict[tuple[str, str], int] = {}
+
+
+class _HealthAccessLogFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if not isinstance(args, tuple) or len(args) < 3:
+            return True
+        path = str(args[2])
+        return not path.startswith("/health")
 
 
 def _cors_origins() -> list[str]:
@@ -126,8 +136,17 @@ def _validate_runtime_config() -> None:
         )
 
 
+def _configure_access_log_filters() -> None:
+    logger = logging.getLogger("uvicorn.access")
+    if getattr(logger, "_videosorter_health_filter_installed", False):
+        return
+    logger.addFilter(_HealthAccessLogFilter())
+    logger._videosorter_health_filter_installed = True  # type: ignore[attr-defined]
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    _configure_access_log_filters()
     _validate_runtime_config()
     yield
 
