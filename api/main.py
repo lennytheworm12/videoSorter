@@ -54,11 +54,9 @@ def _cors_origins() -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
-def _cors_origin_regex() -> str:
-    return os.environ.get(
-        "CORS_ORIGIN_REGEX",
-        r"^https://[a-zA-Z0-9-]+\.github\.io$|^http://localhost(:\d+)?$|^http://127\.0\.0\.1(:\d+)?$",
-    )
+def _cors_origin_regex() -> str | None:
+    raw = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
+    return raw or None
 
 
 def _auth_required() -> bool:
