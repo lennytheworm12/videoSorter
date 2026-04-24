@@ -170,6 +170,17 @@ function healthQuality(probe: BackendProbe | null): string {
   return probe.health?.backend_quality?.trim() || probe.target.defaultQuality;
 }
 
+function requestHeadersForTarget(target: BackendTarget, token?: string | null): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (target.url.includes("ngrok")) {
+    headers["ngrok-skip-browser-warning"] = "1";
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function fetchBackendHealth(target: BackendTarget): Promise<BackendProbe> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 3500);
@@ -177,7 +188,8 @@ async function fetchBackendHealth(target: BackendTarget): Promise<BackendProbe> 
     const response = await fetch(`${target.url}/health`, {
       method: "GET",
       cache: "no-store",
-      signal: controller.signal
+      signal: controller.signal,
+      headers: requestHeadersForTarget(target)
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -224,7 +236,7 @@ async function postQuery(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      ...requestHeadersForTarget(target, token)
     },
     body: JSON.stringify(payload),
     signal
