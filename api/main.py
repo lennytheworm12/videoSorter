@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import os
+from threading import Lock
 import urllib.error
 import urllib.request
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -34,6 +36,10 @@ class QueryResponse(BaseModel):
     metadata: dict
 
 
+_QUERY_LIMIT_LOCK = Lock()
+_QUERY_COUNT_BY_DAY_AND_IP: dict[tuple[str, str], int] = {}
+
+
 def _cors_origins() -> list[str]:
     raw = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
@@ -45,6 +51,14 @@ def _auth_required() -> bool:
 
 def _vector_backend() -> str:
     return os.environ.get("VECTOR_BACKEND", "sqlite").strip().lower()
+
+
+def _daily_query_limit() -> int:
+    raw = os.environ.get("DAILY_QUERY_LIMIT", "100").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 100
 
 
 def _validate_runtime_config() -> None:
@@ -141,17 +155,55 @@ def _split_answer_sources(text: str) -> tuple[str, list[str]]:
     return answer_text.rstrip(), source_lines
 
 
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _enforce_daily_query_limit(request: Request) -> None:
+    limit = _daily_query_limit()
+    if limit <= 0:
+        return
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    client_ip = _client_ip(request)
+    current_key = (today, client_ip)
+
+    with _QUERY_LIMIT_LOCK:
+        stale_keys = [key for key in _QUERY_COUNT_BY_DAY_AND_IP if key[0] != today]
+        for key in stale_keys:
+            _QUERY_COUNT_BY_DAY_AND_IP.pop(key, None)
+
+        next_count = _QUERY_COUNT_BY_DAY_AND_IP.get(current_key, 0) + 1
+        if next_count > limit:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily query limit reached for this IP ({limit} per day).",
+            )
+        _QUERY_COUNT_BY_DAY_AND_IP[current_key] = next_count
+
+
 @app.get("/health")
 def health() -> dict:
     return {
         "ok": True,
         "vector_backend": _vector_backend(),
         "auth_required": _auth_required(),
+        "daily_query_limit": _daily_query_limit(),
     }
 
 
 @app.post("/api/query", response_model=QueryResponse)
-def query(req: QueryRequest, _user: dict = Depends(_validate_supabase_token)) -> QueryResponse:
+def query(
+    req: QueryRequest,
+    request: Request,
+    _user: dict = Depends(_validate_supabase_token),
+) -> QueryResponse:
+    _enforce_daily_query_limit(request)
     game = normalize_game(req.game)
     parsed = normalize(req.question, game=game)
     subject = parsed.get("subject") if game == "aoe2" else None

@@ -2,7 +2,16 @@ import os
 import unittest
 from unittest import mock
 
-from api.main import _split_answer_sources, _validate_runtime_config
+from fastapi import HTTPException
+from starlette.requests import Request
+
+from api.main import (
+    _QUERY_COUNT_BY_DAY_AND_IP,
+    _daily_query_limit,
+    _enforce_daily_query_limit,
+    _split_answer_sources,
+    _validate_runtime_config,
+)
 
 
 class ApiTests(unittest.TestCase):
@@ -58,6 +67,28 @@ class ApiTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "GOOGLE_API_KEY"):
                 _validate_runtime_config()
+
+    def test_daily_query_limit_defaults_to_100(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(_daily_query_limit(), 100)
+
+    def test_enforce_daily_query_limit_blocks_after_limit(self) -> None:
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "headers": [],
+            "client": ("203.0.113.10", 1234),
+        }
+        request = Request(scope)
+        _QUERY_COUNT_BY_DAY_AND_IP.clear()
+        with mock.patch.dict(os.environ, {"DAILY_QUERY_LIMIT": "2"}, clear=False):
+            _enforce_daily_query_limit(request)
+            _enforce_daily_query_limit(request)
+            with self.assertRaises(HTTPException) as ctx:
+                _enforce_daily_query_limit(request)
+
+        self.assertEqual(ctx.exception.status_code, 429)
+        self.assertIn("2 per day", str(ctx.exception.detail))
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ type QueryResponse = {
 };
 
 const queryApiUrl = process.env.NEXT_PUBLIC_QUERY_API_URL ?? "http://localhost:8000";
+const authRequired = (process.env.NEXT_PUBLIC_REQUIRE_AUTH ?? "false").toLowerCase() === "true";
 
 type AuthStatus = "loading" | "signed_out" | "signed_in";
 
@@ -208,6 +209,10 @@ export function QueryClient() {
   const [showLennyPhoto, setShowLennyPhoto] = useState(true);
 
   useEffect(() => {
+    if (!authRequired) {
+      setAuthStatus("signed_in");
+      return;
+    }
     if (!supabase) {
       setAuthStatus("signed_out");
       return;
@@ -350,7 +355,7 @@ export function QueryClient() {
     setError(null);
     setResult(null);
     setShowSources(false);
-    const token = session?.access_token;
+    const token = authRequired ? session?.access_token : null;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -382,7 +387,7 @@ export function QueryClient() {
     }
   }
 
-  if (!hasSupabaseConfig) {
+  if (authRequired && !hasSupabaseConfig) {
     return (
       <main className="shell">
         <section className="panel">
@@ -397,7 +402,7 @@ export function QueryClient() {
     );
   }
 
-  if (authStatus === "loading") {
+  if (authRequired && authStatus === "loading") {
     return (
       <main className="shell">
         <section className="panel auth authLoading">
@@ -411,7 +416,7 @@ export function QueryClient() {
     );
   }
 
-  if (authStatus !== "signed_in" || !session) {
+  if (authRequired && (authStatus !== "signed_in" || !session)) {
     return (
       <main className="shell">
         <section className="panel auth">
@@ -458,9 +463,11 @@ export function QueryClient() {
             Query League of Legends coaching data and Age of Empires II guides from one private interface,
             with structured answers and source evidence when you want to inspect it.
           </p>
-          <div className="heroActions">
-            <button className="ghost" onClick={() => supabase?.auth.signOut()}>Sign out</button>
-          </div>
+          {authRequired ? (
+            <div className="heroActions">
+              <button className="ghost" onClick={() => supabase?.auth.signOut()}>Sign out</button>
+            </div>
+          ) : null}
         </div>
         <div className="heroPhoto">
           {showLennyPhoto ? (

@@ -22,7 +22,8 @@ SUPABASE_DATABASE_URL='postgresql://...'
 SUPABASE_URL='https://your-project.supabase.co'
 SUPABASE_ANON_KEY='...'
 VECTOR_BACKEND=supabase
-REQUIRE_AUTH=true
+REQUIRE_AUTH=false
+DAILY_QUERY_LIMIT=100
 ```
 
 Check what is still missing:
@@ -73,6 +74,7 @@ In Render:
    - `GOOGLE_API_KEY`
    - `GOOGLE_API_KEY_TWO` (optional fallback)
    - `CORS_ORIGINS`
+   - optional `DAILY_QUERY_LIMIT`
 3. Use the Supabase `Session Pooler` connection string for `SUPABASE_DATABASE_URL`, not the direct `db.<project>.supabase.co:5432` host.
 4. Set `CORS_ORIGINS` to your GitHub Pages site URL.
 5. After the first successful deploy, copy the Render service URL.
@@ -115,5 +117,6 @@ In GitHub:
 
 The workflow builds the static export with a repo-name base path and deploys `apps/web/out`.
 
-The default detailed AoE2 path uses one LLM call. Enable the UI checkbox or API
-field `split_detail=true` only when testing the two-call splice path.
+The hosted stack now defaults to public queries with a simple per-IP daily cap.
+If you want auth back later, re-enable `REQUIRE_AUTH=true` in Render and add a
+matching frontend env.

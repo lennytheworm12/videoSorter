@@ -181,8 +181,8 @@ render.yaml
 Hosted setup notes:
 
 ```text
-- In Supabase Auth, enable Google and add redirect URLs for local dev and GitHub Pages.
 - In Render, use the Supabase Session Pooler URI for SUPABASE_DATABASE_URL.
+- In Render, set REQUIRE_AUTH=false and DAILY_QUERY_LIMIT=100 for public querying.
 - In GitHub repo variables, set NEXT_PUBLIC_QUERY_API_URL to the Render backend root URL.
 ```
 
