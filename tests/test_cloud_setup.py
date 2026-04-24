@@ -20,7 +20,7 @@ class CloudSetupTests(unittest.TestCase):
         self.assertEqual(code, 1)
         rendered = output.getvalue()
         self.assertIn("SUPABASE_DATABASE_URL", rendered)
-        self.assertIn("Fill the backend Supabase vars in .env.", rendered)
+        self.assertIn("Fill the backend Supabase vars in .env using docs/examples/cloud.env.example.", rendered)
 
     def test_load_project_env_uses_repo_root(self) -> None:
         root = env_mod.project_root()

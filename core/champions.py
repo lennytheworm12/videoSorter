@@ -12,7 +12,7 @@ import pathlib
 import urllib.request
 from functools import lru_cache
 
-CACHE_PATH = pathlib.Path("champion_cache.json")
+CACHE_PATH = pathlib.Path(__file__).with_name("champion_cache.json")
 DDRAGON_VERSIONS = "https://ddragon.leagueoflegends.com/api/versions.json"
 DDRAGON_CHAMPIONS = "https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
 

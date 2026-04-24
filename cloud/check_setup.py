@@ -73,12 +73,14 @@ def check_setup() -> int:
         print(_status_line(name, value))
         frontend_missing += int(not value)
 
+    example_env = root / "docs" / "examples" / "cloud.env.example"
+
     print("\nNext steps:")
     if not schema.exists():
         print("  - Ensure supabase/schema.sql exists in the repo.")
     print("  - Run supabase/schema.sql in the Supabase SQL editor.")
     if backend_missing:
-        print("  - Fill the backend Supabase vars in .env.")
+        print(f"  - Fill the backend Supabase vars in .env using {example_env.relative_to(root)}.")
     if frontend_missing:
         print("  - Fill apps/web/.env.local from apps/web/.env.local.example.")
     if not backend_missing:

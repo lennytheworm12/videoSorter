@@ -1,7 +1,7 @@
 [project]
 name = "videosorter"
 version = "0.1.0"
-description = "Add your description here"
+description = "Multi-game knowledge ingestion and query system for League of Legends and Age of Empires II."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
