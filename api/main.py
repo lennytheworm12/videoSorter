@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from core.env import load_project_env
 from core.game_registry import DEFAULT_GAME, normalize_game
+from core.memory_debug import log_memory, rss_mb
 from retrieval.questions import normalize
 from retrieval.query import answer as rag_answer, current_retrieval_mode
 
@@ -344,6 +345,7 @@ def health() -> dict:
         "semantic_enabled": _retrieval_mode().startswith("semantic"),
         "vector_backend": _vector_backend(),
         "embedding_backend": _embedding_backend(),
+        "memory_rss_mb": round(rss_mb(), 1),
         "auth_required": _auth_required(),
         "daily_query_limit": _daily_query_limit(),
     }
@@ -359,6 +361,7 @@ def query(
 ) -> QueryResponse:
     _enforce_daily_query_limit(request)
     with _acquire_query_slot():
+        log_memory("query:start")
         game = normalize_game(req.game)
         parsed = normalize(req.question, game=game)
         subject = parsed.get("subject") if game == "aoe2" else None
@@ -371,6 +374,7 @@ def query(
             show_sources=req.show_sources,
             aoe2_split_detail=req.split_detail,
         )
+        log_memory("query:after_rag")
     answer_text, sources = _split_answer_sources(generated)
     effective_retrieval_mode = current_retrieval_mode() or _retrieval_mode()
     return QueryResponse(

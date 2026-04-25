@@ -31,10 +31,11 @@ import os
 from contextvars import ContextVar
 import numpy as np
 
-from pipeline.embed import load_all_vectors
+from core.embedded_vectors import load_all_vectors
 from pipeline.champion_crossref import get_archetype_insights
 from pipeline.aoe2_crossref import get_applicable_insights
 from core.llm import chat as llm_chat
+from core.memory_debug import log_memory
 from core.db_paths import all_content_db_paths
 from core.game_registry import DEFAULT_GAME, canonical_aoe2_civilization, find_aoe2_civilizations, game_label, normalize_game
 from cloud import vector_store
@@ -77,11 +78,13 @@ def current_retrieval_mode() -> str:
 def _get_retrieval_model():
     global _RETRIEVAL_MODEL
     if _RETRIEVAL_MODEL is None:
+        log_memory("retrieval:before_local_model_import")
         from sentence_transformers import SentenceTransformer
 
         logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
         logging.getLogger("transformers").setLevel(logging.ERROR)
         _RETRIEVAL_MODEL = SentenceTransformer(MODEL_NAME)
+        log_memory("retrieval:after_local_model_load")
     return _RETRIEVAL_MODEL
 
 
@@ -108,20 +111,25 @@ def _get_hf_embed_client():
         if not token:
             raise RuntimeError("HF_TOKEN is required when EMBEDDING_BACKEND=hf_remote")
         _HF_EMBED_CLIENT = InferenceClient(provider="hf-inference", api_key=token)
+        log_memory("retrieval:after_hf_client_init")
     return _HF_EMBED_CLIENT
 
 
 def _encode_query_local(question: str) -> np.ndarray:
+    log_memory("retrieval:before_local_encode")
     model = _get_retrieval_model()
     vector = model.encode(question, convert_to_numpy=True, normalize_embeddings=True)
     _set_current_retrieval_mode("semantic-local")
+    log_memory("retrieval:after_local_encode")
     return _normalize_query_vector(vector)
 
 
 def _encode_query_remote(question: str) -> np.ndarray:
+    log_memory("retrieval:before_remote_encode")
     client = _get_hf_embed_client()
     vector = client.feature_extraction(question, model=MODEL_NAME, normalize=True)
     _set_current_retrieval_mode("semantic-hf-remote")
+    log_memory("retrieval:after_remote_encode")
     return _normalize_query_vector(vector)
 
 

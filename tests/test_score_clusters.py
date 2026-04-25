@@ -6,6 +6,7 @@ from unittest import mock
 import numpy as np
 
 import core.database as db
+import core.embedded_vectors as embedded_vectors
 from core.database import get_connection, init_db, insert_insight, insert_video
 import pipeline.embed as embed
 import pipeline.score_clusters as score_clusters
@@ -22,9 +23,11 @@ class ScoreClustersTests(unittest.TestCase):
             conn.execute("ALTER TABLE insights ADD COLUMN embedding BLOB")
             conn.commit()
         self._old_embed_dbs = None if embed._ALL_DBS is None else list(embed._ALL_DBS)
+        self._old_embedded_vector_dbs = None if embedded_vectors._ALL_DBS is None else list(embedded_vectors._ALL_DBS)
 
     def tearDown(self) -> None:
         embed._ALL_DBS = self._old_embed_dbs
+        embedded_vectors._ALL_DBS = self._old_embedded_vector_dbs
         self._tmpdir.cleanup()
 
     def _set_embedding(self, insight_id: int, values: list[float], source_score: float = 0.5) -> None:
@@ -185,6 +188,7 @@ class ScoreClustersTests(unittest.TestCase):
 
     def test_retrieve_prefers_higher_confidence_when_similarity_matches(self) -> None:
         embed._ALL_DBS = [str(self._db_path)]
+        embedded_vectors._ALL_DBS = [str(self._db_path)]
 
         for video_id in ("high", "low"):
             insert_video(
@@ -237,6 +241,7 @@ class ScoreClustersTests(unittest.TestCase):
 
     def test_retrieve_weights_aoe2_pdf_as_north_star_source(self) -> None:
         embed._ALL_DBS = [str(self._db_path)]
+        embedded_vectors._ALL_DBS = [str(self._db_path)]
 
         for video_id, source in (("pdf", "aoe2_pdf"), ("youtube", "aoe2_video")):
             insert_video(
