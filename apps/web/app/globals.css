@@ -431,6 +431,16 @@ textarea:focus {
   padding: 0 18px 18px;
 }
 
+.faqBody p {
+  margin: 0;
+}
+
+.faqPanel code {
+  padding: 0.08rem 0.3rem;
+  border-radius: 6px;
+  background: rgba(23, 32, 26, 0.08);
+}
+
 .tipsExamples {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -485,6 +495,13 @@ textarea:focus {
 .statusRecheckButton {
   padding: 12px 18px;
   white-space: nowrap;
+}
+
+.statusHint {
+  margin: -6px 0 0;
+  color: var(--accent-dark) !important;
+  font-size: 0.94rem !important;
+  line-height: 1.45;
 }
 
 .toggle {

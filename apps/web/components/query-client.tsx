@@ -559,6 +559,9 @@ export function QueryClient() {
     : hasFallbackTarget
       ? `${fallbackLabel} is available as backup.`
       : "No fallback backend is configured.";
+  const fallbackWakeNotice = hasFallbackTarget && !fallbackProbe?.reachable
+    ? "Fallback refresh can take a bit on the free Render tier because the server may need time to wake up."
+    : null;
   const lastBackendCheckLabel = lastBackendCheckAt
     ? new Date(lastBackendCheckAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     : null;
@@ -1043,6 +1046,7 @@ export function QueryClient() {
             {isRefreshingBackends ? "Checking..." : "Refresh status"}
           </button>
         </div>
+        {fallbackWakeNotice ? <p className="statusHint">{fallbackWakeNotice}</p> : null}
         <details className="tipsPanel">
           <summary>How to query better</summary>
           <div className="tipsBody">
@@ -1087,6 +1091,39 @@ export function QueryClient() {
                   ))}
                 </ul>
               </div>
+            </div>
+          </div>
+        </details>
+        <details className="tipsPanel faqPanel">
+          <summary>FAQ</summary>
+          <div className="tipsBody faqBody">
+            <div>
+              <p className="tipsLabel">What do the backend chips mean?</p>
+              <p>
+                <strong>S</strong> is your strong home backend and <strong>F</strong> is the hosted Render fallback.
+                The site prefers strong when it is online, and uses fallback when your home backend is down.
+              </p>
+            </div>
+            <div>
+              <p className="tipsLabel">Does Refresh status wake the fallback?</p>
+              <p>
+                Yes. Refresh rechecks the configured backends. If the Render fallback was asleep, it may take a short
+                delay before it flips back to online on the free tier.
+              </p>
+            </div>
+            <div>
+              <p className="tipsLabel">Why are some answers weaker?</p>
+              <p>
+                The fallback backend is designed to stay lightweight. It tries remote semantic retrieval first and can
+                fall back to lexical retrieval if the cheaper hosted path cannot use embeddings.
+              </p>
+            </div>
+            <div>
+              <p className="tipsLabel">How do I get better answers?</p>
+              <p>
+                Use exact champion or civilization names, ask one concrete question at a time, and add
+                <code> in detail </code> when you want a longer structured answer.
+              </p>
             </div>
           </div>
         </details>

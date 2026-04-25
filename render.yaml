@@ -19,9 +19,9 @@ services:
       - key: DAILY_QUERY_LIMIT
         value: 100
       - key: MAX_ACTIVE_QUERIES
-        value: 8
+        value: 5
       - key: MAX_QUEUED_QUERIES
-        value: 8
+        value: 5
       - key: QUEUE_WAIT_TIMEOUT_SECONDS
         value: 20
       - key: BACKEND_LABEL
