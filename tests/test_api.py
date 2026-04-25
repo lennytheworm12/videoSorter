@@ -38,6 +38,15 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(body, "Answer only")
         self.assertEqual(sources, [])
 
+    def test_split_answer_sources_handles_single_newline_sources_marker(self) -> None:
+        body, sources = _split_answer_sources(
+            "Answer text\n---\nSources for Illaoi:\n  [0.1] row"
+        )
+
+        self.assertEqual(body, "Answer text")
+        self.assertEqual(sources[0], "Sources for Illaoi:")
+        self.assertEqual(sources[-1], "  [0.1] row")
+
     def test_validate_runtime_config_requires_supabase_auth_vars_when_auth_enabled(self) -> None:
         with mock.patch.dict(
             os.environ,

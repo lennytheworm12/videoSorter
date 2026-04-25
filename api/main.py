@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 import logging
 import os
+import re
 from threading import Condition, Lock
 import time
 import urllib.error
@@ -237,13 +238,14 @@ def _validate_supabase_token(authorization: str | None = Header(default=None)) -
 
 
 def _split_answer_sources(text: str) -> tuple[str, list[str]]:
-    marker = "\n\n---\nSources"
-    if marker not in text:
+    match = re.search(r"\n+\s*---\s*\n\s*(Sources(?:[^\n]*)?)\n", text, flags=re.IGNORECASE)
+    if not match:
         return text, []
-    answer_text, source_text = text.split(marker, 1)
+    answer_text = text[:match.start()]
+    source_text = text[match.start():]
     source_lines = [
         line.rstrip()
-        for line in ("Sources" + source_text).splitlines()
+        for line in re.sub(r"^\s*---\s*\n", "", source_text, count=1).splitlines()
         if line.strip()
     ]
     return answer_text.rstrip(), source_lines

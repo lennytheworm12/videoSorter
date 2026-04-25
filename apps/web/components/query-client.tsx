@@ -75,6 +75,11 @@ type ParsedSource = {
   text: string;
 };
 
+type SplitResponse = {
+  answer: string;
+  sources: string[];
+};
+
 const GAME_GUIDES = {
   lol: {
     title: "League query guide",
@@ -247,7 +252,7 @@ async function postQuery(
     error.status = response.status;
     throw error;
   }
-  return (await response.json()) as QueryResponse;
+  return normalizeQueryResponse((await response.json()) as QueryResponse);
 }
 
 function renderInlineMarkdown(text: string): ReactNode[] {
@@ -378,6 +383,40 @@ function parseSourceLine(line: string): ParsedSource {
   }
 
   return { metrics: null, category: null, text: trimmed };
+}
+
+function splitEmbeddedSources(answer: string): SplitResponse {
+  const match = answer.match(/\n+\s*---\s*\n\s*(Sources(?:[^\n]*)?)\n/i);
+  if (!match || match.index === undefined) {
+    return { answer, sources: [] };
+  }
+
+  const answerText = answer.slice(0, match.index).trimEnd();
+  const sourceText = answer
+    .slice(match.index)
+    .replace(/^\s*---\s*\n/, "")
+    .trim();
+  const sources = sourceText
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  return { answer: answerText, sources };
+}
+
+function normalizeQueryResponse(response: QueryResponse): QueryResponse {
+  if (response.sources.length > 0) {
+    return response;
+  }
+  const split = splitEmbeddedSources(response.answer);
+  if (split.sources.length === 0) {
+    return response;
+  }
+  return {
+    ...response,
+    answer: split.answer,
+    sources: split.sources,
+  };
 }
 
 const ResultSection = memo(
