@@ -364,6 +364,7 @@ def query(
         log_memory("query:start")
         game = normalize_game(req.game)
         parsed = normalize(req.question, game=game)
+        log_memory("query:after_normalize")
         subject = parsed.get("subject") if game == "aoe2" else None
         generated = rag_answer(
             question=parsed["normalized"],
