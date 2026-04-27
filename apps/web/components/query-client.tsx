@@ -186,36 +186,57 @@ function requestHeadersForTarget(target: BackendTarget, token?: string | null): 
   return headers;
 }
 
-async function fetchBackendHealth(target: BackendTarget): Promise<BackendProbe> {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 3500);
-  try {
-    const response = await fetch(`${target.url}/health`, {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal,
-      headers: requestHeadersForTarget(target)
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const health = (await response.json()) as BackendHealth;
-    return {
-      target,
-      reachable: Boolean(health.ok),
-      health,
-      error: null
-    };
-  } catch (error) {
-    return {
-      target,
-      reachable: false,
-      health: null,
-      error: error instanceof Error ? error.message : String(error)
-    };
-  } finally {
-    window.clearTimeout(timeout);
+function healthTimeoutMs(target: BackendTarget): number {
+  if (target.key === "fallback" || target.url.includes("onrender.com")) {
+    return 15000;
   }
+  return 3500;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function fetchBackendHealth(target: BackendTarget): Promise<BackendProbe> {
+  const attempts = target.key === "fallback" || target.url.includes("onrender.com") ? 2 : 1;
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), healthTimeoutMs(target));
+    try {
+      const response = await fetch(`${target.url}/health`, {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+        headers: requestHeadersForTarget(target)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const health = (await response.json()) as BackendHealth;
+      return {
+        target,
+        reachable: Boolean(health.ok),
+        health,
+        error: null
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await sleep(1200);
+      }
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  return {
+    target,
+    reachable: false,
+    health: null,
+    error: lastError instanceof Error ? lastError.message : String(lastError)
+  };
 }
 
 type QueryRequestError = Error & { status?: number };
