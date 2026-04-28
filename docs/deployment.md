@@ -22,7 +22,7 @@ SUPABASE_DATABASE_URL='postgresql://...'
 SUPABASE_URL='https://your-project.supabase.co'
 SUPABASE_ANON_KEY='...'
 VECTOR_BACKEND=supabase
-EMBEDDING_BACKEND=hf_remote
+EMBEDDING_BACKEND=bm25_only
 REQUIRE_AUTH=false
 DAILY_QUERY_LIMIT=100
 MAX_ACTIVE_QUERIES=5
@@ -30,7 +30,6 @@ MAX_QUEUED_QUERIES=5
 QUEUE_WAIT_TIMEOUT_SECONDS=20
 BACKEND_LABEL='Render fallback backend'
 BACKEND_QUALITY='fallback'
-HF_TOKEN='...'
 ```
 
 Check local setup status:
@@ -79,24 +78,44 @@ Render deployment:
    - `SUPABASE_DATABASE_URL`
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
-   - `HF_TOKEN`
    - `GOOGLE_API_KEY`
    - optional `GOOGLE_API_KEY_TWO`
    - `CORS_ORIGINS`
 4. In public mode, keep:
    - `REQUIRE_AUTH=false`
    - `DAILY_QUERY_LIMIT=100`
-   - `EMBEDDING_BACKEND=hf_remote`
+   - `EMBEDDING_BACKEND=bm25_only`
    - `MAX_ACTIVE_QUERIES=5`
    - `MAX_QUEUED_QUERIES=5`
    - `BACKEND_LABEL=Render fallback backend`
    - `BACKEND_QUALITY=fallback`
-5. Set `CORS_ORIGINS` to the GitHub Pages site origin.
-6. If you run a stronger home backend, give it its own public URL and set:
+5. Treat Render as a low-memory fallback first:
+   - `GET /health` should report `embedding_backend: bm25_only`
+   - `GET /health` should report `retrieval_mode: bm25-fallback`
+   - only reintroduce `EMBEDDING_BACKEND=hf_remote` after local profiling and live `/health` checks prove it stays under the free-tier memory cap
+   - only add `HF_TOKEN` if you are explicitly testing `hf_remote`
+6. Set `CORS_ORIGINS` to the GitHub Pages site origin.
+7. If you run a stronger home backend, give it its own public URL and set:
    - `BACKEND_LABEL=Home strong backend`
    - `BACKEND_QUALITY=strong`
    - `EMBEDDING_BACKEND=local`
    - `MAX_ACTIVE_QUERIES=8`
+
+### Render debug workflow
+
+Use the local profilers to validate the hosted query path before blaming Render:
+
+```bash
+uv run python -m scripts.profile_api_query_memory --vector-backend supabase --embedding-backend bm25_only --question "how do i beat a ranged team as illaoi"
+uv run python -m scripts.profile_api_query_memory --vector-backend supabase --embedding-backend hf_remote --question "how do i beat a ranged team as illaoi"
+```
+
+Stabilization order:
+
+1. Deploy with `EMBEDDING_BACKEND=bm25_only`.
+2. Warm the live service and inspect `GET /health`.
+3. Send one real query and re-check `memory_rss_mb` plus `retrieval_mode`.
+4. Only test `hf_remote` again after `bm25_only` survives real traffic without OOM.
 
 ### Publishing a changing ngrok URL
 

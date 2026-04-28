@@ -103,12 +103,12 @@ uv run python -m scripts.eval --stats
 uv run python -m scripts.eval "cassiopeia into zed"
 
 # Retrieval memory profiling
-uv run python -m scripts.profile_query_memory --vector-backend supabase --embedding-backend hf_remote --question "how do i beat a ranged team as illaoi"
 uv run python -m scripts.profile_query_memory --vector-backend supabase --embedding-backend bm25_only --question "how do i beat a ranged team as illaoi"
+uv run python -m scripts.profile_query_memory --vector-backend supabase --embedding-backend hf_remote --question "how do i beat a ranged team as illaoi"
 
 # Full hosted API memory profiling
-uv run python -m scripts.profile_api_query_memory --vector-backend supabase --embedding-backend hf_remote --question "how do i beat a ranged team as illaoi"
 uv run python -m scripts.profile_api_query_memory --vector-backend supabase --embedding-backend bm25_only --question "how do i beat a ranged team as illaoi"
+uv run python -m scripts.profile_api_query_memory --vector-backend supabase --embedding-backend hf_remote --question "how do i beat a ranged team as illaoi"
 ```
 
 ## Querying

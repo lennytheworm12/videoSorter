@@ -100,6 +100,20 @@ class ApiTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "HF_TOKEN"):
                 _validate_runtime_config()
 
+    def test_validate_runtime_config_does_not_require_hf_token_for_bm25_only(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "REQUIRE_AUTH": "false",
+                "VECTOR_BACKEND": "supabase",
+                "EMBEDDING_BACKEND": "bm25_only",
+                "SUPABASE_DATABASE_URL": "postgresql://x",
+                "GOOGLE_API_KEY": "x",
+            },
+            clear=True,
+        ):
+            _validate_runtime_config()
+
     def test_daily_query_limit_defaults_to_100(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(_daily_query_limit(), 100)
@@ -124,9 +138,8 @@ class ApiTests(unittest.TestCase):
             {
                 "BACKEND_LABEL": "Render fallback",
                 "BACKEND_QUALITY": "fallback",
-                "RETRIEVAL_MODE": "bm25-fallback",
                 "VECTOR_BACKEND": "supabase",
-                "EMBEDDING_BACKEND": "hf_remote",
+                "EMBEDDING_BACKEND": "bm25_only",
                 "REQUIRE_AUTH": "false",
                 "DAILY_QUERY_LIMIT": "100",
             },
@@ -138,7 +151,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["backend_quality"], "fallback")
         self.assertEqual(payload["retrieval_mode"], "bm25-fallback")
         self.assertFalse(payload["semantic_enabled"])
-        self.assertEqual(payload["embedding_backend"], "hf_remote")
+        self.assertEqual(payload["embedding_backend"], "bm25_only")
         self.assertIn("active_queries", payload)
 
     def test_query_includes_backend_metadata(self) -> None:

@@ -13,7 +13,7 @@ services:
       - key: VECTOR_BACKEND
         value: supabase
       - key: EMBEDDING_BACKEND
-        value: hf_remote
+        value: bm25_only
       - key: REQUIRE_AUTH
         value: false
       - key: DAILY_QUERY_LIMIT
@@ -39,6 +39,4 @@ services:
       - key: GOOGLE_API_KEY
         sync: false
       - key: GOOGLE_API_KEY_TWO
-        sync: false
-      - key: HF_TOKEN
         sync: false
