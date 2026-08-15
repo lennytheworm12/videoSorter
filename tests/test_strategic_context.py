@@ -5,7 +5,7 @@ import unittest
 
 import core.database as db
 from core.strategic_types import load_strategic_fixture
-from retrieval.strategic_context import build_strategic_context
+from retrieval.strategic_context import _question_concepts, build_strategic_context
 
 
 class StrategicContextTests(unittest.TestCase):
@@ -32,6 +32,42 @@ class StrategicContextTests(unittest.TestCase):
         self.assertTrue(context.relations)
         self.assertTrue(all(row["evidence_refs"] for row in context.fingerprints + context.relations))
         self.assertTrue(any("access" in row["concepts"] for row in context.relations))
+
+    def test_question_named_fixture_champion_does_not_require_external_entity_lookup(self):
+        context = build_strategic_context(
+            "Why does Caitlyn have persistent control against a mage?",
+            db_paths=(str(self.path),),
+        )
+
+        self.assertTrue(any(row["champion"] == "Caitlyn" for row in context.fingerprints))
+        self.assertTrue(any("Caitlyn" in (row["subject_key"], row["object_key"]) for row in context.relations))
+
+    def test_question_entity_matching_accepts_punctuation_free_champion_aliases(self):
+        context = build_strategic_context(
+            "When is Kaisa's access conditional?",
+            db_paths=(str(self.path),),
+        )
+
+        self.assertTrue(any(row["champion"] == "Kai'Sa" for row in context.fingerprints))
+        self.assertTrue(any("access" in row["concepts"] for row in context.relations))
+
+    def test_question_concepts_accept_underscore_and_hyphen_delimiters(self):
+        concepts = set(_question_concepts("persistent_pressure and access-vs-continuity"))
+
+        self.assertTrue({"persistent_pressure", "access", "continuity"}.issubset(concepts))
+
+    def test_four_champion_lane_question_returns_all_represented_fingerprints(self):
+        context = build_strategic_context(
+            "How do Yunara and Thresh play into Tristana and Yuumi through access versus continuity?",
+            db_paths=(str(self.path),),
+        )
+
+        self.assertEqual(
+            {row["champion"] for row in context.fingerprints},
+            {"Yunara", "Thresh", "Tristana"},
+        )
+        concepts = {concept for relation in context.relations for concept in relation["concepts"]}
+        self.assertTrue({"access", "continuity"}.issubset(concepts))
 
     def test_confidence_and_version_filtering_are_applied(self):
         with db.get_connection() as conn:

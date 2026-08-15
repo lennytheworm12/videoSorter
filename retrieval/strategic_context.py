@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -125,9 +126,14 @@ def build_strategic_context(
                 conn.row_factory = sqlite3.Row
                 if not _has_tables(conn):
                     continue
-                local_fingerprints = _fingerprints(conn, normalized_entities, local_seen_fingerprints, min_confidence)
+                local_entities = normalized_entities | _question_fingerprint_entities(
+                    conn,
+                    question,
+                    min_confidence,
+                )
+                local_fingerprints = _fingerprints(conn, local_entities, local_seen_fingerprints, min_confidence)
                 local_relations = _relations(
-                    conn, question, normalized_entities, local_seen_relations,
+                    conn, question, local_entities, local_seen_relations,
                     min_confidence, max_hops, max_relations - len(relations),
                 )
                 concepts = {concept for relation in local_relations for concept in relation["concepts"]}
@@ -158,6 +164,20 @@ def _fingerprints(conn, entities, seen, minimum):
             seen.add(_normalize(row["champion"]))
             results.append(result)
     return results
+
+
+def _question_fingerprint_entities(conn, question, minimum):
+    """Find fixture-backed champions named in the question without RAG coverage."""
+    normalized_question = _normalize(question)
+    entities = set()
+    for row in conn.execute(
+        "SELECT champion FROM champion_fingerprints WHERE data_version=? AND confidence>=?",
+        (CURRENT_STRATEGIC_DATA_VERSION, minimum),
+    ):
+        champion = _normalize(row["champion"])
+        if re.search(r"\b" + re.escape(champion) + r"\b", normalized_question):
+            entities.add(champion)
+    return entities
 
 
 def _relations(conn, question, entities, seen, minimum, max_hops, limit):
@@ -243,7 +263,10 @@ def _decode_json_fields(row, fields):
 
 
 def _normalize(value: str) -> str:
-    return " ".join(value.lower().split())
+    normalized = re.sub(r"(?<=[a-z0-9])['’]s\b", "", value.lower())
+    normalized = re.sub(r"['’]", "", normalized)
+    normalized = re.sub(r"[_-]+", " ", normalized)
+    return " ".join(re.sub(r"[^a-z0-9\s]", " ", normalized).split())
 
 
 def _seen(values: set[str], key: str) -> bool:
