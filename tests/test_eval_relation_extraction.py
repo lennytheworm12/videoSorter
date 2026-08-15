@@ -108,6 +108,28 @@ class RelationExtractionEvaluationTests(unittest.TestCase):
         with mock.patch("sys.argv", ["eval_relation_extraction", "--live"]), self.assertRaises(SystemExit):
             eval_relation_extraction.main()
 
+    def test_unknown_case_id_is_rejected(self):
+        from unittest import mock
+        from scripts import eval_relation_extraction
+
+        with mock.patch("sys.argv", ["eval_relation_extraction", "--case-id", "missing"]), self.assertRaises(SystemExit):
+            eval_relation_extraction.main()
+
+    def test_case_id_selection_is_repeatable_and_preserves_fixture_order(self):
+        from unittest import mock
+        from scripts import eval_relation_extraction
+
+        selected = (self.cases[2].id, self.cases[0].id)
+        with mock.patch("sys.argv", ["eval_relation_extraction", "--live", "--db", "videos.db", "--case-id", selected[0], "--case-id", selected[1]]), \
+             mock.patch.object(eval_relation_extraction, "load_cases", return_value=self.cases), \
+             mock.patch.object(eval_relation_extraction, "evaluate_cases", return_value={}) as evaluate:
+            eval_relation_extraction.main()
+
+        self.assertEqual(
+            tuple(case.id for case in evaluate.call_args.args[0]),
+            (self.cases[0].id, self.cases[2].id),
+        )
+
     def test_variant_selection_uses_configured_relation_model(self):
         from unittest import mock
         from scripts import eval_relation_extraction

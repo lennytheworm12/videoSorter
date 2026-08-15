@@ -284,12 +284,19 @@ def main() -> None:
     parser.add_argument("--db", type=Path, help="Source SQLite DB; required with --live to reuse production packet aliases")
     parser.add_argument("--live", action="store_true", help="Call the configured extraction model; never writes relations")
     parser.add_argument("--variant", choices=("flash", "pro"), help="DeepSeek relation model variant for a fair live comparison")
+    parser.add_argument("--case-id", action="append", help="Evaluate only this fixture case; repeatable")
     parser.add_argument("--model", help="Explicit model identifier; overrides --variant")
     parser.add_argument("--json-output", type=Path)
     args = parser.parse_args()
     if args.live and not args.db:
         parser.error("--live requires --db so evaluation uses the production packet loader")
     cases = load_cases(args.fixture, source_db=args.db)
+    if args.case_id:
+        requested = set(args.case_id)
+        cases = tuple(case for case in cases if case.id in requested)
+        missing = requested - {case.id for case in cases}
+        if missing:
+            parser.error("unknown --case-id: " + ", ".join(sorted(missing)))
     if args.variant and BACKEND != "deepseek":
         parser.error("--variant requires LLM_PROVIDER=deepseek")
     if args.model:
