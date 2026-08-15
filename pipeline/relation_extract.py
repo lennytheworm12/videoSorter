@@ -236,6 +236,10 @@ def _text_mentions_alias(text: str, alias: str) -> bool:
 
 def parse_model_response(raw: str) -> list[Mapping[str, Any]]:
     """Parse one strict JSON response; malformed or partial responses are rejected."""
+    if isinstance(raw, str):
+        fenced = re.fullmatch(r"\s*```(?:json)?\s*\n?(.*?)\n?```\s*", raw, re.DOTALL | re.IGNORECASE)
+        if fenced:
+            raw = fenced.group(1)
     try:
         parsed = json.loads(raw)
     except (TypeError, json.JSONDecodeError) as exc:

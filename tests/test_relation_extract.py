@@ -128,7 +128,18 @@ class RelationExtractionTests(unittest.TestCase):
 
     def test_empty_relations_is_valid_and_malformed_response_is_rejected(self) -> None:
         self.assertEqual(parse_model_response('{"relations": []}'), [])
+        self.assertEqual(parse_model_response('```json\n{"relations": []}\n```'), [])
         for raw in ("", "[]", '{"relations": ["bad"]}', '{"other": []}'):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                parse_model_response(raw)
+
+    def test_json_fence_with_surrounding_prose_is_not_accepted(self) -> None:
+        for raw in (
+            'Here is the output:\n```json\n{"relations": []}\n```',
+            '```json\n{"relations": []}\n```\n```json\n{"relations": []}\n```',
+            '```json\n{"relations": []}\n```\ntrailing text',
+            '```python\n{"relations": []}\n```',
+        ):
             with self.subTest(raw=raw), self.assertRaises(ValueError):
                 parse_model_response(raw)
 
