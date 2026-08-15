@@ -1,13 +1,16 @@
 """
 LLM abstraction layer.
 
-Uses Google Gemini when GOOGLE_API_KEY is set, falls back to Ollama for local dev.
+Uses Google Gemini when GOOGLE_API_KEY is set, DeepSeek when DEEPSEEK_API_KEY
+is set, and falls back to Ollama for local development.
 A second Gemini key (GOOGLE_CLOUD_API_KEY) is used as an automatic fallback when
 the primary key hits its daily quota (429 RESOURCE_EXHAUSTED).
 
 Environment variables:
     GOOGLE_API_KEY        — primary Gemini key (free tier or paid)
     GOOGLE_CLOUD_API_KEY  — fallback Gemini key (Google Cloud project key)
+    DEEPSEEK_API_KEY      — DeepSeek OpenAI-compatible API key
+    DEEPSEEK_MODEL        — DeepSeek model (default: deepseek-v4-flash)
     LLM_MODEL             — model to use
                             Gemini default : gemini-3.1-flash-lite-preview
                             Ollama default : gemma4:e2b
@@ -15,13 +18,62 @@ Environment variables:
 
 import os
 import logging
+import json
+from urllib import request as urlrequest
 from dotenv import load_dotenv
 
 load_dotenv()
 
 _GOOGLE_API_KEY       = os.environ.get("GOOGLE_API_KEY")
 _GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_API_KEY_TWO") or os.environ.get("GOOGLE_CLOUD_API_KEY")
+_DEEPSEEK_API_KEY     = os.environ.get("DEEPSEEK_API_KEY")
 _LLM_MODEL            = os.environ.get("LLM_MODEL")
+
+
+def _deepseek_generate(
+    api_key: str,
+    base_url: str,
+    model: str,
+    system: str,
+    user: str,
+    temperature: float,
+    max_tokens: int | None,
+    timeout_seconds: float,
+) -> str:
+    """Call DeepSeek's OpenAI-compatible non-streaming chat endpoint."""
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens or 4096,
+        "stream": False,
+    }
+    endpoint = base_url.rstrip("/") + "/chat/completions"
+    req = urlrequest.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urlrequest.urlopen(req, timeout=timeout_seconds) as response:
+        raw_body = response.read()
+    try:
+        body = json.loads(raw_body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("DeepSeek returned malformed JSON") from exc
+    try:
+        content = body["choices"][0]["message"]["content"]
+    except (IndexError, KeyError, TypeError) as exc:
+        raise RuntimeError("DeepSeek response did not contain chat content") from exc
+    if not isinstance(content, str) or not content.strip():
+        raise RuntimeError("DeepSeek returned empty chat content")
+    return content.strip()
 
 # Suppress noisy SDK warnings
 logging.getLogger("google").setLevel(logging.ERROR)
@@ -126,6 +178,32 @@ if _GOOGLE_API_KEY:
         raise RuntimeError("Gemini 503 persisted after all retries")
 
     BACKEND = "gemini"
+    MODEL = _DEFAULT_MODEL
+
+elif _DEEPSEEK_API_KEY:
+    _DEFAULT_MODEL = _LLM_MODEL or os.environ.get("DEEPSEEK_MODEL") or "deepseek-v4-flash"
+    _DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    _DEEPSEEK_TIMEOUT_SECONDS = float(os.environ.get("DEEPSEEK_TIMEOUT_SECONDS", "120"))
+
+    def chat(
+        system: str,
+        user: str,
+        temperature: float = 0.1,
+        max_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
+        return _deepseek_generate(
+            _DEEPSEEK_API_KEY,
+            _DEEPSEEK_BASE_URL,
+            model or _DEFAULT_MODEL,
+            system,
+            user,
+            temperature,
+            max_tokens,
+            _DEEPSEEK_TIMEOUT_SECONDS,
+        )
+
+    BACKEND = "deepseek"
     MODEL = _DEFAULT_MODEL
 
 else:
