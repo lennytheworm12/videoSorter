@@ -133,7 +133,7 @@ track coverage/freshness/contradictions, and compare against the manual fixture.
 
 ### Phase 2B: Diagnose and Repair Relation Extraction
 
-**Status: In progress. Do not start Phase 3.**
+**Status: Complete stop gate. NOT READY — continue Phase 2 repair. Do not start Phase 3.**
 
 Purpose: locate semantic signal loss in the existing safe compiler before
 changing validation or confidence behavior. The target is useful recall with
@@ -156,6 +156,35 @@ between benchmark variants. Independent review approved the boundary.
 
 Next: build a larger reviewed corpus before diagnosing confidence or changing
 semantic abstraction.
+
+#### M3: Labeled Corpus, Model Comparison, and Grounding Repair
+
+**Complete. Commits:** `1539f2c`, `a61ccb4`, `ed73d38`, `9153dbd` (`main`).
+
+- Added a 23-case, source-grounded Phase 2B set with 18 positive reference
+  edges, four negative cases, and three review-only ambiguity cases. The
+  evaluator now reports TP/FP/FN, F1, review matches, decision reasons, and
+  runtime packet entity-coverage warnings without treating condition prose as
+  exact identity.
+- Flash non-thinking: 0/18 accepted true positives. Pro non-thinking initially
+  recovered 3/18 with no measured false positives, demonstrating higher raw
+  extraction capability, but post-repair reruns remained at 0 accepted true
+  positives. Pro thinking at 512 output tokens produced only empty final
+  content, so it is not a valid quality comparison.
+- The repair added single-champion bare-slot aliases, a narrow evidence-cue
+  table for existing concepts, and ordered single-evidence condition grounding
+  with negation preservation. Independent review rejected broad cue matching
+  and unordered condition matching; those defects were fixed before commit.
+- The post-repair benchmark exposed a remaining conflict: strict qualifier
+  grounding correctly rejects alias/paraphrase conditions emitted by the model,
+  while accepting them would weaken the source-boundary. A prompt requiring
+  source condition wording did not restore useful accepted recall.
+
+**Decision:** do not automate fingerprints or backfill relations. The compiler
+is safe but not reliable enough for Phase 3. The next Phase 2 effort should
+evaluate a two-stage grounded-proposition representation or a condition-aware
+semantic entailment reviewer on a held-out corpus, with the same provenance and
+review quarantine invariants.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 

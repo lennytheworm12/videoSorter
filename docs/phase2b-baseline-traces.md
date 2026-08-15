@@ -106,3 +106,25 @@ edges, four explicit negative cases, and three review-only ambiguity cases. Its
 evaluator scores canonical triples plus human-labeled required condition cues.
 It is required for every subsequent model comparison. No safety validation was
 loosened by this repair.
+
+## Final Phase 2B Stop Gate
+
+The current compiler is safe but not ready to feed automated fingerprints.
+
+| Run | Accepted TP / 18 | Precision | Recall | Notes |
+| --- | ---: | ---: | ---: | --- |
+| Flash non-thinking baseline | 0 | n/a | 0.00 | Three correct relations reached review; most candidates failed entity validation. |
+| Pro non-thinking baseline | 3 | 1.00 | 0.17 | Direct ability-to-ability edges survived. |
+| Flash after grounding repair | 0 | 0.00 | 0.00 | One unsupported accepted edge; 20 rejections. |
+| Pro after grounding repair | 0 | 0.00 | 0.00 | Strict condition validation rejected alias/paraphrase qualifiers. |
+| Pro after source-wording prompt | 0 | n/a | 0.00 | Two review edges; no accepted edges. |
+
+The failed thinking run is excluded from quality comparison: all eight calls
+returned empty final content at the 512-token budget. API token and cost usage
+was unavailable through the existing adapter; report latency is retained per
+case. No persistence or production corpus backfill occurred in Phase 2B.
+
+Recommendation: **NOT READY — CONTINUE PHASE 2 REPAIR**. A future experiment
+must preserve the present provenance, entity, negation, and condition safety
+invariants while separating grounded proposition extraction from strategic
+ontology abstraction.
