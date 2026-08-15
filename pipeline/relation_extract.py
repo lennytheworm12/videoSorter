@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sqlite3
 from dataclasses import dataclass, field, replace
@@ -25,6 +26,20 @@ from core.strategic_types import AUTOMATED_RELATION_DATA_VERSION, EvidenceRef, S
 
 EXTRACTION_PROMPT_VERSION = "strategic-relation-extraction-v0"
 DEFAULT_ACCEPTANCE_THRESHOLD = 0.60
+
+
+def _positive_env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, str(default))
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a positive integer") from exc
+    if value <= 0:
+        raise RuntimeError(f"{name} must be a positive integer")
+    return value
+
+
+DEFAULT_MAX_OUTPUT_TOKENS = _positive_env_int("RELATION_EXTRACTION_MAX_TOKENS", 4096)
 
 RELATION_EXTRACTION_SYSTEM = """You are a constrained strategic relation compiler.
 Return JSON only. Derive only relations supported by the supplied evidence.
@@ -234,7 +249,7 @@ def extract_relations(
         system=RELATION_EXTRACTION_SYSTEM,
         user=packet.prompt(),
         temperature=0.0,
-        max_tokens=2048,
+        max_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
     )
     decisions = compile_candidates(packet, parse_model_response(raw))
     return tuple(_apply_threshold(decision, acceptance_threshold) for decision in decisions)

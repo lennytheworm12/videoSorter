@@ -11,6 +11,7 @@ from pipeline.relation_extract import (
     extract_relations,
     parse_model_response,
     packet_from_insight_ids,
+    _positive_env_int,
 )
 
 
@@ -138,6 +139,7 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("evidence_id=4798", captured["user"])
         self.assertIn("Allowed relation types", captured["user"])
         self.assertIn("Do not use League knowledge", captured["system"])
+        self.assertEqual(captured["max_tokens"], 4096)
 
     def test_model_failure_propagates_without_creating_a_decision(self) -> None:
         with self.assertRaisesRegex(TimeoutError, "timed out"):
@@ -145,6 +147,17 @@ class RelationExtractionTests(unittest.TestCase):
                 self.packet,
                 lambda **_: (_ for _ in ()).throw(TimeoutError("timed out")),
             )
+
+    def test_output_budget_config_rejects_malformed_or_non_positive_values(self) -> None:
+        import os
+        from unittest import mock
+
+        with mock.patch.dict(os.environ, {"RELATION_EXTRACTION_MAX_TOKENS": "8192"}):
+            self.assertEqual(_positive_env_int("RELATION_EXTRACTION_MAX_TOKENS", 4096), 8192)
+        for value in ("0", "-1", "not-a-number"):
+            with self.subTest(value=value), mock.patch.dict(os.environ, {"RELATION_EXTRACTION_MAX_TOKENS": value}):
+                with self.assertRaisesRegex(RuntimeError, "RELATION_EXTRACTION_MAX_TOKENS"):
+                    _positive_env_int("RELATION_EXTRACTION_MAX_TOKENS", 4096)
 
     def test_packet_loader_uses_explicit_insights_and_existing_ability_metadata_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

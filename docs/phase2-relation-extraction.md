@@ -85,6 +85,11 @@ update `RELATION_TYPES`, canonical aliases, validation tests, prompt schema,
 and documentation together. Phase 2 deliberately has no automatic vocabulary
 expansion.
 
+The extraction model/provider is configured through the existing `LLM_PROVIDER`
+and model environment variables. `RELATION_EXTRACTION_MAX_TOKENS` controls the
+structured compiler output budget (default: `4096`); `temperature` is fixed at
+zero for repeatability.
+
 ## Known Limits
 
 The current evaluator is a small audit corpus and uses exact canonical
