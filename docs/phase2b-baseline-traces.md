@@ -78,3 +78,31 @@ The Phase 2 failure is not one bottleneck. The current evidence shows:
    incorrectly rejects semantically entailed abstraction endpoints.
 
 No validator threshold or ontology change is justified from these three cases.
+
+## Unchanged DeepSeek V4 Pro Comparison
+
+After the isolated fenced-JSON parser repair, the same four packets were run
+with `deepseek-v4-pro`, non-thinking mode, the same prompt, packet loader,
+ontology, 512-token output budget, and confidence threshold. This is an
+apples-to-apples diagnostic comparison, not a production routing change.
+
+Pro emitted accepted, evidence-linked target relations for all three positive
+cases. It also correctly returned an empty relation list for the negative case.
+Its Tristana and Sylas responses were fenced JSON, which the repaired parser
+now accepts only when the fence contains the entire response. The old
+four-case evaluator nevertheless reported zero matches because it required
+the condition prose to be exactly equal to the manually authored reference.
+For example, `when Explosive Charge is fully stacked on a target` was compared
+to `when Explosive Charge is fully stacked`.
+
+This means the original quality report mixed two distinct failures:
+
+1. Flash had genuine extraction/entity-shape and calibration failures.
+2. Pro exposed a measurement/parser failure: valid canonical triples and
+   qualifiers survived, but strict string equality labeled them false.
+
+The Phase 2B 23-case fixture now contains 18 reviewed positive reference
+edges, four explicit negative cases, and three review-only ambiguity cases. Its
+evaluator scores canonical triples plus human-labeled required condition cues.
+It is required for every subsequent model comparison. No safety validation was
+loosened by this repair.

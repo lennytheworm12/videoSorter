@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from scripts.eval_relation_extraction import evaluate_cases, load_cases
 
@@ -9,7 +10,15 @@ class RelationExtractionEvaluationTests(unittest.TestCase):
         cls.cases = load_cases("data/relation_extraction_validation_v0.json")
 
     def test_reference_cases_are_valid_and_score_perfect_when_replayed(self):
-        result = evaluate_cases(self.cases, lambda packet: next(case.expected for case in self.cases if case.packet == packet))
+        from pipeline.relation_extract import ExtractionDecision
+
+        result = evaluate_cases(
+            self.cases,
+            lambda packet: tuple(
+                ExtractionDecision({}, expected.relation, "accepted")
+                for expected in next(case.expected for case in self.cases if case.packet == packet)
+            ),
+        )
         self.assertEqual(result["expected_relation_count"], 3)
         self.assertEqual(result["metrics"]["relation_precision"], 1.0)
         self.assertEqual(result["metrics"]["relation_recall"], 1.0)
@@ -21,15 +30,52 @@ class RelationExtractionEvaluationTests(unittest.TestCase):
             case = next(case for case in self.cases if case.packet == packet)
             if not case.expected:
                 return case.expected
-            relation = case.expected[0].relation
-            raw = dict(case.expected[0].raw)
-            raw["condition"] = None
-            from pipeline.relation_extract import compile_candidates
-            return compile_candidates(packet, [raw])
+            reference = case.expected[0].relation
+            from pipeline.relation_extract import ExtractionDecision
+            return (ExtractionDecision(
+                {}, replace(reference, condition=None), "accepted"),
+            )
 
         result = evaluate_cases(self.cases, lose_condition)
         self.assertLess(result["metrics"]["relation_recall"], 1.0)
         self.assertLess(result["metrics"]["condition_preservation"], 1.0)
+
+    def test_condition_cues_allow_equivalent_prose_but_require_qualifiers(self):
+        from scripts.eval_relation_extraction import _condition_matches
+
+        self.assertTrue(_condition_matches("Time it at the apex of the dash", ("apex", "dash")))
+        self.assertFalse(_condition_matches("Time it at the apex", ("apex", "dash")))
+        self.assertFalse(_condition_matches("when available", ("e",)))
+        self.assertTrue(_condition_matches("after E misses", ("e", "miss")))
+
+    def test_phase_2b_labeled_set_has_23_real_source_cases(self):
+        cases = load_cases("data/relation_extraction_phase2b_v0.json")
+
+        self.assertEqual(len(cases), 23)
+        self.assertEqual(sum(len(case.expected) for case in cases), 18)
+
+    def test_runtime_packet_coverage_warns_for_unexposed_expected_ability(self):
+        from scripts.eval_relation_extraction import _unresolved_reference_entities
+
+        cases = load_cases("data/relation_extraction_phase2b_v0.json")
+        lux = next(case for case in cases if case.id == "lux-e-denies-farming-access")
+        self.assertIn(
+            "runtime packet does not expose ability alias: Lux E",
+            _unresolved_reference_entities(list(lux.expected), replace(lux.packet, ability_aliases={})),
+        )
+
+    def test_same_triple_with_distinct_conditions_matches_the_compatible_reference(self):
+        from pipeline.relation_extract import ExtractionDecision
+
+        cases = load_cases("data/relation_extraction_phase2b_v0.json")
+        tristana = next(case for case in cases if case.id == "tristana-access-conditions")
+        second = tristana.expected[1].relation
+        result = evaluate_cases(
+            (tristana,), lambda _: (ExtractionDecision({}, second, "accepted"),),
+        )
+
+        self.assertEqual(result["metrics"]["true_positive"], 1)
+        self.assertEqual(result["metrics"]["false_negative"], 1)
 
     def test_trace_failure_is_reported_without_aborting_other_cases(self):
         from pipeline.relation_extract import ExtractionTrace
@@ -37,6 +83,23 @@ class RelationExtractionEvaluationTests(unittest.TestCase):
         result = evaluate_cases(self.cases, lambda _: ExtractionTrace("bad", failure_stage="parsing", failure_type="ValueError", failure_message="bad JSON"))
         self.assertEqual(len(result["cases"]), len(self.cases))
         self.assertTrue(all(case["failure"]["stage"] == "parsing" for case in result["cases"]))
+        self.assertEqual(result["failure_attribution"]["failure_stages"]["parsing"], len(self.cases))
+
+    def test_false_negative_and_review_metrics_are_reported(self):
+        from pipeline.relation_extract import ExtractionDecision
+
+        def review_first_relation(packet):
+            case = next(case for case in self.cases if case.packet == packet)
+            return tuple(
+                ExtractionDecision({}, expected.relation, "review", ("confidence below threshold 0.60",))
+                for expected in case.expected
+            )
+
+        result = evaluate_cases(self.cases, review_first_relation)
+        self.assertEqual(result["metrics"]["true_positive"], 0)
+        self.assertEqual(result["metrics"]["false_negative"], 3)
+        self.assertEqual(result["metrics"]["review_matches"], 3)
+        self.assertEqual(result["failure_attribution"]["decision_reasons"]["confidence below threshold 0.60"], 3)
 
     def test_live_evaluation_requires_source_database(self):
         from unittest import mock
