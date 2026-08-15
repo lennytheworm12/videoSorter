@@ -73,7 +73,7 @@ class ApiTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "SUPABASE_DATABASE_URL"):
                 _validate_runtime_config()
 
-    def test_validate_runtime_config_requires_google_api_key(self) -> None:
+    def test_validate_runtime_config_requires_an_answer_model_credential(self) -> None:
         with mock.patch.dict(
             os.environ,
             {
@@ -82,8 +82,47 @@ class ApiTests(unittest.TestCase):
             },
             clear=True,
         ):
-            with self.assertRaisesRegex(RuntimeError, "GOOGLE_API_KEY"):
+            with self.assertRaisesRegex(RuntimeError, "GOOGLE_API_KEY or DEEPSEEK_API_KEY"):
                 _validate_runtime_config()
+
+    def test_validate_runtime_config_accepts_deepseek_credential(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "REQUIRE_AUTH": "false",
+                "VECTOR_BACKEND": "sqlite",
+                "LLM_PROVIDER": "deepseek",
+                "DEEPSEEK_API_KEY": "x",
+            },
+            clear=True,
+        ):
+            _validate_runtime_config()
+
+    def test_validate_runtime_config_requires_selected_gemini_credential(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "REQUIRE_AUTH": "false",
+                "VECTOR_BACKEND": "sqlite",
+                "LLM_PROVIDER": "gemini",
+                "DEEPSEEK_API_KEY": "x",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "LLM_PROVIDER=gemini"):
+                _validate_runtime_config()
+
+    def test_validate_runtime_config_allows_explicit_ollama_without_cloud_key(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "REQUIRE_AUTH": "false",
+                "VECTOR_BACKEND": "sqlite",
+                "LLM_PROVIDER": "ollama",
+            },
+            clear=True,
+        ):
+            _validate_runtime_config()
 
     def test_validate_runtime_config_requires_hf_token_for_remote_embeddings(self) -> None:
         with mock.patch.dict(

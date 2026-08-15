@@ -172,9 +172,18 @@ def _validate_runtime_config() -> None:
             "EMBEDDING_BACKEND=hf_remote requires HF_TOKEN"
         )
 
-    if not os.environ.get("GOOGLE_API_KEY"):
+    llm_provider = os.environ.get("LLM_PROVIDER", "").strip().lower()
+    if llm_provider not in {"", "gemini", "deepseek", "ollama"}:
+        raise RuntimeError("LLM_PROVIDER must be one of: gemini, deepseek, ollama")
+    if llm_provider == "gemini" and not os.environ.get("GOOGLE_API_KEY"):
+        raise RuntimeError("LLM_PROVIDER=gemini requires GOOGLE_API_KEY")
+    if llm_provider == "deepseek" and not os.environ.get("DEEPSEEK_API_KEY"):
+        raise RuntimeError("LLM_PROVIDER=deepseek requires DEEPSEEK_API_KEY")
+    if llm_provider == "" and not (
+        os.environ.get("GOOGLE_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
+    ):
         raise RuntimeError(
-            "GOOGLE_API_KEY is required for the hosted query API"
+            "GOOGLE_API_KEY or DEEPSEEK_API_KEY is required for the hosted query API"
         )
 
 

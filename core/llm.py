@@ -1,7 +1,8 @@
 """
 LLM abstraction layer.
 
-Uses Google Gemini when GOOGLE_API_KEY is set, DeepSeek when DEEPSEEK_API_KEY
+Uses the provider selected by LLM_PROVIDER when set. Otherwise, it prefers
+Google Gemini when GOOGLE_API_KEY is set, then DeepSeek when DEEPSEEK_API_KEY
 is set, and falls back to Ollama for local development.
 A second Gemini key (GOOGLE_CLOUD_API_KEY) is used as an automatic fallback when
 the primary key hits its daily quota (429 RESOURCE_EXHAUSTED).
@@ -11,6 +12,7 @@ Environment variables:
     GOOGLE_CLOUD_API_KEY  — fallback Gemini key (Google Cloud project key)
     DEEPSEEK_API_KEY      — DeepSeek OpenAI-compatible API key
     DEEPSEEK_MODEL        — DeepSeek model (default: deepseek-v4-flash)
+    LLM_PROVIDER          — optional: gemini, deepseek, or ollama
     LLM_MODEL             — model to use
                             Gemini default : gemini-3.1-flash-lite-preview
                             Ollama default : gemma4:e2b
@@ -28,6 +30,16 @@ _GOOGLE_API_KEY       = os.environ.get("GOOGLE_API_KEY")
 _GOOGLE_CLOUD_API_KEY = os.environ.get("GOOGLE_API_KEY_TWO") or os.environ.get("GOOGLE_CLOUD_API_KEY")
 _DEEPSEEK_API_KEY     = os.environ.get("DEEPSEEK_API_KEY")
 _LLM_MODEL            = os.environ.get("LLM_MODEL")
+_LLM_PROVIDER         = os.environ.get("LLM_PROVIDER", "").strip().lower()
+
+if _LLM_PROVIDER not in {"", "gemini", "deepseek", "ollama"}:
+    raise RuntimeError(
+        "LLM_PROVIDER must be one of: gemini, deepseek, ollama"
+    )
+if _LLM_PROVIDER == "gemini" and not _GOOGLE_API_KEY:
+    raise RuntimeError("LLM_PROVIDER=gemini requires GOOGLE_API_KEY")
+if _LLM_PROVIDER == "deepseek" and not _DEEPSEEK_API_KEY:
+    raise RuntimeError("LLM_PROVIDER=deepseek requires DEEPSEEK_API_KEY")
 
 
 def _deepseek_generate(
@@ -81,7 +93,7 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 # ── backend selection ──────────────────────────────────────────────────────────
 
-if _GOOGLE_API_KEY:
+if _LLM_PROVIDER == "gemini" or (_LLM_PROVIDER == "" and _GOOGLE_API_KEY):
     from google import genai as _genai
     from google.genai import types as _gtypes
 
@@ -180,7 +192,7 @@ if _GOOGLE_API_KEY:
     BACKEND = "gemini"
     MODEL = _DEFAULT_MODEL
 
-elif _DEEPSEEK_API_KEY:
+elif _LLM_PROVIDER == "deepseek" or (_LLM_PROVIDER == "" and _DEEPSEEK_API_KEY):
     _DEFAULT_MODEL = _LLM_MODEL or os.environ.get("DEEPSEEK_MODEL") or "deepseek-v4-flash"
     _DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     _DEEPSEEK_TIMEOUT_SECONDS = float(os.environ.get("DEEPSEEK_TIMEOUT_SECONDS", "120"))

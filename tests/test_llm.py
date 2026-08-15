@@ -83,6 +83,7 @@ class ProviderSelectionTests(unittest.TestCase):
                 "GOOGLE_API_KEY_TWO": "",
                 "GOOGLE_CLOUD_API_KEY": "",
                 "LLM_MODEL": "",
+                "LLM_PROVIDER": "",
                 "DEEPSEEK_API_KEY": "test-key",
                 "DEEPSEEK_MODEL": "deepseek-v4-flash",
             },
@@ -93,6 +94,36 @@ class ProviderSelectionTests(unittest.TestCase):
         self.assertEqual(configured.BACKEND, "deepseek")
         self.assertEqual(configured.MODEL, "deepseek-v4-flash")
 
+    def test_explicit_deepseek_overrides_google_auto_priority(self):
+        with mock.patch.dict(
+            os.environ,
+            {
+                "GOOGLE_API_KEY": "google-key",
+                "DEEPSEEK_API_KEY": "deepseek-key",
+                "DEEPSEEK_MODEL": "deepseek-v4-flash",
+                "LLM_MODEL": "",
+                "LLM_PROVIDER": "deepseek",
+            },
+            clear=True,
+        ):
+            configured = importlib.reload(llm)
+
+        self.assertEqual(configured.BACKEND, "deepseek")
+        self.assertEqual(configured.MODEL, "deepseek-v4-flash")
+
+    def test_explicit_provider_requires_its_credential(self):
+        with mock.patch.dict(
+            os.environ,
+            {
+                "LLM_PROVIDER": "deepseek",
+                "DEEPSEEK_API_KEY": "",
+                "LLM_MODEL": "",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "requires DEEPSEEK_API_KEY"):
+                importlib.reload(llm)
+
     def test_no_cloud_keys_falls_back_to_ollama(self):
         with mock.patch.dict(
             os.environ,
@@ -102,6 +133,7 @@ class ProviderSelectionTests(unittest.TestCase):
                 "GOOGLE_CLOUD_API_KEY": "",
                 "DEEPSEEK_API_KEY": "",
                 "LLM_MODEL": "",
+                "LLM_PROVIDER": "",
             },
             clear=True,
         ):
