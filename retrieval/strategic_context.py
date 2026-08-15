@@ -23,6 +23,60 @@ class StrategicContext:
         return not (self.fingerprints or self.relations or self.principles)
 
 
+def format_strategic_context(context: StrategicContext) -> str:
+    """Render derived knowledge separately from retrieved source evidence."""
+    if context.is_empty:
+        return ""
+
+    blocks: list[str] = []
+    if context.fingerprints:
+        lines = ["Fingerprints:"]
+        for fingerprint in context.fingerprints:
+            details = []
+            for field, label in (
+                ("persistent_advantages", "persistent advantages"),
+                ("conditional_advantages", "conditional advantages"),
+                ("dependencies", "dependencies"),
+                ("access_tools", "access tools"),
+                ("continuity_requirements", "continuity requirements"),
+                ("failure_modes", "failure modes"),
+            ):
+                values = fingerprint.get(field) or ()
+                if values:
+                    details.append(f"{label}: {', '.join(values)}")
+            lines.append(
+                f"- {fingerprint['champion']} (confidence {fingerprint['confidence']:.2f}; "
+                f"evidence: {_format_evidence_refs(fingerprint['evidence_refs'])}): "
+                + "; ".join(details)
+            )
+        blocks.append("\n".join(lines))
+
+    if context.relations:
+        lines = ["Causal relations:"]
+        for relation in context.relations:
+            condition = relation.get("condition") or "always"
+            effect = relation.get("effect") or "no explicit effect recorded"
+            lines.append(
+                f"- {relation['subject_key']} {relation['relation_type']} {relation['object_key']} "
+                f"when {condition}; effect: {effect} "
+                f"(concepts: {', '.join(relation['concepts'])}; confidence {relation['confidence']:.2f}; "
+                f"evidence: {_format_evidence_refs(relation['evidence_refs'])})"
+            )
+        blocks.append("\n".join(lines))
+
+    if context.principles:
+        lines = ["Compiled principles:"]
+        for principle in context.principles:
+            lines.append(
+                f"- {principle['title']}: {principle['summary']} "
+                f"(concepts: {', '.join(principle['concepts'])}; confidence {principle['confidence']:.2f}; "
+                f"evidence: {_format_evidence_refs(principle['evidence_refs'])})"
+            )
+        blocks.append("\n".join(lines))
+
+    return "\n\n".join(blocks)
+
+
 def build_strategic_context(
     question: str,
     entities: tuple[str, ...] = (),
@@ -169,6 +223,14 @@ def _evidence(conn, table, owner_values):
     }[table]
     where = " AND ".join(f"{column} = ?" for column in owner_columns)
     return tuple(dict(row) for row in conn.execute(f"SELECT source_type, source_id, insight_id, quote FROM {table} WHERE {where}", owner_values))
+
+
+def _format_evidence_refs(refs: tuple[dict, ...]) -> str:
+    return ", ".join(
+        f"{ref['source_type']}:{ref['source_id']}"
+        + (f"#{ref['insight_id']}" if ref.get("insight_id") else "")
+        for ref in refs
+    )
 
 
 def _decode_json_fields(row, fields):

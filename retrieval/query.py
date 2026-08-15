@@ -39,6 +39,7 @@ from core.memory_debug import log_memory
 from core.db_paths import all_content_db_paths
 from core.game_registry import DEFAULT_GAME, canonical_aoe2_civilization, find_aoe2_civilizations, game_label, normalize_game
 from cloud import vector_store
+from retrieval.strategic_context import build_strategic_context, format_strategic_context
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 TOP_K = 35
@@ -328,9 +329,12 @@ def _ability_reference_block(champions: list[str]) -> str:
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
 GENERAL_SYSTEM = """
-You are a League of Legends coaching assistant. You have access to insights
-extracted from a real coach's video library. Answer using ONLY the provided
-coaching insights — do not add advice not grounded in the retrieved insights.
+You are a League of Legends coaching assistant. You have source-grounded
+coaching insights extracted from a real coach's video library and, when
+provided, separately labeled derived strategic context. Use source-grounded
+insights for factual support. Use derived context only to make its explicit
+causal links and state dependencies easier to explain; never present it as a
+source quote or invent strategic facts beyond the supplied material.
 
 When the question is about how to play a specific champion, structure your answer as:
 
@@ -383,20 +387,25 @@ Rules:
 GENERAL_USER = """
 Player question: {question}
 
-Relevant coaching insights:
+=== Retrieved coaching evidence ===
 {insights}
 
-Answer using only the insights above.
+{strategic_context}
+
+Answer using the source evidence and, when present, the explicitly labeled
+derived strategic context above.
 """.strip()
 
 MATCHUP_SYSTEM = """
-You are a League of Legends coaching assistant. You have insights about two
-champions extracted from a real coach's video library.
+You are a League of Legends coaching assistant. You have source-grounded
+insights about two champions extracted from a real coach's video library and,
+when provided, separately labeled derived strategic context.
 
-Explain how {champion_a} should play against {champion_b} using ONLY the
-provided insights. Synthesize the interaction — if A wants short trades and B
-wants extended fights, conclude that A should take short trades. Do not invent
-advice not grounded in the insights.
+Explain how {champion_a} should play against {champion_b} using the provided
+source evidence. Use derived context only for its explicit causal links and
+state dependencies. Synthesize the interaction — if A wants short trades and
+B wants extended fights, conclude that A should take short trades. Do not
+invent advice beyond the supplied material.
 
 CRITICAL — ability attribution: The insights are grouped by champion. Any
 [ability_windows] insight listed under "{champion_a}" describes {champion_a}'s
@@ -428,6 +437,8 @@ Player question: {question}
 === {champion_b} insights === {note_b}
 {insights_b}
 
+{strategic_context}
+
 Using the insights above, explain how {champion_a} should play against {champion_b}.
 If a side only has archetype data, reason from the shared playstyle — do not refuse to answer.
 If stat context is provided below, factor it into your answer (e.g. range mismatch changes
@@ -435,13 +446,15 @@ safe farming distance; low base HP/armor increases early burst windows).
 """.strip()
 
 SYNERGY_SYSTEM = """
-You are a League of Legends coaching assistant. You have insights about two
-champions extracted from a real coach's video library.
+You are a League of Legends coaching assistant. You have source-grounded
+insights about two champions extracted from a real coach's video library and,
+when provided, separately labeled derived strategic context.
 
-Explain how {champion_a} and {champion_b} work together using ONLY the
-provided insights. Synthesize their kits — if A sets up engage and B has
-high follow-up damage, describe the combo. Do not invent advice not grounded
-in the insights.
+Explain how {champion_a} and {champion_b} work together using the provided
+source evidence. Use derived context only for its explicit causal links and
+state dependencies. Synthesize their kits — if A sets up engage and B has high
+follow-up damage, describe the combo. Do not invent advice beyond the supplied
+material.
 
 Structure your answer:
 
@@ -463,6 +476,8 @@ Insights about {champion_a}: {note_a}
 
 Insights about {champion_b}: {note_b}
 {insights_b}
+
+{strategic_context}
 
 Using the insights above, explain how {champion_a} and {champion_b} work together.
 If a side only has archetype data, reason from the shared playstyle — do not refuse to answer.
@@ -1894,6 +1909,7 @@ def answer(
     top_k: int = TOP_K,
     show_sources: bool = True,
     aoe2_split_detail: bool = False,
+    include_strategic_context: bool = True,
 ) -> str:
     """
     Full RAG pipeline with automatic intent routing:
@@ -1982,7 +1998,15 @@ def answer(
         intent = {"type": "general"}
 
     if intent["type"] in ("matchup", "synergy"):
-        return _answer_duo(question, intent, role=role, game=game, top_k=top_k, show_sources=show_sources)
+        return _answer_duo(
+            question,
+            intent,
+            role=role,
+            game=game,
+            top_k=top_k,
+            show_sources=show_sources,
+            include_strategic_context=include_strategic_context,
+        )
 
     # ── General / single-champion path ────────────────────────────────────────
     detected_champ_early = champion
@@ -2018,9 +2042,19 @@ def answer(
         if stat_ctx:
             stat_block = f"\n\nStat context (factor this into your answer if relevant):\n{stat_ctx}"
 
+    strategic_block = _strategic_context_block(
+        question,
+        (detected_champ,) if detected_champ else (),
+        include_strategic_context,
+    )
+
     generated = llm_chat(
         system=GENERAL_SYSTEM,
-        user=GENERAL_USER.format(question=question, insights=formatted) + stat_block,
+        user=GENERAL_USER.format(
+            question=question,
+            insights=formatted,
+            strategic_context=strategic_block,
+        ) + stat_block,
         temperature=0.2,
     )
 
@@ -2061,6 +2095,24 @@ def _stat_context_block(champion_a: str, champion_b: str | None = None) -> str:
     return "\n".join(lines)
 
 
+def _strategic_context_block(
+    question: str,
+    entities: tuple[str, ...],
+    enabled: bool,
+) -> str:
+    """Return optional derived context without allowing it to break RAG answers."""
+    if not enabled:
+        return ""
+    try:
+        rendered = format_strategic_context(build_strategic_context(question, entities))
+    except Exception:
+        logging.warning("Strategic context unavailable; continuing with evidence-only RAG", exc_info=True)
+        return ""
+    if not rendered:
+        return ""
+    return "\n\n=== Derived strategic context (not raw coaching evidence) ===\n" + rendered
+
+
 def _answer_duo(
     question: str,
     intent: dict,
@@ -2068,6 +2120,7 @@ def _answer_duo(
     game: str,
     top_k: int,
     show_sources: bool,
+    include_strategic_context: bool,
 ) -> str:
     a, b = intent["a"], intent["b"]
     mode = intent["type"]
@@ -2087,6 +2140,11 @@ def _answer_duo(
     # Stat context: pre-computed anomalies + query-time range comparison
     stat_ctx = _stat_context_block(a, b)
     stat_block = f"\nStat context:\n{stat_ctx}\n" if stat_ctx else ""
+    strategic_block = _strategic_context_block(
+        question,
+        (a, b),
+        include_strategic_context,
+    )
 
     if mode == "matchup":
         system = MATCHUP_SYSTEM.format(champion_a=a, champion_b=b)
@@ -2094,6 +2152,7 @@ def _answer_duo(
             question=question, champion_a=a, champion_b=b,
             insights_a=fmt_a, insights_b=fmt_b,
             note_a=a_note, note_b=b_note,
+            strategic_context=strategic_block,
         ) + stat_block
     else:
         system = SYNERGY_SYSTEM.format(champion_a=a, champion_b=b)
@@ -2101,6 +2160,7 @@ def _answer_duo(
             question=question, champion_a=a, champion_b=b,
             insights_a=fmt_a, insights_b=fmt_b,
             note_a=a_note, note_b=b_note,
+            strategic_context=strategic_block,
         ) + stat_block
 
     generated = llm_chat(system=system, user=user, temperature=0.2)
