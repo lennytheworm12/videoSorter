@@ -227,6 +227,10 @@ def _ability_aliases(conn: sqlite3.Connection, champions: tuple[str, ...], evide
         for name in names:
             if _text_mentions_alias(evidence_text, name):
                 aliases[name] = canonical
+        # A bare slot ("her E", "their W") is safe only with one grounded
+        # champion; otherwise it would fabricate an ambiguous ability binding.
+        if len(champions) == 1 and _text_mentions_alias(evidence_text, row["ability_slot"]):
+            aliases[row["ability_slot"]] = canonical
     return aliases
 
 
@@ -388,6 +392,8 @@ def _compile_candidate(
         return ExtractionDecision(candidate, None, "rejected", ("effect must be a string or null",))
     condition = canonical_condition(candidate.get("condition"))
     effect = canonical_condition(candidate.get("effect"))
+    if condition and not _condition_is_supported(condition, evidence_ids, evidence_by_id):
+        return ExtractionDecision(candidate, None, "rejected", ("condition is not supported by evidence",))
     patch = candidate.get("patch_sensitivity", "low")
     if patch not in {"very_low", "low", "medium", "high"}:
         return ExtractionDecision(candidate, None, "rejected", ("unknown patch sensitivity",))
@@ -453,6 +459,40 @@ def _concept_is_supported_by_evidence(
     evidence_by_id: Mapping[str, EvidenceItem],
 ) -> bool:
     return any(concept_is_mentioned(evidence_by_id[evidence_id].text, concept) for evidence_id in evidence_ids)
+
+
+_CONDITION_STOPWORDS = frozenset({"a", "an", "and", "are", "as", "at", "before", "after", "during", "for", "if", "in", "is", "of", "on", "or", "the", "then", "to", "when", "while", "with", "you", "your"})
+_NEGATION_TERMS = frozenset({"not", "never", "cannot", "cant", "without"})
+
+
+def _condition_is_supported(
+    condition: str, evidence_ids: list[str], evidence_by_id: Mapping[str, EvidenceItem],
+) -> bool:
+    """Reject qualifiers containing facts absent from the cited source evidence."""
+    terms = _condition_terms(condition)
+    if not terms:
+        return False
+    for item in evidence_ids:
+        source_terms = _condition_terms(evidence_by_id[item].text)
+        if _is_subsequence(terms, source_terms):
+            source_has_negation = any(term in _NEGATION_TERMS for term in source_terms)
+            condition_has_negation = any(term in _NEGATION_TERMS for term in terms)
+            if source_has_negation != condition_has_negation:
+                continue
+            return True
+    return False
+
+
+def _condition_terms(text: str) -> list[str]:
+    return [term for term in re.findall(r"[a-z0-9]+", text.lower()) if term not in _CONDITION_STOPWORDS]
+
+
+def _is_subsequence(needles: list[str], haystack: list[str]) -> bool:
+    position = 0
+    for term in haystack:
+        if position < len(needles) and term == needles[position]:
+            position += 1
+    return position == len(needles)
 
 
 def _stable_relation_id(*parts: str | None) -> str:

@@ -163,7 +163,7 @@ class StrategicContextTests(unittest.TestCase):
 
     def test_accepted_automated_relation_uses_existing_context_retrieval(self):
         packet = ExtractionPacket(
-            evidence=(EvidenceItem("source-1", "video-1", "Thresh Flay denies continued contact.", confidence=0.9),),
+            evidence=(EvidenceItem("source-1", "video-1", "Thresh Flay denies continued contact while available.", confidence=0.9),),
             ability_aliases={"Flay": "Thresh E"},
         )
         candidate = {

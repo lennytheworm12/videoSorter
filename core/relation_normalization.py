@@ -26,6 +26,14 @@ _CONCEPT_ALIASES = {
     "persistent low cost pressure": "persistent_pressure",
 }
 
+# Evidence phrases that deterministically entail an existing ontology concept.
+# These are deliberately narrower than a general semantic classifier.
+_CONCEPT_EVIDENCE_CUES = {
+    "access": ("walk up to farm", "ability to engage is tied to", "angle to jump in"),
+    "range_asymmetry": ("range advantage",),
+    "isolation": ("isolation opportunity", "isolation opportunities"),
+}
+
 _RELATION_ALIASES = {
     "create": "creates",
     "provide": "creates",
@@ -56,12 +64,18 @@ def canonical_concept(value: str) -> str | None:
 
 
 def concept_is_mentioned(text: str, concept: str) -> bool:
-    """Check source text against a canonical concept and its deterministic aliases."""
+    """Check literal aliases and a small audited set of semantic evidence cues."""
     phrases = [concept.replace("_", " ")]
     phrases.extend(alias for alias, canonical in _CONCEPT_ALIASES.items() if canonical == concept)
-    return any(
+    literal = any(
         re.search(r"\b" + re.escape(phrase) + r"\w*\b", text, re.IGNORECASE)
         for phrase in phrases
+    )
+    if literal:
+        return True
+    return any(
+        re.search(r"\b" + re.escape(phrase) + r"\b", text, re.IGNORECASE)
+        for phrase in _CONCEPT_EVIDENCE_CUES.get(concept, ())
     )
 
 

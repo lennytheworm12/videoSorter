@@ -36,13 +36,13 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIsNone(canonical_champion_name("not a champion"))
 
     def test_aliases_and_evidence_provenance_compile_to_phase1_relation(self) -> None:
-        decision = compile_candidates(self.packet, [_candidate()])[0]
+        decision = compile_candidates(self.packet, [_candidate(condition=None)])[0]
 
         self.assertEqual(decision.status, "accepted")
         self.assertEqual(decision.relation.subject_key, "Thresh E")
         self.assertEqual(decision.relation.relation_type, "denies")
         self.assertEqual(decision.relation.object_key, "continuity")
-        self.assertEqual(decision.relation.condition, "while Flay is available")
+        self.assertIsNone(decision.relation.condition)
         self.assertEqual(decision.relation.evidence_refs[0].insight_id, "4798")
         self.assertEqual(decision.relation.data_version, "strategic-relations-v0")
         self.assertGreater(decision.relation.confidence, 0.6)
@@ -52,7 +52,7 @@ class RelationExtractionTests(unittest.TestCase):
             evidence=(EvidenceItem("4798", "video-1", "Flay breaks continued contact.", confidence=0.8),),
             ability_aliases=self.packet.ability_aliases,
         )
-        candidate = _candidate(subject="Flay (E)", concepts=["tempo", "intermittent pressure"])
+        candidate = _candidate(subject="Flay (E)", concepts=["tempo", "intermittent pressure"], condition=None)
         decision = compile_candidates(packet, [candidate])[0]
 
         self.assertEqual(decision.status, "accepted")
@@ -69,13 +69,42 @@ class RelationExtractionTests(unittest.TestCase):
             evidence=(EvidenceItem("4798", "video-1", "Flay breaks continued contact.", confidence=0.8),),
             ability_aliases=self.packet.ability_aliases,
         )
-        accepted = compile_candidates(packet, [_candidate()])[0]
+        accepted = compile_candidates(packet, [_candidate(condition=None)])[0]
         self.assertEqual(accepted.status, "accepted")
         self.assertIn("continuity", accepted.relation.concepts)
 
+    def test_semantic_evidence_cue_can_ground_existing_concept_without_literal_name(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("lux", "video", "Bait her E before you walk up to farm.", confidence=.8),),
+            ability_aliases={"E": "Lux E"},
+        )
+        candidate = _candidate(subject="E", object="access", object_type="concept", concepts=["access"], evidence_ids=["lux"], condition="before you walk up to farm")
+        decision = compile_candidates(packet, [candidate])[0]
+        self.assertEqual(decision.status, "accepted")
+
+    def test_condition_must_be_grounded_in_cited_evidence(self) -> None:
+        decision = compile_candidates(self.packet, [_candidate(condition="while Flay is available")])[0]
+        self.assertEqual(decision.status, "rejected")
+        self.assertIn("condition is not supported", decision.warnings[0])
+
+    def test_condition_support_preserves_negation_order_and_single_evidence_scope(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(
+                EvidenceItem("one", "video", "Do not walk up to farm while Lux E is available.", confidence=.8),
+                EvidenceItem("two", "video", "The target is isolated.", confidence=.8),
+            ), ability_aliases={"E": "Lux E"},
+        )
+        base = _candidate(subject="E", object="access", object_type="concept", concepts=["access"], evidence_ids=["one"], condition="do not walk up to farm while Lux E is available")
+        self.assertEqual(compile_candidates(packet, [base])[0].status, "accepted")
+        for condition, ids in (("walk up to farm while Lux E is available", ["one"]), ("Lux E is available before walk up to farm", ["one"]), ("walk up to farm target isolated", ["one", "two"])):
+            with self.subTest(condition=condition):
+                decision = compile_candidates(packet, [_candidate(subject="E", object="access", object_type="concept", concepts=["access"], evidence_ids=ids, condition=condition)])[0]
+                self.assertEqual(decision.status, "rejected")
+
     def test_condition_changes_stable_identity_and_is_not_overmerged(self) -> None:
-        first = compile_candidates(self.packet, [_candidate(condition="while Flay is available")])[0].relation
-        second = compile_candidates(self.packet, [_candidate(condition="after Tristana lands W")])[0].relation
+        packet = ExtractionPacket((EvidenceItem("4798", "video", "Flay denies continued contact while available, after Tristana lands W.", confidence=.8),), ability_aliases=self.packet.ability_aliases)
+        first = compile_candidates(packet, [_candidate(condition="while Flay is available")])[0].relation
+        second = compile_candidates(packet, [_candidate(condition="after Tristana lands W")])[0].relation
 
         self.assertNotEqual(first.id, second.id)
         self.assertNotEqual(first.stable_key(), second.stable_key())
@@ -112,7 +141,7 @@ class RelationExtractionTests(unittest.TestCase):
             ability_aliases=self.packet.ability_aliases,
             entity_aliases={"state": {"after q misses": "after Q misses"}},
         )
-        candidate = _candidate(object_type="state", object="after Q misses", concepts=["access"])
+        candidate = _candidate(object_type="state", object="after Q misses", concepts=["access"], condition=None)
         decision = compile_candidates(packet, [candidate])[0]
         self.assertEqual(decision.status, "accepted")
         self.assertEqual(decision.relation.object_key, "after Q misses")
@@ -122,7 +151,7 @@ class RelationExtractionTests(unittest.TestCase):
             evidence=(EvidenceItem("guide-1", "guide-article", "Flay denies continued contact.", source_type="guide", confidence=0.8, patch_sensitivity="high"),),
             ability_aliases={"Flay": "Thresh E"},
         )
-        decision = compile_candidates(packet, [_candidate(evidence_ids=["guide-1"], patch_sensitivity="low")])[0]
+        decision = compile_candidates(packet, [_candidate(evidence_ids=["guide-1"], patch_sensitivity="low", condition=None)])[0]
         self.assertEqual(decision.relation.evidence_refs[0].source_type, "guide")
         self.assertEqual(decision.relation.patch_sensitivity, "high")
 
@@ -154,17 +183,18 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIsNotNone(decision.relation)
 
     def test_same_condition_opposite_relations_are_quarantined_for_review(self) -> None:
-        creates = _candidate(relation_type="creates")
-        denies = _candidate(relation_type="denies")
+        creates = _candidate(relation_type="creates", condition=None)
+        denies = _candidate(relation_type="denies", condition=None)
         decisions = compile_candidates(self.packet, [creates, denies])
 
         self.assertEqual([item.status for item in decisions], ["review", "review"])
         self.assertTrue(all("contradictory" in item.warnings[-1] for item in decisions))
 
     def test_distinct_conditions_do_not_trigger_contradiction_review(self) -> None:
+        packet = ExtractionPacket((EvidenceItem("4798", "video", "Flay creates continued contact when unavailable and denies it while available.", confidence=.8),), ability_aliases=self.packet.ability_aliases)
         creates = _candidate(relation_type="creates", condition="when Flay is unavailable")
         denies = _candidate(relation_type="denies", condition="while Flay is available")
-        decisions = compile_candidates(self.packet, [creates, denies])
+        decisions = compile_candidates(packet, [creates, denies])
 
         self.assertEqual([item.status for item in decisions], ["accepted", "accepted"])
 
@@ -247,6 +277,39 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(packet.ability_aliases["Flay"], "Thresh E")
         self.assertNotIn("Thresh Q", packet.ability_aliases.values())
 
+    def test_packet_loader_resolves_bare_slot_only_for_one_grounded_champion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = f"{directory}/evidence.db"
+            conn = sqlite3.connect(path)
+            conn.executescript("""
+                CREATE TABLE videos (video_id TEXT PRIMARY KEY, champion TEXT, subject TEXT);
+                CREATE TABLE insights (id INTEGER PRIMARY KEY, video_id TEXT, text TEXT, source_score REAL, cluster_score REAL, confidence REAL);
+                CREATE TABLE champion_abilities (champion TEXT, ability_slot TEXT, name TEXT);
+                INSERT INTO videos VALUES ('video-1', 'Lux', NULL);
+                INSERT INTO insights VALUES (9, 'video-1', 'Bait her E before walking up.', .8, .6, .7);
+                INSERT INTO champion_abilities VALUES ('Lux', 'E', 'Lucent Singularity');
+            """)
+            conn.commit(); conn.close()
+            packet = packet_from_insight_ids(path, ["9"])
+        self.assertEqual(packet.ability_aliases["E"], "Lux E")
+
+    def test_packet_loader_does_not_resolve_bare_slot_for_multiple_champions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = f"{directory}/evidence.db"
+            conn = sqlite3.connect(path)
+            conn.executescript("""
+                CREATE TABLE videos (video_id TEXT PRIMARY KEY, champion TEXT, subject TEXT);
+                CREATE TABLE insights (id INTEGER PRIMARY KEY, video_id TEXT, text TEXT, source_score REAL, cluster_score REAL, confidence REAL);
+                CREATE TABLE champion_abilities (champion TEXT, ability_slot TEXT, name TEXT);
+                INSERT INTO videos VALUES ('video-1', 'Lux', 'Lux versus Syndra');
+                INSERT INTO insights VALUES (9, 'video-1', 'Bait her E before walking up.', .8, .6, .7);
+                INSERT INTO champion_abilities VALUES ('Lux', 'E', 'Lucent Singularity');
+                INSERT INTO champion_abilities VALUES ('Syndra', 'E', 'Scatter the Weak');
+            """)
+            conn.commit(); conn.close()
+            packet = packet_from_insight_ids(path, ["9"])
+        self.assertNotIn("E", packet.ability_aliases)
+
     def test_packet_loader_does_not_allow_unmentioned_abilities_for_named_champion(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = f"{directory}/evidence.db"
@@ -276,7 +339,7 @@ def _candidate(**overrides):
         "relation_type": "breaks",
         "object": "continued contact",
         "object_type": "concept",
-        "condition": "while Flay is available",
+        "condition": None,
         "effect": "the enemy cannot sustain contact",
         "concepts": ["continued contact", "threat preservation"],
         "provenance_type": "coach_supported_inference",
