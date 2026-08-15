@@ -22,7 +22,7 @@ class RelationExtractionTests(unittest.TestCase):
                 EvidenceItem(
                     insight_id="4798",
                     source_id="z5IXabhMLzQ",
-                    text="Thresh Lantern saves teammates from danger.",
+                    text="Thresh Flay denies continued contact.",
                     confidence=0.62,
                 ),
             ),
@@ -44,6 +44,32 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(decision.relation.evidence_refs[0].insight_id, "4798")
         self.assertEqual(decision.relation.data_version, "strategic-relations-v0")
         self.assertGreater(decision.relation.confidence, 0.6)
+
+    def test_parenthetical_ability_alias_resolves_and_unsupported_concepts_are_removed(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("4798", "video-1", "Flay breaks continued contact.", confidence=0.8),),
+            ability_aliases=self.packet.ability_aliases,
+        )
+        candidate = _candidate(subject="Flay (E)", concepts=["tempo", "intermittent pressure"])
+        decision = compile_candidates(packet, [candidate])[0]
+
+        self.assertEqual(decision.status, "accepted")
+        self.assertEqual(decision.relation.subject_key, "Thresh E")
+        self.assertEqual(decision.relation.concepts, ("continuity",))
+        self.assertIn("removed unsupported strategic concepts", decision.warnings[0])
+
+    def test_direct_concept_endpoint_must_be_supported_by_source_or_alias(self) -> None:
+        rejected = compile_candidates(self.packet, [_candidate(object="access", object_type="concept", concepts=["access"])])[0]
+        self.assertEqual(rejected.status, "rejected")
+        self.assertIn("unsupported strategic concept", rejected.warnings[0])
+
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("4798", "video-1", "Flay breaks continued contact.", confidence=0.8),),
+            ability_aliases=self.packet.ability_aliases,
+        )
+        accepted = compile_candidates(packet, [_candidate()])[0]
+        self.assertEqual(accepted.status, "accepted")
+        self.assertIn("continuity", accepted.relation.concepts)
 
     def test_condition_changes_stable_identity_and_is_not_overmerged(self) -> None:
         first = compile_candidates(self.packet, [_candidate(condition="while Flay is available")])[0].relation
@@ -91,7 +117,7 @@ class RelationExtractionTests(unittest.TestCase):
 
     def test_source_type_and_patch_sensitivity_are_not_weakened(self) -> None:
         packet = ExtractionPacket(
-            evidence=(EvidenceItem("guide-1", "guide-article", "Flay saves allies.", source_type="guide", confidence=0.8, patch_sensitivity="high"),),
+            evidence=(EvidenceItem("guide-1", "guide-article", "Flay denies continued contact.", source_type="guide", confidence=0.8, patch_sensitivity="high"),),
             ability_aliases={"Flay": "Thresh E"},
         )
         decision = compile_candidates(packet, [_candidate(evidence_ids=["guide-1"], patch_sensitivity="low")])[0]

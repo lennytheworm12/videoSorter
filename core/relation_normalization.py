@@ -55,6 +55,16 @@ def canonical_concept(value: str) -> str | None:
     return alias if alias in STRATEGIC_CONCEPTS else None
 
 
+def concept_is_mentioned(text: str, concept: str) -> bool:
+    """Check source text against a canonical concept and its deterministic aliases."""
+    phrases = [concept.replace("_", " ")]
+    phrases.extend(alias for alias, canonical in _CONCEPT_ALIASES.items() if canonical == concept)
+    return any(
+        re.search(r"\b" + re.escape(phrase) + r"\w*\b", text, re.IGNORECASE)
+        for phrase in phrases
+    )
+
+
 def canonical_relation_type(value: str) -> str | None:
     """Resolve a relation verb only to the existing constrained vocabulary."""
     if not isinstance(value, str):
@@ -100,6 +110,8 @@ def canonical_entity(
     if resolved_type == "ability":
         aliases = {normalized_key(k): v for k, v in (ability_aliases or {}).items()}
         canonical = aliases.get(normalized_key(value))
+        if canonical is None:
+            canonical = aliases.get(normalized_key(re.sub(r"\s*\([^)]*\)", "", value)))
         if canonical:
             return CanonicalEntity("ability", canonical, 1.0)
         return None

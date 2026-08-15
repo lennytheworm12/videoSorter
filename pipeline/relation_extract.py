@@ -20,6 +20,7 @@ from core.relation_normalization import (
     canonical_condition,
     canonical_entity,
     canonical_relation_type,
+    concept_is_mentioned,
 )
 from core.strategic_types import AUTOMATED_RELATION_DATA_VERSION, EvidenceRef, StrategicRelation, relation_types_conflict
 
@@ -290,6 +291,10 @@ def _compile_candidate(
     relation_type = canonical_relation_type(candidate.get("relation_type"))
     if subject is None or obj is None or relation_type is None:
         return ExtractionDecision(candidate, None, "rejected", ("unknown entity, concept, or relation type",))
+    if subject.entity_type == "concept" and not _concept_is_supported_by_evidence(subject.key, evidence_ids, evidence_by_id):
+        return ExtractionDecision(candidate, None, "rejected", ("unsupported strategic concept",))
+    if obj.entity_type == "concept" and not _concept_is_supported_by_evidence(obj.key, evidence_ids, evidence_by_id):
+        return ExtractionDecision(candidate, None, "rejected", ("unsupported strategic concept",))
     if subject.entity_type == obj.entity_type == "concept" and subject.key == obj.key:
         return ExtractionDecision(candidate, None, "rejected", ("unexpected self-loop relation",))
     provenance = candidate.get("provenance_type")
@@ -298,6 +303,11 @@ def _compile_candidate(
     concepts = _canonical_concepts(candidate.get("concepts"), subject, obj)
     if concepts is None:
         return ExtractionDecision(candidate, None, "rejected", ("unknown strategic concept",))
+    unsupported_concepts = tuple(
+        concept for concept in concepts
+        if not _concept_is_supported_by_evidence(concept, evidence_ids, evidence_by_id)
+    )
+    concepts = tuple(concept for concept in concepts if concept not in unsupported_concepts)
     if candidate.get("condition") is not None and not isinstance(candidate.get("condition"), str):
         return ExtractionDecision(candidate, None, "rejected", ("condition must be a string or null",))
     if candidate.get("effect") is not None and not isinstance(candidate.get("effect"), str):
@@ -340,7 +350,12 @@ def _compile_candidate(
         ontology_version=ontology_version,
     )
     relation.validate()
-    return ExtractionDecision(candidate, relation, "accepted", confidence_components={"extraction": extraction_confidence, "evidence": source_quality, "canonicalization": canonicalization})
+    warnings = (
+        ("removed unsupported strategic concepts: " + ", ".join(unsupported_concepts),)
+        if unsupported_concepts
+        else ()
+    )
+    return ExtractionDecision(candidate, relation, "accepted", warnings, {"extraction": extraction_confidence, "evidence": source_quality, "canonicalization": canonicalization})
 
 
 def _canonical_concepts(raw: Any, subject: Any, obj: Any) -> tuple[str, ...] | None:
@@ -356,6 +371,14 @@ def _canonical_concepts(raw: Any, subject: Any, obj: Any) -> tuple[str, ...] | N
     if obj.entity_type == "concept":
         values.append(obj.key)
     return tuple(dict.fromkeys(values))
+
+
+def _concept_is_supported_by_evidence(
+    concept: str,
+    evidence_ids: list[str],
+    evidence_by_id: Mapping[str, EvidenceItem],
+) -> bool:
+    return any(concept_is_mentioned(evidence_by_id[evidence_id].text, concept) for evidence_id in evidence_ids)
 
 
 def _stable_relation_id(*parts: str | None) -> str:

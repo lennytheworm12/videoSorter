@@ -31,6 +31,8 @@ evidence references.
 - Champion names use the existing champion registry. Ability aliases come from
   existing `champion_abilities`; non-concept state/event/archetype nodes require
   explicit packet aliases.
+- Model-proposed concepts must occur in cited evidence; unsupported concepts are
+  removed with a warning rather than becoming graph context.
 - Conditions are part of the stable relation identity. Different conditions do
   not merge.
 - Accepted automated provenance is only `source_claim` or
