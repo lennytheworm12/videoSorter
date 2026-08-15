@@ -75,7 +75,7 @@ class StrategicPromptIntegrationTests(unittest.TestCase):
         with mock.patch.object(query, "retrieve_duo", return_value=(EVIDENCE, EVIDENCE)), mock.patch.object(query, "build_strategic_context", return_value=STRUCTURED) as strategic, mock.patch.object(query, "_stat_context_block", return_value=""), mock.patch.object(query, "_ability_reference_block", return_value=""), mock.patch.object(query, "llm_chat", return_value="answer") as chat:
             result = query._answer_duo("Caitlyn vs Mage", {"type": "matchup", "a": "Caitlyn", "b": "Mage"}, role=None, game="lol", top_k=4, show_sources=False, include_strategic_context=True)
         self.assertEqual(result, "answer")
-        strategic.assert_called_once_with("Caitlyn vs Mage", ("Caitlyn", "Mage"))
+        strategic.assert_called_once_with("Caitlyn vs Mage", ("Caitlyn", "Mage"), db_paths=None)
         self.assertIn("Derived strategic context", chat.call_args.kwargs["user"])
 
     def test_duo_baseline_flag_omits_strategic_context(self):

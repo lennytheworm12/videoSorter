@@ -483,6 +483,43 @@ Using the insights above, explain how {champion_a} and {champion_b} work togethe
 If a side only has archetype data, reason from the shared playstyle — do not refuse to answer.
 """.strip()
 
+TEAM_MATCHUP_SYSTEM = """
+You are a League of Legends coaching assistant. You have source-grounded
+coaching insights grouped by allied and enemy lane pair, plus separately
+labeled derived strategic context when available.
+
+Explain how the allied pair should play into the enemy pair using source
+evidence for factual support. Use derived context only for its explicit causal
+links and state dependencies. Do not present derived context as a source quote
+or invent facts beyond the supplied material.
+
+Structure your answer:
+
+**Access and Continuity**
+- State who can begin combat, what must remain true to convert it, and how the
+  opposing pair can interrupt that continuation.
+
+**Winning Line**
+- Give the state transition the allied pair should create, the enemy response
+  it anticipates, and the resulting punish or conversion.
+
+Only include claims supported by the provided material.
+""".strip()
+
+TEAM_MATCHUP_USER = """
+Player question: {question}
+
+=== Allied pair: {allies} ===
+{allied_insights}
+
+=== Enemy pair: {enemies} ===
+{enemy_insights}
+
+{strategic_context}
+
+Explain how {allies} should play into {enemies}.
+""".strip()
+
 GENERIC_SYSTEM = """
 You are a {game_name} coaching assistant. You have access to insights extracted
 from a curated knowledge base of educational content. Answer using ONLY the
@@ -788,7 +825,12 @@ def detect_intent(question: str) -> dict:
 
     a, b = found[0], found[1]
 
-    if re.search(r'\b(into|vs\.?|versus|against)\b', q):
+    matchup_marker = re.search(r'\b(into|vs\.?|versus|against)\b', q)
+    if matchup_marker:
+        allies = tuple(champion for position, champion in found_with_pos if position < matchup_marker.start())
+        enemies = tuple(champion for position, champion in found_with_pos if position > matchup_marker.end())
+        if len(allies) == 2 and len(enemies) == 2:
+            return {"type": "team_matchup", "allies": allies, "enemies": enemies}
         return {"type": "matchup", "a": a, "b": b}
     if re.search(r'\b(with|alongside|pairing|combo)\b', q):
         return {"type": "synergy", "a": a, "b": b}
@@ -1658,6 +1700,31 @@ def retrieve_duo(
     return insights_a, insights_b
 
 
+def _retrieve_team_matchup(
+    question: str,
+    allies: tuple[str, ...],
+    enemies: tuple[str, ...],
+    role: str | None,
+    game: str,
+    top_k: int,
+) -> tuple[dict[str, list[dict]], dict[str, list[dict]]]:
+    """Retrieve each lane-pair member independently for a bounded team prompt."""
+    if len(allies) != 2 or len(enemies) != 2:
+        raise ValueError("team matchup retrieval requires exactly two champions per side")
+    if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 4:
+        raise ValueError("team matchup top_k must be an integer of at least 4")
+    per_champion = top_k // 4
+    allied_insights = {
+        champion: retrieve(question, champion=champion, role=role, game=game, top_k=per_champion)
+        for champion in allies
+    }
+    enemy_insights = {
+        champion: retrieve(question, champion=champion, game=game, top_k=per_champion)
+        for champion in enemies
+    }
+    return allied_insights, enemy_insights
+
+
 def _retrieve_aoe2_duo(
     question: str,
     subject_a: str,
@@ -1910,6 +1977,7 @@ def answer(
     show_sources: bool = True,
     aoe2_split_detail: bool = False,
     include_strategic_context: bool = True,
+    strategic_db_paths: tuple[str, ...] | None = None,
 ) -> str:
     """
     Full RAG pipeline with automatic intent routing:
@@ -2006,6 +2074,18 @@ def answer(
             top_k=top_k,
             show_sources=show_sources,
             include_strategic_context=include_strategic_context,
+            strategic_db_paths=strategic_db_paths,
+        )
+    if intent["type"] == "team_matchup":
+        return _answer_team_matchup(
+            question,
+            intent,
+            role=role,
+            game=game,
+            top_k=top_k,
+            show_sources=show_sources,
+            include_strategic_context=include_strategic_context,
+            strategic_db_paths=strategic_db_paths,
         )
 
     # ── General / single-champion path ────────────────────────────────────────
@@ -2046,6 +2126,7 @@ def answer(
         question,
         (detected_champ,) if detected_champ else (),
         include_strategic_context,
+        strategic_db_paths,
     )
 
     generated = llm_chat(
@@ -2099,12 +2180,15 @@ def _strategic_context_block(
     question: str,
     entities: tuple[str, ...],
     enabled: bool,
+    db_paths: tuple[str, ...] | None = None,
 ) -> str:
     """Return optional derived context without allowing it to break RAG answers."""
     if not enabled:
         return ""
     try:
-        rendered = format_strategic_context(build_strategic_context(question, entities))
+        rendered = format_strategic_context(
+            build_strategic_context(question, entities, db_paths=db_paths)
+        )
     except Exception:
         logging.warning("Strategic context unavailable; continuing with evidence-only RAG", exc_info=True)
         return ""
@@ -2121,6 +2205,7 @@ def _answer_duo(
     top_k: int,
     show_sources: bool,
     include_strategic_context: bool,
+    strategic_db_paths: tuple[str, ...] | None = None,
 ) -> str:
     a, b = intent["a"], intent["b"]
     mode = intent["type"]
@@ -2144,6 +2229,7 @@ def _answer_duo(
         question,
         (a, b),
         include_strategic_context,
+        strategic_db_paths,
     )
 
     if mode == "matchup":
@@ -2174,6 +2260,68 @@ def _answer_duo(
         generated += f"\nSources for {b}:\n" + _sources_block(insights_b, prefix="  ")
 
     return generated
+
+
+def _answer_team_matchup(
+    question: str,
+    intent: dict,
+    role: str | None,
+    game: str,
+    top_k: int,
+    show_sources: bool,
+    include_strategic_context: bool,
+    strategic_db_paths: tuple[str, ...] | None = None,
+) -> str:
+    allies = tuple(intent["allies"])
+    enemies = tuple(intent["enemies"])
+    allied_insights, enemy_insights = _retrieve_team_matchup(
+        question,
+        allies,
+        enemies,
+        role,
+        game,
+        top_k,
+    )
+    if not any(allied_insights.values()) and not any(enemy_insights.values()):
+        return f"No insights found for {'/'.join(allies)} or {'/'.join(enemies)}. Make sure embed.py has been run."
+
+    strategic_block = _strategic_context_block(
+        question,
+        allies + enemies,
+        include_strategic_context,
+        strategic_db_paths,
+    )
+    user = TEAM_MATCHUP_USER.format(
+        question=question,
+        allies=" / ".join(allies),
+        enemies=" / ".join(enemies),
+        allied_insights=_format_team_insights(allied_insights),
+        enemy_insights=_format_team_insights(enemy_insights),
+        strategic_context=strategic_block,
+    )
+    generated = llm_chat(system=TEAM_MATCHUP_SYSTEM, user=user, temperature=0.2)
+
+    ability_block = _ability_reference_block([*allies, *enemies])
+    if ability_block:
+        generated = ability_block + "\n\n" + generated
+    if show_sources:
+        generated += "\n\n---\nSources for allies:\n" + _team_sources_block(allied_insights)
+        generated += "\nSources for enemies:\n" + _team_sources_block(enemy_insights)
+    return generated
+
+
+def _format_team_insights(by_champion: dict[str, list[dict]]) -> str:
+    return "\n\n".join(
+        f"{champion}:\n{_format_insights(insights)}"
+        for champion, insights in by_champion.items()
+    )
+
+
+def _team_sources_block(by_champion: dict[str, list[dict]]) -> str:
+    return "\n".join(
+        f"{champion}:\n{_sources_block(insights, prefix='  ')}"
+        for champion, insights in by_champion.items()
+    )
 
 
 def _answer_aoe2_duo(
