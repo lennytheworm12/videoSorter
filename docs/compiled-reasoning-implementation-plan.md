@@ -107,7 +107,7 @@ useful precision/recall level. Review/reject output must never enter the graph.
 
 #### Phase 2 M2: Explicit Evidence Workflows and Evaluation
 
-**Status: Deterministic implementation complete; live validation pending.**
+**Status: Validated stop gate. NOT READY — fix Phase 2 first.**
 
 - Added explicit insight-ID packet construction, default dry-run extraction,
   opt-in persistence, relation inspection, and a four-case source-grounded
@@ -115,8 +115,16 @@ useful precision/recall level. Review/reject output must never enter the graph.
   existing bounded relation context; fingerprints and principles remain manual.
 - Independent review approved after fixes for provenance merging, source-only
   ability aliases, ontology filtering, and cross-cluster contradiction review.
-  Pending: a no-mutation DeepSeek dry-run over the small validation set and a
-  documented quality result before the Phase 2 gate decision.
+- Live DeepSeek V4 Flash evaluation on 2026-08-15 was dry-run only and made no
+  persistence changes. It returned zero accepted relations against three
+  reference edges (precision/recall: 0.00). The compiler safely rejected
+  unregistered `action`/`mechanic` nodes, stripped unsupported concepts, and
+  quarantined low-confidence valid edges, but this means the automation is not
+  reliable enough to build fingerprints on top of it.
+- Stop here. Before retrying the gate, improve the constrained response schema
+  and reference evidence quality, add model-output normalization for supported
+  compound ability aliases only, and recalibrate the confidence threshold from
+  an audited sample. Do not start Phase 3.
 
 ### Phase 3: Automated Champion Fingerprints
 
