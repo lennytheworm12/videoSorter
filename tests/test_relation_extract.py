@@ -12,6 +12,7 @@ from pipeline.relation_extract import (
     parse_model_response,
     packet_from_insight_ids,
     _positive_env_int,
+    _model_env,
 )
 
 
@@ -168,6 +169,15 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(captured["max_tokens"], 4096)
         self.assertEqual(captured["thinking"], "disabled")
 
+    def test_explicit_relation_model_is_forwarded_to_existing_provider_adapter(self) -> None:
+        captured = {}
+        extract_relations(
+            self.packet,
+            lambda **kwargs: captured.update(kwargs) or '{"relations": []}',
+            model="deepseek-v4-pro",
+        )
+        self.assertEqual(captured["model"], "deepseek-v4-pro")
+
     def test_model_failure_propagates_without_creating_a_decision(self) -> None:
         with self.assertRaisesRegex(TimeoutError, "timed out"):
             extract_relations(
@@ -185,6 +195,14 @@ class RelationExtractionTests(unittest.TestCase):
             with self.subTest(value=value), mock.patch.dict(os.environ, {"RELATION_EXTRACTION_MAX_TOKENS": value}):
                 with self.assertRaisesRegex(RuntimeError, "RELATION_EXTRACTION_MAX_TOKENS"):
                     _positive_env_int("RELATION_EXTRACTION_MAX_TOKENS", 4096)
+
+    def test_relation_model_config_rejects_blank_value(self) -> None:
+        import os
+        from unittest import mock
+
+        with mock.patch.dict(os.environ, {"DEEPSEEK_RELATION_PRO_MODEL": "  "}):
+            with self.assertRaisesRegex(RuntimeError, "DEEPSEEK_RELATION_PRO_MODEL"):
+                _model_env("DEEPSEEK_RELATION_PRO_MODEL", "deepseek-v4-pro")
 
     def test_packet_loader_uses_explicit_insights_and_existing_ability_metadata_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

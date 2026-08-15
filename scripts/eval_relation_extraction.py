@@ -13,7 +13,16 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from core.llm import BACKEND, MODEL, chat
-from pipeline.relation_extract import EvidenceItem, ExtractionDecision, ExtractionPacket, compile_candidates, extract_relations, packet_from_insight_ids
+from pipeline.relation_extract import (
+    RELATION_FLASH_MODEL,
+    RELATION_PRO_MODEL,
+    EvidenceItem,
+    ExtractionDecision,
+    ExtractionPacket,
+    compile_candidates,
+    extract_relations,
+    packet_from_insight_ids,
+)
 
 
 @dataclass(frozen=True)
@@ -118,16 +127,28 @@ def main() -> None:
     parser.add_argument("--fixture", type=Path, default=Path("data/relation_extraction_validation_v0.json"))
     parser.add_argument("--db", type=Path, help="Source SQLite DB; required with --live to reuse production packet aliases")
     parser.add_argument("--live", action="store_true", help="Call the configured extraction model; never writes relations")
+    parser.add_argument("--variant", choices=("flash", "pro"), help="DeepSeek relation model variant for a fair live comparison")
+    parser.add_argument("--model", help="Explicit model identifier; overrides --variant")
     parser.add_argument("--json-output", type=Path)
     args = parser.parse_args()
     if args.live and not args.db:
         parser.error("--live requires --db so evaluation uses the production packet loader")
     cases = load_cases(args.fixture, source_db=args.db)
+    if args.variant and BACKEND != "deepseek":
+        parser.error("--variant requires LLM_PROVIDER=deepseek")
+    if args.model:
+        selected_model, model_label = args.model, "custom"
+    elif args.variant == "flash":
+        selected_model, model_label = RELATION_FLASH_MODEL, "flash"
+    elif args.variant == "pro":
+        selected_model, model_label = RELATION_PRO_MODEL, "pro"
+    else:
+        selected_model, model_label = None, "provider_default"
     if args.live:
-        result = evaluate_cases(cases, lambda packet: extract_relations(packet, chat))
+        result = evaluate_cases(cases, lambda packet: extract_relations(packet, chat, model=selected_model))
     else:
         result = {"status": "validated_fixture_only", "case_count": len(cases), "message": "Pass --live to make model calls."}
-    result["model"] = {"backend": BACKEND, "model": MODEL} if args.live else None
+    result["model"] = {"backend": BACKEND, "model": selected_model or MODEL, "variant": model_label} if args.live else None
     rendered = json.dumps(result, indent=2)
     print(rendered)
     if args.json_output:

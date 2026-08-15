@@ -131,6 +131,32 @@ useful precision/recall level. Review/reject output must never enter the graph.
 **Deferred.** Assemble versioned fingerprints from high-confidence relations,
 track coverage/freshness/contradictions, and compare against the manual fixture.
 
+### Phase 2B: Diagnose and Repair Relation Extraction
+
+**Status: In progress. Do not start Phase 3.**
+
+Purpose: locate semantic signal loss in the existing safe compiler before
+changing validation or confidence behavior. The target is useful recall with
+high precision, conditions, and provenance intact, not a larger accepted count.
+
+#### M1: Reproduce Original Failures
+
+**Complete.** [Baseline traces](phase2b-baseline-traces.md) reproduce the
+three Flash non-thinking failures unchanged. Findings: two target relations
+survive canonicalization but are routed to review by confidence; the reset case
+correctly rejects invented `action`/`mechanic` nodes. Dedupe is not implicated.
+
+#### M2: Fair Flash/Pro Experiment Plumbing
+
+**Complete.** Added `DEEPSEEK_RELATION_FLASH_MODEL` and
+`DEEPSEEK_RELATION_PRO_MODEL`, plus evaluator `--variant flash|pro`. Variants
+require the DeepSeek provider, custom models are explicitly labeled, and no
+prompt, packet, thinking mode, output budget, ontology, or validator changes
+between benchmark variants. Independent review approved the boundary.
+
+Next: build a larger reviewed corpus before diagnosing confidence or changing
+semantic abstraction.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

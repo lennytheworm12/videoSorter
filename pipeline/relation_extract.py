@@ -45,6 +45,17 @@ DEEPSEEK_THINKING_MODE = os.environ.get("RELATION_EXTRACTION_DEEPSEEK_THINKING",
 if DEEPSEEK_THINKING_MODE not in {"enabled", "disabled"}:
     raise RuntimeError("RELATION_EXTRACTION_DEEPSEEK_THINKING must be enabled or disabled")
 
+
+def _model_env(name: str, default: str) -> str:
+    value = os.environ.get(name, default).strip()
+    if not value:
+        raise RuntimeError(f"{name} must not be blank")
+    return value
+
+
+RELATION_FLASH_MODEL = _model_env("DEEPSEEK_RELATION_FLASH_MODEL", "deepseek-v4-flash")
+RELATION_PRO_MODEL = _model_env("DEEPSEEK_RELATION_PRO_MODEL", "deepseek-v4-pro")
+
 RELATION_EXTRACTION_SYSTEM = """You are a constrained strategic relation compiler.
 Return JSON only. Derive only relations supported by the supplied evidence.
 Do not use League knowledge not stated or directly implied by the evidence.
@@ -245,6 +256,7 @@ def extract_relations(
     chat: Callable[..., str],
     *,
     acceptance_threshold: float = DEFAULT_ACCEPTANCE_THRESHOLD,
+    model: str | None = None,
 ) -> tuple[ExtractionDecision, ...]:
     """Call the configured cheap-model adapter, then compile its response safely."""
     if not 0.0 <= acceptance_threshold <= 1.0:
@@ -255,6 +267,7 @@ def extract_relations(
         temperature=0.0,
         max_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
         thinking=DEEPSEEK_THINKING_MODE,
+        model=model,
     )
     decisions = compile_candidates(packet, parse_model_response(raw))
     return tuple(_apply_threshold(decision, acceptance_threshold) for decision in decisions)

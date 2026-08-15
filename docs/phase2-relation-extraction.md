@@ -76,6 +76,10 @@ the configured model without persistence:
 uv run python -m scripts.eval_relation_extraction
 LLM_PROVIDER=deepseek uv run python -m scripts.eval_relation_extraction \
   --live --db videos.db --json-output /tmp/phase2-relation-eval.json
+
+Use `--variant flash` or `--variant pro` for apples-to-apples extraction
+benchmarks. These resolve through `DEEPSEEK_RELATION_FLASH_MODEL` and
+`DEEPSEEK_RELATION_PRO_MODEL`, respectively; `--model` is an explicit override.
 ```
 
 ## Extending Vocabulary

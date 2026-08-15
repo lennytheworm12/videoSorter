@@ -38,6 +38,35 @@ class RelationExtractionEvaluationTests(unittest.TestCase):
         with mock.patch("sys.argv", ["eval_relation_extraction", "--live"]), self.assertRaises(SystemExit):
             eval_relation_extraction.main()
 
+    def test_variant_selection_uses_configured_relation_model(self):
+        from unittest import mock
+        from scripts import eval_relation_extraction
+
+        with mock.patch("sys.argv", ["eval_relation_extraction", "--live", "--db", "videos.db", "--variant", "pro"]), \
+             mock.patch.object(eval_relation_extraction, "BACKEND", "deepseek"), \
+             mock.patch.object(eval_relation_extraction, "load_cases", return_value=()), \
+             mock.patch.object(eval_relation_extraction, "evaluate_cases", return_value={} ) as evaluate:
+            eval_relation_extraction.main()
+
+        extractor = evaluate.call_args.args[1]
+        with mock.patch.object(eval_relation_extraction, "extract_relations", return_value=() ) as extract:
+            extractor(object())
+        self.assertEqual(extract.call_args.kwargs["model"], eval_relation_extraction.RELATION_PRO_MODEL)
+
+    def test_custom_model_is_not_labeled_as_flash_or_pro_benchmark(self):
+        from unittest import mock
+        from scripts import eval_relation_extraction
+
+        with mock.patch("sys.argv", ["eval_relation_extraction", "--live", "--db", "videos.db", "--model", "other-model"]), \
+             mock.patch.object(eval_relation_extraction, "load_cases", return_value=()), \
+             mock.patch.object(eval_relation_extraction, "evaluate_cases", return_value={}) as evaluate:
+            eval_relation_extraction.main()
+
+        extractor = evaluate.call_args.args[1]
+        with mock.patch.object(eval_relation_extraction, "extract_relations", return_value=()) as extract:
+            extractor(object())
+        self.assertEqual(extract.call_args.kwargs["model"], "other-model")
+
 
 if __name__ == "__main__":
     unittest.main()
