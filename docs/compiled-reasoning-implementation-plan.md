@@ -1,0 +1,279 @@
+# Compiled Reasoning Implementation Plan
+
+Last updated: 2026-08-15
+
+## Architectural Objective
+
+The architectural target is the Notion design document **videoSorter Design -
+From Naive RAG to Compiled Strategic Reasoning** (page
+`3bbf8ba7-8bf3-811d-9b96-cc7c4d2df5b4`). The implementation hypothesis is:
+
+> Explicit strategic fingerprints, causal relations, and compiled principles
+> let the same inexpensive answer model produce materially better
+> first-principles League analysis than RAG evidence alone.
+
+Notion is the source of architectural rationale. This file is the durable,
+executable record of scope, gates, implementation status, tests, and risks.
+
+## Constraints
+
+- Retain vector and lexical retrieval; add relational structure alongside it.
+- Use the current SQLite/Postgres/Supabase architecture. No graph database for
+  the MVP.
+- Keep source-grounded evidence (`videos` and `insights`) separate from derived
+  strategic knowledge.
+- Preserve evidence provenance for every relation, fingerprint, and principle.
+- Make only small, reversible extensions. Do not add expensive synthesis before
+  structured context proves useful.
+- The query pipeline must retrieve and expose causal structure, not merely
+  persist it.
+- Empty or unavailable strategic data must preserve existing RAG behavior.
+
+## Repository Mapping
+
+Existing extensions used rather than duplicated:
+
+- Evidence and local persistence: `core/database.py`.
+- Hosted persistence: `supabase/schema.sql`, `cloud/migrate_supabase.py`.
+- Vector/lexical retrieval: `core/embedded_vectors.py`, `cloud/vector_store.py`,
+  and `retrieval/query.py`.
+- Query normalization and routing: `retrieval/questions.py`.
+- Existing derived game-data layers: `pipeline/champion_crossref.py` and
+  `pipeline/ability_enrich.py`.
+
+New, narrowly scoped strategic modules:
+
+- `core/ontology.py`, `core/strategic_types.py`: validated derived domain data.
+- `retrieval/strategic_context.py`: optional bounded strategic retrieval and
+  prompt serialization.
+- `data/strategic_fixtures_v0.json`: manually authored Phase 1 fixture.
+- `scripts/eval_reasoning.py`: repeatable baseline-versus-structured harness.
+
+## Phase Gates
+
+### Phase 1: Manual Representation MVP
+
+**Status: Complete. Gate passed; stop here.**
+
+Purpose: prove the representation manually before automating extraction,
+fingerprinting, hybrid retrieval, or synthesis.
+
+Acceptance criteria:
+
+- Ontology v0, validated relations/fingerprints/principles, and provenance exist.
+- Fixtures cover Caitlyn, Kai'Sa, Yunara, Tristana, Thresh, Sylas, and artillery
+  mage context.
+- Derived objects persist separately from raw evidence with version/confidence
+  filtering and provenance.
+- Query-time retrieval adds a bounded useful causal neighborhood while raw RAG
+  evidence remains intact.
+- Baseline and structured answers use the same model and the same RAG snapshot.
+- The four representative questions produce inspectable side-by-side output.
+- Tests cover malformed data, duplicate/contradictory relations, stale data,
+  missing data, confidence, cycles/hop limits, and RAG fallback.
+- Each meaningful boundary has independent review, fixes, tests, and a focused
+  commit pushed to `main`.
+
+Decision rule: proceed only if structured context increases causal specificity,
+state/resource reasoning, winning-line clarity, role dynamics, and opponent
+adaptation without replacing evidence grounding.
+
+### Phase 2: Automated Relation Extraction
+
+**Deferred.** Extract relations from evidence clusters, retain provenance,
+dedupe without evidence loss, model conditioned contradictions, and add an
+inspector. Start only after a new explicit decision to proceed.
+
+### Phase 3: Automated Champion Fingerprints
+
+**Deferred.** Assemble versioned fingerprints from high-confidence relations,
+track coverage/freshness/contradictions, and compare against the manual fixture.
+
+### Phase 4: Hybrid Vector + Graph Retrieval
+
+**Deferred.** Expand from vector/lexical seeds with bounded confidence,
+concept, entity, hop, and freshness filters.
+
+### Phase 5: Strong Offline Synthesis
+
+**Deferred.** Add gated, high-value offline synthesis only after structured
+context continues to prove useful.
+
+### Phase 6: Demand, Cache, and Invalidation
+
+**Deferred.** Add content-hash caching, demand triggers, budgets, and
+incremental invalidation only after synthesis is validated.
+
+### Phase 7: Expanded Evaluation and Calibration
+
+**Deferred.** Build a larger golden set and cost/quality A-B-C-D evaluation.
+
+## Phase 1 Milestones
+
+### M1: Domain Model and Fixture
+
+**Complete. Commit:** `7a63887` (`main`).
+
+- Added ontology v0 (20 concepts), typed `StrategicRelation`,
+  `ChampionFingerprint`, `CompiledPrinciple`, and evidence references.
+- Added the seven-entity manual fixture.
+- Invariants: non-speculative derived data requires provenance; confidence is
+  finite and bounded; stale versions are rejected; duplicate relations merge
+  evidence; conditioned contradictions remain distinct.
+- Tests: `uv run pytest tests/test_strategic_types.py` (16 passed at milestone).
+- Independent review fixed version validation, canonical dependency handling,
+  evidence-loss on duplicate merge, and malformed-confidence behavior.
+- Existing RAG behavior: unchanged.
+
+### M2: Minimal Derived Persistence
+
+**Complete. Commit:** `a9b4d96` (`main`).
+
+- Extended existing local and hosted schemas with additive strategic tables and
+  explicit provenance tables; raw `insights` remain unchanged.
+- Added typed fixture persistence, FK-safe evidence merging, version handling,
+  and optional hosted strategic sync.
+- Tests: strategic persistence/migration/retrieval focused suite (41 passed);
+  adjacent regression suite (59 passed).
+- Independent review fixed nested validation, FK enforcement, stale provenance,
+  forward migration, hosted cache replacement, and normalized duplicate keys.
+- Existing RAG behavior: empty strategic tables are a no-op.
+
+### M3: Strategic Retrieval and Context Builder
+
+**Complete. Commits:** `0a615c2`, `0969074` (`main`).
+
+- Added bounded SQLite strategic retrieval for fingerprints, compiled
+  principles, and a relevant causal subgraph.
+- Seeds entities from question text (including aliases/possessives), retains
+  provenance, bounds global relation count/hops, filters stale/low-confidence
+  data, and handles cycles/malformed rows safely.
+- Tests cover unknown entities, missing fingerprints, empty neighborhoods,
+  confidence filtering, stale data, duplicate/contradictory relations, cycles,
+  and unchanged base retrieval fallback.
+- Independent review corrected global relation bounds and question entity seeding.
+- Existing RAG behavior: unchanged when no strategic data is present.
+
+### M4: Query-Time Prompt Integration
+
+**Complete. Commit:** `2e17322` (`main`).
+
+- Added explicitly separated prompt sections for retrieved coaching evidence and
+  derived strategic context. Derived context is optional and cannot replace raw
+  evidence.
+- Added an opt-out flag for baseline evaluation and a 2v2 matchup route that
+  passes all four strategic entities.
+- Tests cover prompt separation, failures/no-op behavior, and existing answer
+  flow.
+- Independent review approved after routing and fallback fixes.
+- Existing RAG behavior: baseline path remains available.
+
+### M5: Evaluation Harness and Phase Gate
+
+**Complete. Commit:** `d5c7641` (`main`).
+
+Purpose: compare the same answer model with identical source evidence, once
+without and once with structured context. The output retains both answers and
+the exact base evidence snapshot in JSON for manual scoring of grounding,
+causal depth, state model, resource reasoning, winning line, role dynamics,
+specificity, opponent adaptation, and teaching quality.
+
+Inputs/outputs:
+
+- `scripts/eval_reasoning.py --live --top-k 8 --json-output <path>`.
+- Four cases: Caitlyn/artillery mage; Yunara + Thresh vs Tristana + Yuumi;
+  Kai'Sa conditional access/concentration; Sylas HP joust/second rotation.
+- Default execution is deterministic/plumbing-only; `--live` is opt-in.
+
+Tests and review:
+
+- Focused strategic/query/evaluation suite: 50 passed.
+- Adjacent API/migration/publishing regression suite: 23 passed.
+- Independent reviewer approved M5 after inspecting implementation, deriving
+  edge cases, and running the focused suite.
+
+### DeepSeek Answer Provider
+
+**Complete. Commits:** `b485591`, `43a4f36` (`main`).
+
+- Added DeepSeek's OpenAI-compatible chat provider and explicit
+  `LLM_PROVIDER=deepseek` selection, preserving automatic provider fallback
+  when unset.
+- Hosted runtime validation now matches the provider contract for Gemini,
+  DeepSeek, Ollama, and auto selection.
+- Tests cover request shape, malformed/empty responses, precedence, missing
+  credentials, hosted validation, and `.env` isolation: 43 passed.
+- Independent review found and verified fixes for hosted credential validation
+  and test isolation; final review approved.
+
+## Phase 1 Evaluation Result
+
+Run on 2026-08-15:
+
+```text
+LLM_PROVIDER=deepseek VECTOR_BACKEND=sqlite \
+  uv run python -m scripts.eval_reasoning --live --top-k 8 \
+  --json-output /tmp/phase1-reasoning-eval.json
+```
+
+Model: `deepseek:deepseek-v4-flash`. The harness used one local SQLite RAG
+snapshot per case for both answers. The saved JSON was 42,835 bytes.
+
+Observed comparison:
+
+- **Caitlyn vs artillery mage:** baseline repeated kit/range advice; structured
+  answer explained persistent low-cost pressure versus intermittent spell
+  windows, initiative after misses, and the resource budget.
+- **Yunara + Thresh vs Tristana + Yuumi:** baseline gave generic wave/lantern
+  advice; structured answer separated access from continuity, identified
+  Thresh's Flay as the continuation denial, and described Yuumi's amplification
+  of a successful entry.
+- **Kai'Sa:** baseline described an opportunistic all-in identity; structured
+  answer added the conditional commitment gate, plasma-mark access, damage
+  concentration, and failure states (numbers disadvantage or spread Q damage).
+- **Sylas:** baseline explicitly lacked the requested framing; structured answer
+  supplied access versus continuation, a second-rotation/HP-joust model, and a
+  decision sequence for commitment.
+
+Gate decision: **supported.** In all four cases the structured answer added the
+target causal/state/resource relationships while preserving the same raw
+evidence section. This is evidence that structured context reduces query-time
+reasoning work for this small manual fixture. It is not evidence of broad
+champion coverage, extraction quality, or production calibration.
+
+## Risks and Hold
+
+- The configured Supabase connection is stale (`ENOTFOUND` tenant/user). The
+  live Phase 1 evaluation therefore used the existing local SQLite evidence
+  store with `VECTOR_BACKEND=sqlite`; the harness remains valid because each
+  pair used the identical snapshot.
+- Hosted strategic schema/sync have structural tests but have not been executed
+  against a live Supabase project.
+- The fixture is intentionally small and manually authored. Do not claim
+  generalized quality from these four comparisons.
+- Add `LLM_PROVIDER=deepseek` to the local `.env` to make DeepSeek default;
+  `DEEPSEEK_API_KEY` and `DEEPSEEK_MODEL=deepseek-v4-flash` are already present.
+
+**Current hold:** Phase 1 is complete and the implementation is intentionally
+stopped. Do not begin Phase 2 without an explicit user request.
+
+## Testing and Git Policy
+
+For each meaningful behavior change: define invariants and edge cases, add
+deterministic tests, keep live LLM tests opt-in, obtain independent review,
+fix findings, retest, then make one focused commit and push it to `main`.
+Never mix unrelated dirty-worktree changes into those commits.
+
+## Fresh Session Bootstrap
+
+```text
+/model 5.6 terra
+
+Read:
+1. @docs/compiled-reasoning-implementation-plan.md
+2. the Notion page "videoSorter Design - From Naive RAG to Compiled Strategic Reasoning"
+3. the current repository state.
+
+Then set /goal to continue this plan exactly as documented.
+Do not proceed past a phase gate without satisfying its acceptance criteria.
+```
