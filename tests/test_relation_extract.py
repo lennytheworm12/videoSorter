@@ -9,6 +9,7 @@ from pipeline.relation_extract import (
     ExtractionPacket,
     compile_candidates,
     extract_relations,
+    extract_relation_trace,
     parse_model_response,
     packet_from_insight_ids,
     _positive_env_int,
@@ -184,6 +185,12 @@ class RelationExtractionTests(unittest.TestCase):
                 self.packet,
                 lambda **_: (_ for _ in ()).throw(TimeoutError("timed out")),
             )
+
+    def test_trace_retains_malformed_response_and_parsing_stage(self) -> None:
+        trace = extract_relation_trace(self.packet, lambda **_: "not-json")
+        self.assertEqual(trace.failure_stage, "parsing")
+        self.assertEqual(trace.raw_response, "not-json")
+        self.assertFalse(trace.decisions)
 
     def test_output_budget_config_rejects_malformed_or_non_positive_values(self) -> None:
         import os

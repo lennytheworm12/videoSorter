@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sqlite3
+import time
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Mapping
 
@@ -149,6 +150,18 @@ class ExtractionDecision:
     confidence_components: Mapping[str, float] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class ExtractionTrace:
+    raw_response: str | None
+    candidates: tuple[Mapping[str, Any], ...] = ()
+    decisions: tuple[ExtractionDecision, ...] = ()
+    failure_stage: str | None = None
+    failure_type: str | None = None
+    failure_message: str | None = None
+    latency_ms: int = 0
+    exception: Exception | None = field(default=None, repr=False, compare=False)
+
+
 def packet_from_insight_ids(db_path: str, insight_ids: tuple[str, ...] | list[str]) -> ExtractionPacket:
     """Build a source-grounded extraction packet from explicit local insight IDs."""
     ids = tuple(str(item).strip() for item in insight_ids if str(item).strip())
@@ -259,18 +272,62 @@ def extract_relations(
     model: str | None = None,
 ) -> tuple[ExtractionDecision, ...]:
     """Call the configured cheap-model adapter, then compile its response safely."""
+    trace = extract_relation_trace(
+        packet, chat, acceptance_threshold=acceptance_threshold, model=model
+    )
+    if trace.exception:
+        raise trace.exception
+    return trace.decisions
+
+
+def extract_relation_trace(
+    packet: ExtractionPacket,
+    chat: Callable[..., str],
+    *,
+    acceptance_threshold: float = DEFAULT_ACCEPTANCE_THRESHOLD,
+    model: str | None = None,
+) -> ExtractionTrace:
+    """Run extraction without hiding raw output or the stage of a failure."""
     if not 0.0 <= acceptance_threshold <= 1.0:
         raise ValueError("acceptance_threshold must be between 0 and 1")
-    raw = chat(
-        system=RELATION_EXTRACTION_SYSTEM,
-        user=packet.prompt(),
-        temperature=0.0,
-        max_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
-        thinking=DEEPSEEK_THINKING_MODE,
-        model=model,
+    started = time.perf_counter()
+    try:
+        raw = chat(
+            system=RELATION_EXTRACTION_SYSTEM,
+            user=packet.prompt(),
+            temperature=0.0,
+            max_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
+            thinking=DEEPSEEK_THINKING_MODE,
+            model=model,
+        )
+    except Exception as exc:
+        return _failed_trace("model_call", None, exc, started)
+    try:
+        candidates = tuple(parse_model_response(raw))
+    except Exception as exc:
+        return _failed_trace("parsing", raw, exc, started)
+    try:
+        decisions = tuple(_apply_threshold(decision, acceptance_threshold) for decision in compile_candidates(packet, list(candidates)))
+    except Exception as exc:
+        return _failed_trace("validation", raw, exc, started, candidates)
+    return ExtractionTrace(raw, candidates, decisions, latency_ms=_elapsed_ms(started))
+
+
+def _failed_trace(
+    stage: str,
+    raw: str | None,
+    exc: Exception,
+    started: float,
+    candidates: tuple[Mapping[str, Any], ...] = (),
+) -> ExtractionTrace:
+    return ExtractionTrace(
+        raw, candidates, failure_stage=stage, failure_type=type(exc).__name__,
+        failure_message=str(exc), latency_ms=_elapsed_ms(started), exception=exc,
     )
-    decisions = compile_candidates(packet, parse_model_response(raw))
-    return tuple(_apply_threshold(decision, acceptance_threshold) for decision in decisions)
+
+
+def _elapsed_ms(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
 
 
 def _compile_candidate(

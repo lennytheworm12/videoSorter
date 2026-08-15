@@ -20,6 +20,7 @@ from pipeline.relation_extract import (
     ExtractionDecision,
     ExtractionPacket,
     compile_candidates,
+    extract_relation_trace,
     extract_relations,
     packet_from_insight_ids,
 )
@@ -55,14 +56,24 @@ def load_cases(path: str | Path, *, source_db: str | Path | None = None) -> tupl
 
 def evaluate_cases(
     cases: tuple[ExtractionCase, ...],
-    extractor: Callable[[ExtractionPacket], tuple[ExtractionDecision, ...]],
+    extractor: Callable[[ExtractionPacket], tuple[ExtractionDecision, ...] | object],
 ) -> dict[str, Any]:
     """Compare normalized relation structure without treating prose effects as identity."""
     outputs = []
     matched = expected_total = accepted_total = 0
     subject_correct = type_correct = object_correct = condition_correct = provenance_correct = 0
     for case in cases:
-        decisions = extractor(case.packet)
+        trace = extractor(case.packet)
+        failure = None
+        if hasattr(trace, "decisions") and hasattr(trace, "failure_stage"):
+            decisions = trace.decisions
+            failure = {
+                "stage": trace.failure_stage, "type": trace.failure_type,
+                "message": trace.failure_message, "latency_ms": trace.latency_ms,
+                "raw_response": trace.raw_response,
+            }
+        else:
+            decisions = trace
         expected = [item.relation for item in case.expected]
         accepted = [item.relation for item in decisions if item.status == "accepted" and item.relation]
         expected_total += len(expected)
@@ -85,6 +96,7 @@ def evaluate_cases(
         outputs.append({
             "case_id": case.id, "expected": [_relation_json(item) for item in expected],
             "decisions": [_decision_json(item) for item in decisions], "matched": case_matches,
+            "failure": failure,
         })
     precision = matched / accepted_total if accepted_total else (1.0 if not expected_total else 0.0)
     recall = matched / expected_total if expected_total else 1.0
@@ -145,7 +157,7 @@ def main() -> None:
     else:
         selected_model, model_label = None, "provider_default"
     if args.live:
-        result = evaluate_cases(cases, lambda packet: extract_relations(packet, chat, model=selected_model))
+        result = evaluate_cases(cases, lambda packet: extract_relation_trace(packet, chat, model=selected_model))
     else:
         result = {"status": "validated_fixture_only", "case_count": len(cases), "message": "Pass --live to make model calls."}
     result["model"] = {"backend": BACKEND, "model": selected_model or MODEL, "variant": model_label} if args.live else None
