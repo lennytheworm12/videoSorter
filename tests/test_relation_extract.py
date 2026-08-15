@@ -208,6 +208,7 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("evidence_id=4798", captured["user"])
         self.assertIn("Allowed relation types", captured["user"])
         self.assertIn("Do not use League knowledge", captured["system"])
+        self.assertIn("Copy condition wording", captured["system"])
         self.assertEqual(captured["max_tokens"], 4096)
         self.assertEqual(captured["thinking"], "disabled")
 
