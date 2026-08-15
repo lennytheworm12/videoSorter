@@ -70,6 +70,18 @@ class DeepSeekGenerateTests(unittest.TestCase):
                         12,
                     )
 
+    def test_sends_explicit_thinking_mode_when_requested(self):
+        response = _Response({"choices": [{"message": {"content": "answer"}}]})
+        with mock.patch("core.llm.urlrequest.urlopen", return_value=response) as urlopen:
+            _deepseek_generate("secret", "https://api.deepseek.com", "deepseek-v4-flash", "system", "user", 0.2, 64, 12, "disabled")
+
+        payload = json.loads(urlopen.call_args.args[0].data.decode("utf-8"))
+        self.assertEqual(payload["thinking"], {"type": "disabled"})
+
+    def test_rejects_invalid_thinking_mode(self):
+        with self.assertRaisesRegex(ValueError, "thinking"):
+            _deepseek_generate("secret", "https://api.deepseek.com", "deepseek-v4-flash", "system", "user", 0.2, 64, 12, "maybe")
+
 
 class ProviderSelectionTests(unittest.TestCase):
     def tearDown(self):

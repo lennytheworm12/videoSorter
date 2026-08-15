@@ -40,6 +40,9 @@ def _positive_env_int(name: str, default: int) -> int:
 
 
 DEFAULT_MAX_OUTPUT_TOKENS = _positive_env_int("RELATION_EXTRACTION_MAX_TOKENS", 4096)
+DEEPSEEK_THINKING_MODE = os.environ.get("RELATION_EXTRACTION_DEEPSEEK_THINKING", "disabled")
+if DEEPSEEK_THINKING_MODE not in {"enabled", "disabled"}:
+    raise RuntimeError("RELATION_EXTRACTION_DEEPSEEK_THINKING must be enabled or disabled")
 
 RELATION_EXTRACTION_SYSTEM = """You are a constrained strategic relation compiler.
 Return JSON only. Derive only relations supported by the supplied evidence.
@@ -250,6 +253,7 @@ def extract_relations(
         user=packet.prompt(),
         temperature=0.0,
         max_tokens=DEFAULT_MAX_OUTPUT_TOKENS,
+        thinking=DEEPSEEK_THINKING_MODE,
     )
     decisions = compile_candidates(packet, parse_model_response(raw))
     return tuple(_apply_threshold(decision, acceptance_threshold) for decision in decisions)

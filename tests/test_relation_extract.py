@@ -140,6 +140,7 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("Allowed relation types", captured["user"])
         self.assertIn("Do not use League knowledge", captured["system"])
         self.assertEqual(captured["max_tokens"], 4096)
+        self.assertEqual(captured["thinking"], "disabled")
 
     def test_model_failure_propagates_without_creating_a_decision(self) -> None:
         with self.assertRaisesRegex(TimeoutError, "timed out"):

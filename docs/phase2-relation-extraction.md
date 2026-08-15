@@ -88,7 +88,10 @@ expansion.
 The extraction model/provider is configured through the existing `LLM_PROVIDER`
 and model environment variables. `RELATION_EXTRACTION_MAX_TOKENS` controls the
 structured compiler output budget (default: `4096`); `temperature` is fixed at
-zero for repeatability.
+zero for repeatability. DeepSeek V4 defaults to thinking mode, whose reasoning
+tokens count toward this budget. The compiler therefore requests non-thinking
+mode by default through `RELATION_EXTRACTION_DEEPSEEK_THINKING=disabled`; set it
+to `enabled` only when explicitly benchmarking that cost/latency tradeoff.
 
 ## Known Limits
 

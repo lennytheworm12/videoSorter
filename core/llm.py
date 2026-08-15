@@ -51,6 +51,7 @@ def _deepseek_generate(
     temperature: float,
     max_tokens: int | None,
     timeout_seconds: float,
+    thinking: str | None = None,
 ) -> str:
     """Call DeepSeek's OpenAI-compatible non-streaming chat endpoint."""
     payload = {
@@ -63,6 +64,10 @@ def _deepseek_generate(
         "max_tokens": max_tokens or 4096,
         "stream": False,
     }
+    if thinking is not None:
+        if thinking not in {"enabled", "disabled"}:
+            raise ValueError("DeepSeek thinking must be enabled or disabled")
+        payload["thinking"] = {"type": thinking}
     endpoint = base_url.rstrip("/") + "/chat/completions"
     req = urlrequest.Request(
         endpoint,
@@ -126,6 +131,7 @@ if _LLM_PROVIDER == "gemini" or (_LLM_PROVIDER == "" and _GOOGLE_API_KEY):
         temperature: float = 0.1,
         max_tokens: int | None = None,
         model: str | None = None,
+        thinking: str | None = None,
     ) -> str:
         import time as _time
         _model = model or _DEFAULT_MODEL
@@ -203,6 +209,7 @@ elif _LLM_PROVIDER == "deepseek" or (_LLM_PROVIDER == "" and _DEEPSEEK_API_KEY):
         temperature: float = 0.1,
         max_tokens: int | None = None,
         model: str | None = None,
+        thinking: str | None = None,
     ) -> str:
         return _deepseek_generate(
             _DEEPSEEK_API_KEY,
@@ -213,6 +220,7 @@ elif _LLM_PROVIDER == "deepseek" or (_LLM_PROVIDER == "" and _DEEPSEEK_API_KEY):
             temperature,
             max_tokens,
             _DEEPSEEK_TIMEOUT_SECONDS,
+            thinking,
         )
 
     BACKEND = "deepseek"
@@ -229,6 +237,7 @@ else:
         temperature: float = 0.1,
         max_tokens: int = 4096,
         model: str | None = None,
+        thinking: str | None = None,
     ) -> str:
         response = _ollama.chat(
             model=model or _DEFAULT_MODEL,
