@@ -1,0 +1,56 @@
+{
+  "ontology_version": "strategic-ontology-v0",
+  "prompt_version": "strategic-relation-extraction-v0",
+  "cases": [
+    {
+      "id": "thresh-flay-denies-rocket-jump",
+      "evidence": [{
+        "insight_id": "13426", "source_id": "__ability__thresh__", "source_type": "insight", "confidence": 0.3,
+        "text": "The Flay (E) active provides a brief displacement window that can interrupt channeled dashes like Tristana's Rocket Jump; time your E to hit the enemy at the apex of their dash animation to cancel their mobility entirely."
+      }],
+      "ability_aliases": {"Flay": "Thresh E", "Rocket Jump": "Tristana W"},
+      "expected": [{
+        "subject": "Flay", "subject_type": "ability", "relation_type": "denies",
+        "object": "Rocket Jump", "object_type": "ability", "condition": "when Flay hits at the apex of the dash",
+        "effect": "Tristana's mobility is canceled", "concepts": [], "provenance_type": "source_claim",
+        "evidence_ids": ["13426"], "extraction_confidence": 0.9, "patch_sensitivity": "low"
+      }]
+    },
+    {
+      "id": "explosive-charge-enables-rocket-jump-reset",
+      "evidence": [{
+        "insight_id": "13334", "source_id": "__ability__tristana__", "source_type": "insight", "confidence": 0.3,
+        "text": "Rocket Jump (W) resets upon fully stacking Explosive Charge (E) or scoring a kill; in skirmishes, focus your E on the lowest health target to guarantee the reset, allowing for a secondary jump to reposition or chase."
+      }],
+      "ability_aliases": {"Rocket Jump": "Tristana W", "Explosive Charge": "Tristana E"},
+      "expected": [{
+        "subject": "Explosive Charge", "subject_type": "ability", "relation_type": "enables",
+        "object": "Rocket Jump", "object_type": "ability", "condition": "when Explosive Charge is fully stacked",
+        "effect": "Rocket Jump resets", "concepts": ["reset"], "provenance_type": "source_claim",
+        "evidence_ids": ["13334"], "extraction_confidence": 0.9, "patch_sensitivity": "medium"
+      }]
+    },
+    {
+      "id": "sylas-abduct-enables-kingslayer-buffer",
+      "evidence": [{
+        "insight_id": "13612", "source_id": "__ability__sylas__", "source_type": "insight", "confidence": 0.3,
+        "text": "The E2 (Abduct) travel time creates a micro-window where you can buffer your W (Kingslayer) or an item active; casting W mid-dash ensures the heal and damage land immediately upon arrival, preventing the target from flashing away before your burst connects."
+      }],
+      "ability_aliases": {"Abduct": "Sylas E", "Kingslayer": "Sylas W"},
+      "expected": [{
+        "subject": "Abduct", "subject_type": "ability", "relation_type": "enables",
+        "object": "Kingslayer", "object_type": "ability", "condition": "when Kingslayer is buffered during Abduct travel",
+        "effect": "Kingslayer lands on arrival before the target can flash", "concepts": ["conversion"], "provenance_type": "source_claim",
+        "evidence_ids": ["13612"], "extraction_confidence": 0.9, "patch_sensitivity": "medium"
+      }]
+    },
+    {
+      "id": "insufficient-specificity-is-zero-relation",
+      "evidence": [{
+        "insight_id": "5203", "source_id": "e-Q", "source_type": "insight", "confidence": 0.6998,
+        "text": "Tristana's strength is to stack Lethal Tempo or burst targets with E, which requires specific conditions."
+      }],
+      "ability_aliases": {}, "expected": []
+    }
+  ]
+}

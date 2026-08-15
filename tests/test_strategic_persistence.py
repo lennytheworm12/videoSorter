@@ -168,6 +168,58 @@ class StrategicPersistenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "accepted compiler decisions"):
             db.persist_strategic_relations((ExtractionDecision({}, automated, "review"),))
 
+    def test_same_automated_relation_id_merges_evidence_across_reruns(self) -> None:
+        db.init_db()
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        first = replace(
+            fixture.relations[0], id="auto-rerun", data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="coach_supported_inference",
+            evidence_refs=(EvidenceRef("insight", "video-1", "insight-1"),),
+        )
+        second = replace(first, evidence_refs=(EvidenceRef("insight", "video-2", "insight-2"),))
+        db.persist_strategic_relations((ExtractionDecision({}, first, "accepted"),))
+        db.persist_strategic_relations((ExtractionDecision({}, second, "accepted"),))
+
+        with db.get_connection() as conn:
+            evidence_count = conn.execute(
+                "SELECT COUNT(*) FROM strategic_relation_evidence WHERE relation_id = ?", (first.id,)
+            ).fetchone()[0]
+
+        self.assertEqual(evidence_count, 2)
+
+    def test_later_automated_cluster_with_same_condition_conflict_is_not_persisted(self) -> None:
+        db.init_db()
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        first = replace(
+            fixture.relations[0], id="auto-conflict-first", data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="source_claim", relation_type="creates",
+        )
+        opposing = replace(first, id="auto-conflict-second", relation_type="denies")
+        db.persist_strategic_relations((ExtractionDecision({}, first, "accepted"),))
+
+        with self.assertRaisesRegex(ValueError, "contradictory relation"):
+            db.persist_strategic_relations((ExtractionDecision({}, opposing, "accepted"),))
+
+        with db.get_connection() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM strategic_relations WHERE id IN (?, ?)", (first.id, opposing.id)).fetchone()[0]
+        self.assertEqual(count, 1)
+
+    def test_one_automated_batch_with_same_condition_conflict_is_not_persisted(self) -> None:
+        db.init_db()
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        first = replace(
+            fixture.relations[0], id="auto-batch-conflict-first", data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="source_claim", relation_type="creates",
+        )
+        opposing = replace(first, id="auto-batch-conflict-second", relation_type="denies")
+
+        with self.assertRaisesRegex(ValueError, "contradictory relation"):
+            db.persist_strategic_relations((ExtractionDecision({}, first, "accepted"), ExtractionDecision({}, opposing, "accepted")))
+
+        with db.get_connection() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM strategic_relations WHERE id IN (?, ?)", (first.id, opposing.id)).fetchone()[0]
+        self.assertEqual(count, 0)
+
     def test_duplicate_relation_support_is_merged_before_persistence(self) -> None:
         db.init_db()
         fixture = load_strategic_fixture(FIXTURE_PATH)

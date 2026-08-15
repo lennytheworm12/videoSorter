@@ -1,4 +1,6 @@
 import json
+import sqlite3
+import tempfile
 import unittest
 
 from core.champions import canonical_champion_name
@@ -8,6 +10,7 @@ from pipeline.relation_extract import (
     compile_candidates,
     extract_relations,
     parse_model_response,
+    packet_from_insight_ids,
 )
 
 
@@ -110,6 +113,21 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(decision.status, "review")
         self.assertIsNotNone(decision.relation)
 
+    def test_same_condition_opposite_relations_are_quarantined_for_review(self) -> None:
+        creates = _candidate(relation_type="creates")
+        denies = _candidate(relation_type="denies")
+        decisions = compile_candidates(self.packet, [creates, denies])
+
+        self.assertEqual([item.status for item in decisions], ["review", "review"])
+        self.assertTrue(all("contradictory" in item.warnings[-1] for item in decisions))
+
+    def test_distinct_conditions_do_not_trigger_contradiction_review(self) -> None:
+        creates = _candidate(relation_type="creates", condition="when Flay is unavailable")
+        denies = _candidate(relation_type="denies", condition="while Flay is available")
+        decisions = compile_candidates(self.packet, [creates, denies])
+
+        self.assertEqual([item.status for item in decisions], ["accepted", "accepted"])
+
     def test_model_is_prompted_only_with_packet_evidence_and_constraints(self) -> None:
         captured = {}
         extract_relations(
@@ -120,6 +138,59 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("evidence_id=4798", captured["user"])
         self.assertIn("Allowed relation types", captured["user"])
         self.assertIn("Do not use League knowledge", captured["system"])
+
+    def test_model_failure_propagates_without_creating_a_decision(self) -> None:
+        with self.assertRaisesRegex(TimeoutError, "timed out"):
+            extract_relations(
+                self.packet,
+                lambda **_: (_ for _ in ()).throw(TimeoutError("timed out")),
+            )
+
+    def test_packet_loader_uses_explicit_insights_and_existing_ability_metadata_only(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = f"{directory}/evidence.db"
+            conn = sqlite3.connect(path)
+            conn.executescript(
+                """
+                CREATE TABLE videos (video_id TEXT PRIMARY KEY, champion TEXT, subject TEXT);
+                CREATE TABLE insights (id INTEGER PRIMARY KEY, video_id TEXT, text TEXT, source_score REAL, cluster_score REAL, confidence REAL);
+                CREATE TABLE champion_abilities (champion TEXT, ability_slot TEXT, name TEXT);
+                INSERT INTO videos VALUES ('video-1', 'Thresh', NULL);
+                INSERT INTO insights VALUES (9, 'video-1', 'Hold Flay for the engage.', .8, .6, .7);
+                INSERT INTO champion_abilities VALUES ('Thresh', 'E', 'Flay');
+                INSERT INTO champion_abilities VALUES ('Thresh', 'Q', 'Death Sentence');
+                """
+            )
+            conn.commit()
+            conn.close()
+            packet = packet_from_insight_ids(path, ["9"])
+            with self.assertRaisesRegex(ValueError, "unknown insight IDs"):
+                packet_from_insight_ids(path, ["missing"])
+
+        self.assertEqual(packet.evidence[0].source_id, "video-1")
+        self.assertEqual(packet.ability_aliases["Flay"], "Thresh E")
+        self.assertNotIn("Thresh Q", packet.ability_aliases.values())
+
+    def test_packet_loader_does_not_allow_unmentioned_abilities_for_named_champion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = f"{directory}/evidence.db"
+            conn = sqlite3.connect(path)
+            conn.executescript(
+                """
+                CREATE TABLE videos (video_id TEXT PRIMARY KEY, champion TEXT, subject TEXT);
+                CREATE TABLE insights (id INTEGER PRIMARY KEY, video_id TEXT, text TEXT, source_score REAL, cluster_score REAL, confidence REAL);
+                CREATE TABLE champion_abilities (champion TEXT, ability_slot TEXT, name TEXT);
+                INSERT INTO videos VALUES ('video-1', 'Thresh', NULL);
+                INSERT INTO insights VALUES (9, 'video-1', 'Thresh should wait before engaging.', .8, .6, .7);
+                INSERT INTO champion_abilities VALUES ('Thresh', 'E', 'Flay');
+                INSERT INTO champion_abilities VALUES ('Thresh', 'Q', 'Death Sentence');
+                """
+            )
+            conn.commit()
+            conn.close()
+            packet = packet_from_insight_ids(path, ["9"])
+
+        self.assertFalse(packet.ability_aliases)
 
 
 def _candidate(**overrides):

@@ -80,9 +80,43 @@ adaptation without replacing evidence grounding.
 
 ### Phase 2: Automated Relation Extraction
 
-**Deferred.** Extract relations from evidence clusters, retain provenance,
-dedupe without evidence loss, model conditioned contradictions, and add an
-inspector. Start only after a new explicit decision to proceed.
+**Status: In progress.** The constrained compiler, source packet loader,
+canonical validation, persistence, inspector, and small reference evaluator are
+implemented locally pending independent review and live-model validation. No
+fingerprint automation has started.
+
+Gate: accept only if a cheap model produces provenanced, ontology-valid,
+condition-preserving relations close enough to the small manual references at a
+useful precision/recall level. Review/reject output must never enter the graph.
+
+#### Phase 2 M1: Compiler Contract and Persistence
+
+**Complete. Commit:** `0ed16f3` (`main`).
+
+- Added source-grounded `EvidenceItem`/`ExtractionPacket`, strict structured
+  response parsing, deterministic canonicalization, confidence composition,
+  condition-safe identities, and accepted/review/rejected decisions.
+- Preserves the Phase 1 `StrategicRelation` object and strategic tables, adding
+  an automated relation data version and ontology-version-safe uniqueness.
+- Automated relations may only be persisted through accepted compiler decisions;
+  all have one or more evidence references. Manual Phase 1 fixtures remain
+  separate and usable.
+- Tests/review: 64 deterministic tests passed. Independent reviewers corrected
+  arbitrary-node acceptance, unsafe inverse aliasing, and legacy SQLite FK
+  migration behavior before approval.
+
+#### Phase 2 M2: Explicit Evidence Workflows and Evaluation
+
+**Status: Deterministic implementation complete; live validation pending.**
+
+- Added explicit insight-ID packet construction, default dry-run extraction,
+  opt-in persistence, relation inspection, and a four-case source-grounded
+  reference evaluator. Automated accepted relations now participate in the
+  existing bounded relation context; fingerprints and principles remain manual.
+- Independent review approved after fixes for provenance merging, source-only
+  ability aliases, ontology filtering, and cross-cluster contradiction review.
+  Pending: a no-mutation DeepSeek dry-run over the small validation set and a
+  documented quality result before the Phase 2 gate decision.
 
 ### Phase 3: Automated Champion Fingerprints
 

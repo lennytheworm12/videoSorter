@@ -28,10 +28,24 @@ AUTOMATED_RELATION_DATA_VERSION = "strategic-relations-v0"
 SUPPORTED_RELATION_DATA_VERSIONS = frozenset(
     {CURRENT_STRATEGIC_DATA_VERSION, AUTOMATED_RELATION_DATA_VERSION}
 )
+CONTRADICTORY_RELATION_TYPE_PAIRS = frozenset(
+    {
+        frozenset(("creates", "denies")),
+        frozenset(("enables", "denies")),
+        frozenset(("amplifies", "reduces")),
+        frozenset(("expands", "compresses")),
+        frozenset(("increases_cost_of", "reduces_cost_of")),
+    }
+)
 
 
 class StrategicValidationError(ValueError):
     """Raised when strategic fixture or domain data violates invariants."""
+
+
+def relation_types_conflict(left: str, right: str) -> bool:
+    """Return whether two relation types are unsafe to combine at one condition."""
+    return frozenset((left, right)) in CONTRADICTORY_RELATION_TYPE_PAIRS
 
 
 @dataclass(frozen=True)

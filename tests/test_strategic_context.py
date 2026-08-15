@@ -5,6 +5,7 @@ import unittest
 
 import core.database as db
 from core.strategic_types import load_strategic_fixture
+from pipeline.relation_extract import EvidenceItem, ExtractionPacket, compile_candidates
 from retrieval.strategic_context import _question_concepts, build_strategic_context
 
 
@@ -79,6 +80,13 @@ class StrategicContextTests(unittest.TestCase):
         self.assertFalse(context.fingerprints)
         self.assertTrue(all(row["confidence"] >= 0.7 for row in context.relations))
 
+    def test_relation_retrieval_filters_stale_ontology_versions(self):
+        with db.get_connection() as conn:
+            conn.execute("UPDATE strategic_relations SET ontology_version = 'stale' WHERE id = (SELECT id FROM strategic_relations LIMIT 1)")
+            conn.commit()
+        context = build_strategic_context("Caitlyn access", ("Caitlyn",), db_paths=(str(self.path),))
+        self.assertTrue(all(row["ontology_version"] != "stale" for row in context.relations))
+
     def test_hop_and_relation_limits_bound_cycles(self):
         base = build_strategic_context("Yunara access", ("Yunara",), db_paths=(str(self.path),), max_hops=0, max_relations=1)
         expanded = build_strategic_context("Yunara access", ("Yunara",), db_paths=(str(self.path),), max_hops=2, max_relations=4)
@@ -152,6 +160,26 @@ class StrategicContextTests(unittest.TestCase):
             max_relations=1,
         )
         self.assertLessEqual(len(context.relations), 1)
+
+    def test_accepted_automated_relation_uses_existing_context_retrieval(self):
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("source-1", "video-1", "Thresh Flay denies continued contact.", confidence=0.9),),
+            ability_aliases={"Flay": "Thresh E"},
+        )
+        candidate = {
+            "subject": "Flay", "subject_type": "ability", "relation_type": "denies",
+            "object": "continued contact", "object_type": "concept",
+            "condition": "while available", "effect": None,
+            "concepts": ["continuity"], "provenance_type": "source_claim",
+            "evidence_ids": ["source-1"], "extraction_confidence": 0.95,
+            "patch_sensitivity": "low",
+        }
+        decision = compile_candidates(packet, [candidate])[0]
+        db.persist_strategic_relations((decision,))
+
+        context = build_strategic_context("How does Thresh deny continuity?", ("Thresh",), db_paths=(str(self.path),))
+
+        self.assertTrue(any(row["id"] == decision.relation.id for row in context.relations))
 
 
 if __name__ == "__main__":

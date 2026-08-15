@@ -177,6 +177,19 @@ def canonical_champion_name(value: str) -> str | None:
     return None
 
 
+def champions_mentioned(text: str) -> tuple[str, ...]:
+    """Return canonical champions explicitly mentioned in text, longest first."""
+    if not isinstance(text, str):
+        return ()
+    corrected = correct_names(text)
+    matches = []
+    for champion in load_champion_names():
+        pattern = r"(?<![a-z0-9])" + re.escape(champion) + r"(?![a-z0-9])"
+        if re.search(pattern, corrected, re.IGNORECASE):
+            matches.append(champion)
+    return tuple(matches)
+
+
 def champion_names_for_prompt() -> str:
     """Return a compact string of all champion names for injection into prompts."""
     return ", ".join(load_champion_names())

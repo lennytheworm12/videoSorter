@@ -435,7 +435,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                 None,
             )
             relation_to_persist = relation
-            if stable_match is not None and stable_match["id"] != relation.id:
+            if stable_match is not None:
                 stored_refs = tuple(
                     EvidenceRef(
                         source_type=row["source_type"],
@@ -606,6 +606,7 @@ def persist_strategic_relations(decisions: tuple | list) -> None:
         if relation.data_version != AUTOMATED_RELATION_DATA_VERSION:
             raise ValueError("automated persistence requires automated relation data")
         relations.append(relation)
+    _reject_persisted_contradictions(relations)
     fixture = StrategicFixture(
         ontology_version=ONTOLOGY_VERSION,
         data_version=AUTOMATED_RELATION_DATA_VERSION,
@@ -614,6 +615,48 @@ def persist_strategic_relations(decisions: tuple | list) -> None:
         principles=(),
     )
     _persist_strategic_fixture(fixture)
+
+
+def _reject_persisted_contradictions(relations: list) -> None:
+    """Keep later extraction clusters from silently storing opposing same-state edges."""
+    from core.strategic_types import relation_types_conflict
+
+    for index, relation in enumerate(relations):
+        for other in relations[:index]:
+            if _same_relation_target(relation, other) and relation_types_conflict(relation.relation_type, other.relation_type):
+                raise ValueError("potential same-condition contradictory relation requires review")
+    with get_connection() as conn:
+        _init_strategic_tables(conn)
+        for relation in relations:
+            rows = conn.execute(
+                """
+                SELECT relation_type FROM strategic_relations
+                WHERE data_version = ? AND ontology_version = ?
+                  AND subject_type = ? AND subject_key = ?
+                  AND object_type = ? AND object_key = ?
+                  AND condition_json = ?
+                """,
+                (
+                    relation.data_version, relation.ontology_version,
+                    relation.subject_type, relation.subject_key,
+                    relation.object_type, relation.object_key,
+                    _json_scalar(relation.condition),
+                ),
+            ).fetchall()
+            if any(relation_types_conflict(relation.relation_type, row["relation_type"]) for row in rows):
+                raise ValueError("potential same-condition contradictory relation requires review")
+
+
+def _same_relation_target(left, right) -> bool:
+    return (
+        left.data_version == right.data_version
+        and left.ontology_version == right.ontology_version
+        and left.subject_type == right.subject_type
+        and left.subject_key == right.subject_key
+        and left.object_type == right.object_type
+        and left.object_key == right.object_key
+        and left.condition == right.condition
+    )
 
 
 def init_db() -> None:

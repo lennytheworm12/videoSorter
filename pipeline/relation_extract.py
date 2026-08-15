@@ -8,16 +8,19 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+import re
+import sqlite3
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Mapping
 
 from core.ontology import ONTOLOGY_VERSION, RELATION_TYPES, STRATEGIC_CONCEPTS
+from core.champions import champions_mentioned
 from core.relation_normalization import (
     canonical_condition,
     canonical_entity,
     canonical_relation_type,
 )
-from core.strategic_types import AUTOMATED_RELATION_DATA_VERSION, EvidenceRef, StrategicRelation
+from core.strategic_types import AUTOMATED_RELATION_DATA_VERSION, EvidenceRef, StrategicRelation, relation_types_conflict
 
 
 EXTRACTION_PROMPT_VERSION = "strategic-relation-extraction-v0"
@@ -116,6 +119,78 @@ class ExtractionDecision:
     confidence_components: Mapping[str, float] = field(default_factory=dict)
 
 
+def packet_from_insight_ids(db_path: str, insight_ids: tuple[str, ...] | list[str]) -> ExtractionPacket:
+    """Build a source-grounded extraction packet from explicit local insight IDs."""
+    ids = tuple(str(item).strip() for item in insight_ids if str(item).strip())
+    if not ids or len(ids) != len(set(ids)):
+        raise ValueError("provide one or more unique insight IDs")
+    placeholders = ",".join("?" for _ in ids)
+    with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            f"""
+            SELECT i.id, i.video_id, i.text, i.source_score, i.cluster_score,
+                   i.confidence, v.champion, v.subject
+            FROM insights AS i
+            JOIN videos AS v ON v.video_id = i.video_id
+            WHERE i.id IN ({placeholders})
+            """,
+            ids,
+        ).fetchall()
+        by_id = {str(row["id"]): row for row in rows}
+        if set(by_id) != set(ids):
+            missing = ", ".join(sorted(set(ids) - set(by_id)))
+            raise ValueError(f"unknown insight IDs: {missing}")
+        evidence = tuple(
+            EvidenceItem(
+                insight_id=insight_id,
+                source_id=by_id[insight_id]["video_id"],
+                text=by_id[insight_id]["text"],
+                source_score=by_id[insight_id]["source_score"],
+                cluster_score=by_id[insight_id]["cluster_score"],
+                confidence=by_id[insight_id]["confidence"],
+            )
+            for insight_id in ids
+        )
+        champions = _packet_champions(rows)
+        aliases = _ability_aliases(conn, champions, "\n".join(item.text for item in evidence))
+    return ExtractionPacket(evidence=evidence, ability_aliases=aliases)
+
+
+def _packet_champions(rows: list[sqlite3.Row]) -> tuple[str, ...]:
+    names = []
+    for row in rows:
+        for value in (row["champion"], row["subject"], row["text"]):
+            names.extend(champions_mentioned(value or ""))
+    return tuple(dict.fromkeys(names))
+
+
+def _ability_aliases(conn: sqlite3.Connection, champions: tuple[str, ...], evidence_text: str) -> dict[str, str]:
+    """Expose only ability names that the selected evidence explicitly names."""
+    if not champions:
+        return {}
+    placeholders = ",".join("?" for _ in champions)
+    rows = conn.execute(
+        f"SELECT champion, ability_slot, name FROM champion_abilities WHERE champion IN ({placeholders})",
+        champions,
+    ).fetchall()
+    aliases: dict[str, str] = {}
+    for row in rows:
+        canonical = f"{row['champion']} {row['ability_slot']}"
+        names = [canonical]
+        if row["name"]:
+            names.extend(part.strip() for part in row["name"].split("/") if part.strip())
+            names.append(f"{row['champion']} {row['name']}")
+        for name in names:
+            if _text_mentions_alias(evidence_text, name):
+                aliases[name] = canonical
+    return aliases
+
+
+def _text_mentions_alias(text: str, alias: str) -> bool:
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(alias) + r"(?![a-z0-9])", text, re.IGNORECASE))
+
+
 def parse_model_response(raw: str) -> list[Mapping[str, Any]]:
     """Parse one strict JSON response; malformed or partial responses are rejected."""
     try:
@@ -133,7 +208,7 @@ def compile_candidates(packet: ExtractionPacket, candidates: list[Mapping[str, A
     """Validate untrusted candidates without performing an LLM call."""
     packet.validate()
     evidence_by_id = {item.insight_id: item for item in packet.evidence}
-    return tuple(
+    decisions = tuple(
         _compile_candidate(
             candidate,
             evidence_by_id,
@@ -143,6 +218,7 @@ def compile_candidates(packet: ExtractionPacket, candidates: list[Mapping[str, A
         )
         for candidate in candidates
     )
+    return _flag_structural_contradictions(decisions)
 
 
 def extract_relations(
@@ -281,4 +357,36 @@ def _apply_threshold(decision: ExtractionDecision, threshold: float) -> Extracti
         "review",
         decision.warnings + (f"confidence below threshold {threshold:.2f}",),
         decision.confidence_components,
+    )
+
+
+def _flag_structural_contradictions(decisions: tuple[ExtractionDecision, ...]) -> tuple[ExtractionDecision, ...]:
+    """Quarantine same-condition opposite edges instead of hiding either claim."""
+    conflicts: set[int] = set()
+    accepted = [(index, decision.relation) for index, decision in enumerate(decisions) if decision.relation]
+    for index, relation in accepted:
+        for other_index, other in accepted:
+            if index >= other_index or not _same_relation_target(relation, other):
+                continue
+            if relation_types_conflict(relation.relation_type, other.relation_type):
+                conflicts.update((index, other_index))
+    return tuple(
+        replace(
+            decision,
+            status="review",
+            warnings=decision.warnings + ("potential same-condition contradictory relation",),
+        )
+        if index in conflicts and decision.status == "accepted"
+        else decision
+        for index, decision in enumerate(decisions)
+    )
+
+
+def _same_relation_target(left: StrategicRelation, right: StrategicRelation) -> bool:
+    return (
+        left.subject_type == right.subject_type
+        and left.subject_key == right.subject_key
+        and left.object_type == right.object_type
+        and left.object_key == right.object_key
+        and left.condition == right.condition
     )

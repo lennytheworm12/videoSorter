@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from core.db_paths import all_content_db_paths
-from core.ontology import STRATEGIC_CONCEPTS
-from core.strategic_types import CURRENT_STRATEGIC_DATA_VERSION
+from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
+from core.strategic_types import AUTOMATED_RELATION_DATA_VERSION, CURRENT_STRATEGIC_DATA_VERSION
 
 
 @dataclass(frozen=True)
@@ -181,7 +181,17 @@ def _question_fingerprint_entities(conn, question, minimum):
 
 
 def _relations(conn, question, entities, seen, minimum, max_hops, limit):
-    rows = [dict(row) for row in conn.execute("SELECT * FROM strategic_relations WHERE data_version=? AND confidence>=? ORDER BY confidence DESC, id", (CURRENT_STRATEGIC_DATA_VERSION, minimum))]
+    rows = [
+        dict(row)
+        for row in conn.execute(
+            """
+            SELECT * FROM strategic_relations
+            WHERE data_version IN (?, ?) AND ontology_version = ? AND confidence >= ?
+            ORDER BY confidence DESC, id
+            """,
+            (CURRENT_STRATEGIC_DATA_VERSION, AUTOMATED_RELATION_DATA_VERSION, ONTOLOGY_VERSION, minimum),
+        )
+    ]
     frontier = set(entities) | {_normalize(c) for c in _question_concepts(question)}
     result = []
     for _ in range(max_hops + 1):
