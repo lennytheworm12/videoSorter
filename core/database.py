@@ -4,7 +4,11 @@ import os
 import re
 import sqlite3
 import pathlib
+from dataclasses import replace
 from typing import Optional
+
+from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
+from core.strategic_types import EvidenceRef, StrategicFixture, dedupe_relations
 
 # Override with DB_PATH env var to target a different database file.
 # Secondary knowledge ingestion defaults to knowledge.db so broader scraped
@@ -25,6 +29,7 @@ _AOE2_CONTROLS_SETTINGS_RE = re.compile(
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row  # lets you access columns by name
     return conn
 
@@ -51,6 +56,453 @@ def _migrate_aoe2_insight_types(conn: sqlite3.Connection) -> None:
         "UPDATE insights SET insight_type = 'controls_settings' WHERE id = ?",
         [(insight_id,) for insight_id in migrate_ids],
     )
+
+
+def _init_strategic_tables(conn: sqlite3.Connection) -> None:
+    """Create derived strategic-knowledge tables without modifying raw evidence."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS strategic_concepts (
+            canonical_name     TEXT NOT NULL,
+            ontology_version   TEXT NOT NULL,
+            concept_type       TEXT NOT NULL,
+            description        TEXT NOT NULL,
+            scope              TEXT NOT NULL,
+            patch_sensitivity  TEXT NOT NULL,
+            PRIMARY KEY (canonical_name, ontology_version)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS strategic_relations (
+            id                TEXT PRIMARY KEY,
+            subject_type      TEXT NOT NULL,
+            subject_key       TEXT NOT NULL,
+            relation_type     TEXT NOT NULL,
+            object_type       TEXT NOT NULL,
+            object_key        TEXT NOT NULL,
+            condition_json    TEXT NOT NULL DEFAULT '\"\"',
+            effect_json       TEXT NOT NULL DEFAULT '\"\"',
+            concepts          TEXT NOT NULL DEFAULT '[]',
+            confidence        REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+            provenance_type   TEXT NOT NULL,
+            patch_sensitivity TEXT NOT NULL,
+            data_version      TEXT NOT NULL,
+            created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (
+                data_version,
+                subject_type,
+                subject_key,
+                relation_type,
+                object_type,
+                object_key,
+                condition_json,
+                effect_json
+            )
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS strategic_relation_evidence (
+            relation_id  TEXT NOT NULL REFERENCES strategic_relations(id) ON DELETE CASCADE,
+            source_type  TEXT NOT NULL,
+            source_id    TEXT NOT NULL,
+            insight_id   TEXT NOT NULL DEFAULT '',
+            quote        TEXT,
+            PRIMARY KEY (relation_id, source_type, source_id, insight_id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS champion_fingerprints (
+            champion             TEXT NOT NULL,
+            data_version         TEXT NOT NULL,
+            preferred_states    TEXT NOT NULL DEFAULT '[]',
+            avoided_states      TEXT NOT NULL DEFAULT '[]',
+            persistent_advantages TEXT NOT NULL DEFAULT '[]',
+            conditional_advantages TEXT NOT NULL DEFAULT '[]',
+            dependencies        TEXT NOT NULL DEFAULT '[]',
+            access_tools        TEXT NOT NULL DEFAULT '[]',
+            access_denial_tools TEXT NOT NULL DEFAULT '[]',
+            continuity_requirements TEXT NOT NULL DEFAULT '[]',
+            conversion_patterns TEXT NOT NULL DEFAULT '[]',
+            role_flip_events    TEXT NOT NULL DEFAULT '[]',
+            failure_modes       TEXT NOT NULL DEFAULT '[]',
+            confidence            REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+            provenance_type       TEXT NOT NULL,
+            patch_sensitivity     TEXT NOT NULL,
+            created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at            TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (champion, data_version)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS champion_fingerprint_evidence (
+            champion      TEXT NOT NULL,
+            data_version  TEXT NOT NULL,
+            source_type   TEXT NOT NULL,
+            source_id     TEXT NOT NULL,
+            insight_id    TEXT NOT NULL DEFAULT '',
+            quote         TEXT,
+            PRIMARY KEY (champion, data_version, source_type, source_id, insight_id),
+            FOREIGN KEY (champion, data_version)
+                REFERENCES champion_fingerprints(champion, data_version)
+                ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS compiled_principles (
+            id                TEXT PRIMARY KEY,
+            title             TEXT NOT NULL,
+            summary           TEXT NOT NULL,
+            concepts          TEXT NOT NULL DEFAULT '[]',
+            confidence        REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+            provenance_type   TEXT NOT NULL,
+            scope             TEXT NOT NULL,
+            patch_sensitivity TEXT NOT NULL,
+            data_version      TEXT NOT NULL,
+            created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS compiled_principle_evidence (
+            principle_id TEXT NOT NULL REFERENCES compiled_principles(id) ON DELETE CASCADE,
+            source_type  TEXT NOT NULL,
+            source_id    TEXT NOT NULL,
+            insight_id   TEXT NOT NULL DEFAULT '',
+            quote        TEXT,
+            PRIMARY KEY (principle_id, source_type, source_id, insight_id)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS strategic_relations_subject_idx "
+        "ON strategic_relations (data_version, subject_type, subject_key)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS strategic_relations_object_idx "
+        "ON strategic_relations (data_version, object_type, object_key)"
+    )
+    _migrate_strategic_json_columns(conn)
+
+
+def _migrate_strategic_json_columns(conn: sqlite3.Connection) -> None:
+    """Preserve data written by the first local Milestone 2 schema shape."""
+    migrations = {
+        "strategic_relations": {"concepts_json": "concepts"},
+        "champion_fingerprints": {
+            "preferred_states_json": "preferred_states",
+            "avoided_states_json": "avoided_states",
+            "persistent_advantages_json": "persistent_advantages",
+            "conditional_advantages_json": "conditional_advantages",
+            "dependencies_json": "dependencies",
+            "access_tools_json": "access_tools",
+            "access_denial_tools_json": "access_denial_tools",
+            "continuity_requirements_json": "continuity_requirements",
+            "conversion_patterns_json": "conversion_patterns",
+            "role_flip_events_json": "role_flip_events",
+            "failure_modes_json": "failure_modes",
+        },
+        "compiled_principles": {"concepts_json": "concepts"},
+    }
+    for table, columns in migrations.items():
+        existing = {
+            row["name"]
+            for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        for old_name, new_name in columns.items():
+            if old_name not in existing or new_name in existing:
+                continue
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN {new_name} TEXT NOT NULL DEFAULT '[]'"
+            )
+            conn.execute(f"UPDATE {table} SET {new_name} = {old_name}")
+            existing.add(new_name)
+
+
+def _json_list(values: tuple[str, ...]) -> str:
+    """Serialize immutable domain lists in a deterministic SQLite-compatible form."""
+    import json
+
+    return json.dumps(values, separators=(",", ":"))
+
+
+def _json_scalar(value: str | None) -> str:
+    import json
+
+    return json.dumps(value or "", separators=(",", ":"))
+
+
+def _normalize_strategic_key(value: str) -> str:
+    return " ".join(value.lower().strip().split())
+
+
+def _persist_evidence_refs(
+    conn: sqlite3.Connection,
+    table: str,
+    owner_values: tuple[str, ...],
+    evidence_refs: tuple,
+) -> None:
+    columns = {
+        "strategic_relation_evidence": "relation_id",
+        "champion_fingerprint_evidence": "champion, data_version",
+        "compiled_principle_evidence": "principle_id",
+    }[table]
+    owner_placeholders = ", ".join("?" for _ in owner_values)
+    conn.execute(
+        f"DELETE FROM {table} WHERE "
+        + " AND ".join(f"{column.strip()} = ?" for column in columns.split(",")),
+        owner_values,
+    )
+    conn.executemany(
+        f"""
+        INSERT INTO {table} ({columns}, source_type, source_id, insight_id, quote)
+        VALUES ({owner_placeholders}, ?, ?, ?, ?)
+        ON CONFLICT DO NOTHING
+        """,
+        [
+            (*owner_values, ref.source_type, ref.source_id, ref.insight_id or "", ref.quote)
+            for ref in evidence_refs
+        ],
+    )
+
+
+def _merge_evidence_refs(existing_refs: tuple, incoming_refs: tuple) -> tuple:
+    merged = list(existing_refs)
+    keys = {ref.stable_key() for ref in merged}
+    for ref in incoming_refs:
+        if ref.stable_key() not in keys:
+            merged.append(ref)
+            keys.add(ref.stable_key())
+    return tuple(merged)
+
+
+def persist_strategic_fixture(fixture: StrategicFixture) -> None:
+    """Persist validated derived knowledge while keeping it separate from insights."""
+    fixture.validate()
+    with get_connection() as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        _init_strategic_tables(conn)
+        conn.executemany(
+            """
+            INSERT INTO strategic_concepts (
+                canonical_name, ontology_version, concept_type, description, scope, patch_sensitivity
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(canonical_name, ontology_version) DO UPDATE SET
+                concept_type = excluded.concept_type,
+                description = excluded.description,
+                scope = excluded.scope,
+                patch_sensitivity = excluded.patch_sensitivity
+            """,
+            [
+                (
+                    concept.canonical_name,
+                    ONTOLOGY_VERSION,
+                    concept.concept_type,
+                    concept.description,
+                    concept.scope,
+                    concept.patch_sensitivity,
+                )
+                for concept in STRATEGIC_CONCEPTS.values()
+            ],
+        )
+        for relation in dedupe_relations(fixture.relations):
+            stable_candidates = conn.execute(
+                """
+                SELECT id, confidence, subject_key, object_key FROM strategic_relations
+                WHERE data_version = ? AND subject_type = ?
+                  AND relation_type = ? AND object_type = ?
+                  AND condition_json = ? AND effect_json = ?
+                """,
+                (
+                    relation.data_version,
+                    relation.subject_type,
+                    relation.relation_type,
+                    relation.object_type,
+                    _json_scalar(relation.condition),
+                    _json_scalar(relation.effect),
+                ),
+            ).fetchall()
+            stable_match = next(
+                (
+                    candidate
+                    for candidate in stable_candidates
+                    if _normalize_strategic_key(candidate["subject_key"])
+                    == _normalize_strategic_key(relation.subject_key)
+                    and _normalize_strategic_key(candidate["object_key"])
+                    == _normalize_strategic_key(relation.object_key)
+                ),
+                None,
+            )
+            relation_to_persist = relation
+            if stable_match is not None and stable_match["id"] != relation.id:
+                stored_refs = tuple(
+                    EvidenceRef(
+                        source_type=row["source_type"],
+                        source_id=row["source_id"],
+                        insight_id=row["insight_id"] or None,
+                        quote=row["quote"],
+                    )
+                    for row in conn.execute(
+                        """
+                        SELECT source_type, source_id, insight_id, quote
+                        FROM strategic_relation_evidence WHERE relation_id = ?
+                        """,
+                        (stable_match["id"],),
+                    )
+                )
+                relation_to_persist = replace(
+                    relation,
+                    id=stable_match["id"],
+                    subject_key=stable_match["subject_key"],
+                    object_key=stable_match["object_key"],
+                    confidence=max(relation.confidence, stable_match["confidence"]),
+                    evidence_refs=_merge_evidence_refs(stored_refs, relation.evidence_refs),
+                )
+            conn.execute(
+                """
+                INSERT INTO strategic_relations (
+                    id, subject_type, subject_key, relation_type, object_type, object_key,
+                    condition_json, effect_json, concepts, confidence, provenance_type,
+                    patch_sensitivity, data_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    subject_type = excluded.subject_type,
+                    subject_key = excluded.subject_key,
+                    relation_type = excluded.relation_type,
+                    object_type = excluded.object_type,
+                    object_key = excluded.object_key,
+                    condition_json = excluded.condition_json,
+                    effect_json = excluded.effect_json,
+                    concepts = excluded.concepts,
+                    confidence = excluded.confidence,
+                    provenance_type = excluded.provenance_type,
+                    patch_sensitivity = excluded.patch_sensitivity,
+                    data_version = excluded.data_version,
+                    updated_at = datetime('now')
+                """,
+                (
+                    relation_to_persist.id,
+                    relation_to_persist.subject_type,
+                    relation_to_persist.subject_key,
+                    relation_to_persist.relation_type,
+                    relation_to_persist.object_type,
+                    relation_to_persist.object_key,
+                    _json_scalar(relation_to_persist.condition),
+                    _json_scalar(relation_to_persist.effect),
+                    _json_list(relation_to_persist.concepts),
+                    relation_to_persist.confidence,
+                    relation_to_persist.provenance_type,
+                    relation_to_persist.patch_sensitivity,
+                    relation_to_persist.data_version,
+                ),
+            )
+            _persist_evidence_refs(
+                conn,
+                "strategic_relation_evidence",
+                (relation_to_persist.id,),
+                relation_to_persist.evidence_refs,
+            )
+        for fingerprint in fixture.fingerprints:
+            conn.execute(
+                """
+                INSERT INTO champion_fingerprints (
+                    champion, data_version, preferred_states, avoided_states,
+                    persistent_advantages, conditional_advantages, dependencies,
+                    access_tools, access_denial_tools, continuity_requirements,
+                    conversion_patterns, role_flip_events, failure_modes,
+                    confidence, provenance_type, patch_sensitivity
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(champion, data_version) DO UPDATE SET
+                    preferred_states = excluded.preferred_states,
+                    avoided_states = excluded.avoided_states,
+                    persistent_advantages = excluded.persistent_advantages,
+                    conditional_advantages = excluded.conditional_advantages,
+                    dependencies = excluded.dependencies,
+                    access_tools = excluded.access_tools,
+                    access_denial_tools = excluded.access_denial_tools,
+                    continuity_requirements = excluded.continuity_requirements,
+                    conversion_patterns = excluded.conversion_patterns,
+                    role_flip_events = excluded.role_flip_events,
+                    failure_modes = excluded.failure_modes,
+                    confidence = excluded.confidence,
+                    provenance_type = excluded.provenance_type,
+                    patch_sensitivity = excluded.patch_sensitivity,
+                    updated_at = datetime('now')
+                """,
+                (
+                    fingerprint.champion,
+                    fingerprint.data_version,
+                    _json_list(fingerprint.preferred_states),
+                    _json_list(fingerprint.avoided_states),
+                    _json_list(fingerprint.persistent_advantages),
+                    _json_list(fingerprint.conditional_advantages),
+                    _json_list(fingerprint.dependencies),
+                    _json_list(fingerprint.access_tools),
+                    _json_list(fingerprint.access_denial_tools),
+                    _json_list(fingerprint.continuity_requirements),
+                    _json_list(fingerprint.conversion_patterns),
+                    _json_list(fingerprint.role_flip_events),
+                    _json_list(fingerprint.failure_modes),
+                    fingerprint.confidence,
+                    fingerprint.provenance_type,
+                    fingerprint.patch_sensitivity,
+                ),
+            )
+            _persist_evidence_refs(
+                conn,
+                "champion_fingerprint_evidence",
+                (fingerprint.champion, fingerprint.data_version),
+                fingerprint.evidence_refs,
+            )
+        for principle in fixture.principles:
+            conn.execute(
+                """
+                INSERT INTO compiled_principles (
+                    id, title, summary, concepts, confidence, provenance_type,
+                    scope, patch_sensitivity, data_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    title = excluded.title,
+                    summary = excluded.summary,
+                    concepts = excluded.concepts,
+                    confidence = excluded.confidence,
+                    provenance_type = excluded.provenance_type,
+                    scope = excluded.scope,
+                    patch_sensitivity = excluded.patch_sensitivity,
+                    data_version = excluded.data_version,
+                    updated_at = datetime('now')
+                """,
+                (
+                    principle.id,
+                    principle.title,
+                    principle.summary,
+                    _json_list(principle.concepts),
+                    principle.confidence,
+                    principle.provenance_type,
+                    principle.scope,
+                    principle.patch_sensitivity,
+                    principle.data_version,
+                ),
+            )
+            _persist_evidence_refs(
+                conn,
+                "compiled_principle_evidence",
+                (principle.id,),
+                principle.evidence_refs,
+            )
+        conn.commit()
 
 
 def init_db() -> None:
@@ -210,6 +662,7 @@ def init_db() -> None:
                 rated_at              TEXT DEFAULT (datetime('now'))
             )
         """)
+        _init_strategic_tables(conn)
         try:
             _migrate_aoe2_insight_types(conn)
         except Exception:

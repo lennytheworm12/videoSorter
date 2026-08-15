@@ -48,6 +48,103 @@ create table if not exists public.runtime_config (
     updated_at timestamptz default now()
 );
 
+-- Derived strategic knowledge. These tables deliberately do not alter the
+-- source-grounded videos/insights evidence layer above.
+create table if not exists public.strategic_concepts (
+    canonical_name text not null,
+    ontology_version text not null,
+    concept_type text not null,
+    description text not null,
+    scope text not null,
+    patch_sensitivity text not null,
+    primary key (canonical_name, ontology_version)
+);
+
+create table if not exists public.strategic_relations (
+    id text primary key,
+    subject_type text not null,
+    subject_key text not null,
+    relation_type text not null,
+    object_type text not null,
+    object_key text not null,
+    condition_json jsonb not null default '""'::jsonb,
+    effect_json jsonb not null default '""'::jsonb,
+    concepts jsonb not null default '[]'::jsonb,
+    confidence double precision not null check (confidence >= 0 and confidence <= 1),
+    provenance_type text not null,
+    patch_sensitivity text not null,
+    data_version text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.strategic_relation_evidence (
+    relation_id text not null references public.strategic_relations(id) on delete cascade,
+    source_type text not null,
+    source_id text not null,
+    insight_id text not null default '',
+    quote text,
+    primary key (relation_id, source_type, source_id, insight_id)
+);
+
+create table if not exists public.champion_fingerprints (
+    champion text not null,
+    data_version text not null,
+    preferred_states jsonb not null default '[]'::jsonb,
+    avoided_states jsonb not null default '[]'::jsonb,
+    persistent_advantages jsonb not null default '[]'::jsonb,
+    conditional_advantages jsonb not null default '[]'::jsonb,
+    dependencies jsonb not null default '[]'::jsonb,
+    access_tools jsonb not null default '[]'::jsonb,
+    access_denial_tools jsonb not null default '[]'::jsonb,
+    continuity_requirements jsonb not null default '[]'::jsonb,
+    conversion_patterns jsonb not null default '[]'::jsonb,
+    role_flip_events jsonb not null default '[]'::jsonb,
+    failure_modes jsonb not null default '[]'::jsonb,
+    confidence double precision not null check (confidence >= 0 and confidence <= 1),
+    provenance_type text not null,
+    patch_sensitivity text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (champion, data_version)
+);
+
+create table if not exists public.champion_fingerprint_evidence (
+    champion text not null,
+    data_version text not null,
+    source_type text not null,
+    source_id text not null,
+    insight_id text not null default '',
+    quote text,
+    primary key (champion, data_version, source_type, source_id, insight_id),
+    foreign key (champion, data_version)
+        references public.champion_fingerprints(champion, data_version)
+        on delete cascade
+);
+
+create table if not exists public.compiled_principles (
+    id text primary key,
+    title text not null,
+    summary text not null,
+    concepts jsonb not null default '[]'::jsonb,
+    confidence double precision not null check (confidence >= 0 and confidence <= 1),
+    provenance_type text not null,
+    scope text not null,
+    patch_sensitivity text not null,
+    data_version text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.compiled_principle_evidence (
+    principle_id text not null references public.compiled_principles(id) on delete cascade,
+    source_type text not null,
+    source_id text not null,
+    insight_id text not null default '',
+    quote text,
+    primary key (principle_id, source_type, source_id, insight_id)
+);
+
 create index if not exists videos_game_idx on public.videos (game);
 create index if not exists videos_source_idx on public.videos (source);
 create index if not exists videos_subject_idx on public.videos (lower(coalesce(subject, champion)));
@@ -58,8 +155,35 @@ create index if not exists insights_subject_idx on public.insights (lower(subjec
 create index if not exists insights_embedding_hnsw_idx
     on public.insights using hnsw (embedding vector_cosine_ops)
     where embedding is not null;
+create index if not exists strategic_relations_subject_idx
+    on public.strategic_relations (data_version, subject_type, subject_key);
+create index if not exists strategic_relations_object_idx
+    on public.strategic_relations (data_version, object_type, object_key);
+create unique index if not exists strategic_relations_stable_key_idx
+    on public.strategic_relations (
+        data_version,
+        subject_type,
+        subject_key,
+        relation_type,
+        object_type,
+        object_key,
+        condition_json,
+        effect_json
+    );
 
 alter table public.runtime_config enable row level security;
+alter table public.strategic_concepts enable row level security;
+alter table public.strategic_relations enable row level security;
+alter table public.strategic_relation_evidence enable row level security;
+alter table public.champion_fingerprints enable row level security;
+alter table public.champion_fingerprint_evidence enable row level security;
+alter table public.compiled_principles enable row level security;
+alter table public.compiled_principle_evidence enable row level security;
+
+-- Phase 1 has no browser-facing strategic query path. These tables therefore
+-- intentionally have no anon/authenticated policies; the direct Postgres
+-- migration connection remains the only writer until Milestone 3 defines read
+-- access and RLS policy requirements.
 
 drop policy if exists runtime_config_public_read on public.runtime_config;
 create policy runtime_config_public_read

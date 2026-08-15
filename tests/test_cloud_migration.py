@@ -6,12 +6,16 @@ import unittest
 import numpy as np
 
 from cloud.migrate_supabase import (
+    STRATEGIC_TABLE_COLUMNS,
     VECTOR_DIMENSION,
     embedding_blob_to_vector,
     iter_insight_payloads,
+    iter_strategic_payloads,
     iter_video_payloads,
     source_db_name,
 )
+import core.database as db
+from core.strategic_types import load_strategic_fixture
 
 
 class CloudMigrationTests(unittest.TestCase):
@@ -105,6 +109,45 @@ class CloudMigrationTests(unittest.TestCase):
         self.assertEqual(insights[0]["source_db"], "knowledge")
         self.assertEqual(insights[0]["local_id"], 1)
         self.assertEqual(len(insights[0]["embedding"]), VECTOR_DIMENSION)
+
+    def test_iter_strategic_payloads_matches_local_persistence_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            previous_path = db.DB_PATH
+            db_path = pathlib.Path(tmp) / "strategic.db"
+            try:
+                db.DB_PATH = db_path
+                db.init_db()
+                db.persist_strategic_fixture(
+                    load_strategic_fixture("data/strategic_fixtures_v0.json")
+                )
+
+                relations = list(iter_strategic_payloads(db_path, "strategic_relations"))
+                fingerprints = list(
+                    iter_strategic_payloads(db_path, "champion_fingerprints")
+                )
+                relation_evidence = list(
+                    iter_strategic_payloads(db_path, "strategic_relation_evidence")
+                )
+            finally:
+                db.DB_PATH = previous_path
+
+        self.assertEqual(set(relations[0]), set(STRATEGIC_TABLE_COLUMNS["strategic_relations"]))
+        self.assertIn("condition_json", relations[0])
+        self.assertIn("preferred_states", fingerprints[0])
+        self.assertTrue(relation_evidence)
+
+    def test_iter_strategic_payloads_handles_legacy_database_without_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = pathlib.Path(tmp) / "legacy.db"
+            sqlite3.connect(db_path).close()
+
+            rows = list(iter_strategic_payloads(db_path, "strategic_relations"))
+
+        self.assertEqual(rows, [])
+
+    def test_iter_strategic_payloads_rejects_unknown_table(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unknown strategic table"):
+            list(iter_strategic_payloads("missing.db", "not_a_strategic_table"))
 
 if __name__ == "__main__":
     unittest.main()

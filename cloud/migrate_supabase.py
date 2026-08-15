@@ -64,6 +64,137 @@ INSIGHT_COLUMNS = (
     "created_at",
 )
 
+STRATEGIC_TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
+    "strategic_concepts": (
+        "canonical_name",
+        "ontology_version",
+        "concept_type",
+        "description",
+        "scope",
+        "patch_sensitivity",
+    ),
+    "strategic_relations": (
+        "id",
+        "subject_type",
+        "subject_key",
+        "relation_type",
+        "object_type",
+        "object_key",
+        "condition_json",
+        "effect_json",
+        "concepts",
+        "confidence",
+        "provenance_type",
+        "patch_sensitivity",
+        "data_version",
+        "created_at",
+        "updated_at",
+    ),
+    "strategic_relation_evidence": (
+        "relation_id",
+        "source_type",
+        "source_id",
+        "insight_id",
+        "quote",
+    ),
+    "champion_fingerprints": (
+        "champion",
+        "data_version",
+        "preferred_states",
+        "avoided_states",
+        "persistent_advantages",
+        "conditional_advantages",
+        "dependencies",
+        "access_tools",
+        "access_denial_tools",
+        "continuity_requirements",
+        "conversion_patterns",
+        "role_flip_events",
+        "failure_modes",
+        "confidence",
+        "provenance_type",
+        "patch_sensitivity",
+        "created_at",
+        "updated_at",
+    ),
+    "champion_fingerprint_evidence": (
+        "champion",
+        "data_version",
+        "source_type",
+        "source_id",
+        "insight_id",
+        "quote",
+    ),
+    "compiled_principles": (
+        "id",
+        "title",
+        "summary",
+        "concepts",
+        "confidence",
+        "provenance_type",
+        "scope",
+        "patch_sensitivity",
+        "data_version",
+        "created_at",
+        "updated_at",
+    ),
+    "compiled_principle_evidence": (
+        "principle_id",
+        "source_type",
+        "source_id",
+        "insight_id",
+        "quote",
+    ),
+}
+
+TABLE_CONFLICT_COLUMNS: dict[str, tuple[str, ...]] = {
+    "videos": ("source_db", "video_id"),
+    "insights": ("source_db", "local_id"),
+    "strategic_concepts": ("canonical_name", "ontology_version"),
+    "strategic_relations": ("id",),
+    "strategic_relation_evidence": ("relation_id", "source_type", "source_id", "insight_id"),
+    "champion_fingerprints": ("champion", "data_version"),
+    "champion_fingerprint_evidence": (
+        "champion",
+        "data_version",
+        "source_type",
+        "source_id",
+        "insight_id",
+    ),
+    "compiled_principles": ("id",),
+    "compiled_principle_evidence": ("principle_id", "source_type", "source_id", "insight_id"),
+}
+
+JSON_COLUMNS_BY_TABLE: dict[str, frozenset[str]] = {
+    "strategic_relations": frozenset({"condition_json", "effect_json", "concepts"}),
+    "champion_fingerprints": frozenset(
+        {
+            "preferred_states",
+            "avoided_states",
+            "persistent_advantages",
+            "conditional_advantages",
+            "dependencies",
+            "access_tools",
+            "access_denial_tools",
+            "continuity_requirements",
+            "conversion_patterns",
+            "role_flip_events",
+            "failure_modes",
+        }
+    ),
+    "compiled_principles": frozenset({"concepts"}),
+}
+
+STRATEGIC_DELETE_ORDER = (
+    "strategic_relation_evidence",
+    "champion_fingerprint_evidence",
+    "compiled_principle_evidence",
+    "strategic_relations",
+    "champion_fingerprints",
+    "compiled_principles",
+    "strategic_concepts",
+)
+
 
 def source_db_name(path: str | pathlib.Path) -> str:
     return pathlib.Path(path).stem
@@ -134,6 +265,23 @@ def iter_insight_payloads(db_path: str | pathlib.Path) -> Iterator[dict[str, Any
             }
 
 
+def iter_strategic_payloads(
+    db_path: str | pathlib.Path, table: str
+) -> Iterator[dict[str, Any]]:
+    """Yield one derived-knowledge table when a local DB has been populated."""
+    if table not in STRATEGIC_TABLE_COLUMNS:
+        raise ValueError(f"unknown strategic table: {table}")
+    with _connect_sqlite_readonly(db_path) as conn:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+        ).fetchone()
+        if not exists:
+            return
+        columns = STRATEGIC_TABLE_COLUMNS[table]
+        for row in conn.execute(f"SELECT {', '.join(columns)} FROM {table}"):
+            yield {column: row[column] for column in columns}
+
+
 def batched(items: Iterable[dict[str, Any]], size: int) -> Iterator[list[dict[str, Any]]]:
     batch: list[dict[str, Any]] = []
     for item in items:
@@ -152,7 +300,10 @@ def _vector_literal(values: list[float] | None) -> str | None:
 
 
 def _execute_values(cur: Any, table: str, columns: tuple[str, ...], rows: list[dict[str, Any]]) -> None:
+    import json
+
     from psycopg import sql
+    from psycopg.types.json import Jsonb
 
     placeholders = []
     values: list[Any] = []
@@ -163,35 +314,47 @@ def _execute_values(cur: Any, table: str, columns: tuple[str, ...], rows: list[d
             if column == "embedding":
                 value = _vector_literal(value)
                 row_placeholders.append(sql.SQL("{}::vector").format(sql.Placeholder()))
+            elif column in JSON_COLUMNS_BY_TABLE.get(table, frozenset()):
+                value = Jsonb(json.loads(value))
+                row_placeholders.append(sql.Placeholder())
             else:
                 row_placeholders.append(sql.Placeholder())
             values.append(value)
         placeholders.append(sql.SQL("(") + sql.SQL(", ").join(row_placeholders) + sql.SQL(")"))
 
+    conflict_columns = TABLE_CONFLICT_COLUMNS[table]
     assignments = [
         sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(column), sql.Identifier(column))
         for column in columns
-        if column not in {"source_db", "video_id", "local_id"}
+        if column not in conflict_columns
     ]
-    conflict_key = (
-        sql.SQL("(source_db, video_id)")
-        if table == "videos"
-        else sql.SQL("(source_db, local_id)")
+    conflict_key = sql.SQL("({})").format(
+        sql.SQL(", ").join(map(sql.Identifier, conflict_columns))
+    )
+    conflict_action = (
+        sql.SQL("DO UPDATE SET {} ").format(sql.SQL(", ").join(assignments))
+        if assignments
+        else sql.SQL("DO NOTHING")
     )
     query = (
-        sql.SQL("INSERT INTO public.{} ({}) VALUES {} ON CONFLICT {} DO UPDATE SET {}")
+        sql.SQL("INSERT INTO public.{} ({}) VALUES {} ON CONFLICT {} {}")
         .format(
             sql.Identifier(table),
             sql.SQL(", ").join(map(sql.Identifier, columns)),
             sql.SQL(", ").join(placeholders),
             conflict_key,
-            sql.SQL(", ").join(assignments),
+            conflict_action,
         )
     )
     cur.execute(query, values)
 
 
-def sync_to_supabase(db_paths: list[str], batch_size: int = 500, dry_run: bool = True) -> None:
+def sync_to_supabase(
+    db_paths: list[str],
+    batch_size: int = 500,
+    dry_run: bool = True,
+    sync_strategic: bool = False,
+) -> None:
     counts: dict[str, dict[str, int]] = {}
     for db_path in db_paths:
         if not pathlib.Path(db_path).exists():
@@ -199,10 +362,18 @@ def sync_to_supabase(db_paths: list[str], batch_size: int = 500, dry_run: bool =
         videos = sum(1 for _ in iter_video_payloads(db_path))
         insights = sum(1 for _ in iter_insight_payloads(db_path))
         counts[db_path] = {"videos": videos, "insights": insights}
+        if sync_strategic:
+            counts[db_path]["strategic"] = {
+                table: sum(1 for _ in iter_strategic_payloads(db_path, table))
+                for table in STRATEGIC_TABLE_COLUMNS
+            }
 
     print("Local rows to sync:")
     for db_path, stat in counts.items():
-        print(f"  {db_path}: {stat['videos']} videos, {stat['insights']} embedded insights")
+        message = f"  {db_path}: {stat['videos']} videos, {stat['insights']} embedded insights"
+        if sync_strategic:
+            message += f", {sum(stat['strategic'].values())} strategic rows"
+        print(message)
     if dry_run:
         print("Dry run only. Re-run with --apply to write to Supabase.")
         return
@@ -228,6 +399,20 @@ def sync_to_supabase(db_paths: list[str], batch_size: int = 500, dry_run: bool =
                 conn.commit()
                 print(f"Synced embedded insights from {db_path}")
 
+            if sync_strategic:
+                from psycopg import sql
+
+                for table in STRATEGIC_DELETE_ORDER:
+                    cur.execute(sql.SQL("DELETE FROM public.{}").format(sql.Identifier(table)))
+                for db_path in db_paths:
+                    if not pathlib.Path(db_path).exists():
+                        continue
+                    for table, columns in STRATEGIC_TABLE_COLUMNS.items():
+                        for batch in batched(iter_strategic_payloads(db_path, table), batch_size):
+                            _execute_values(cur, table, columns, batch)
+                conn.commit()
+                print("Replaced Supabase strategic knowledge from local strategic tables")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sync local SQLite DBs to Supabase pgvector")
@@ -235,11 +420,21 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Print counts only")
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--db", action="append", dest="db_paths", help="SQLite DB path; repeatable")
+    parser.add_argument(
+        "--strategic",
+        action="store_true",
+        help="Replace hosted derived strategic knowledge from the selected local DBs",
+    )
     args = parser.parse_args()
 
     dry_run = not args.apply
     db_paths = args.db_paths or all_content_db_paths()
-    sync_to_supabase(db_paths=db_paths, batch_size=args.batch_size, dry_run=dry_run)
+    sync_to_supabase(
+        db_paths=db_paths,
+        batch_size=args.batch_size,
+        dry_run=dry_run,
+        sync_strategic=args.strategic,
+    )
 
 
 if __name__ == "__main__":
