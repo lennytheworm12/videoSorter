@@ -95,6 +95,14 @@ class StrategicTypesTests(unittest.TestCase):
         with self.assertRaisesRegex(StrategicValidationError, "unsupported strategic data version"):
             StrategicRelation.from_dict(relation_data)
 
+    def test_relation_records_ontology_version_and_rejects_stale_ontology(self) -> None:
+        relation = StrategicRelation.from_dict(_valid_relation_data())
+        self.assertEqual(relation.ontology_version, ONTOLOGY_VERSION)
+        relation_data = _valid_relation_data()
+        relation_data["ontology_version"] = "strategic-ontology-v99"
+        with self.assertRaisesRegex(StrategicValidationError, "unsupported ontology version"):
+            StrategicRelation.from_dict(relation_data)
+
     def test_non_numeric_confidence_raises_domain_error(self) -> None:
         relation_data = _valid_relation_data()
         relation_data["confidence"] = "not-a-number"

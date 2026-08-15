@@ -74,9 +74,13 @@ create table if not exists public.strategic_relations (
     provenance_type text not null,
     patch_sensitivity text not null,
     data_version text not null,
+    ontology_version text not null default 'strategic-ontology-v0',
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+alter table public.strategic_relations
+    add column if not exists ontology_version text not null default 'strategic-ontology-v0';
 
 create table if not exists public.strategic_relation_evidence (
     relation_id text not null references public.strategic_relations(id) on delete cascade,
@@ -155,13 +159,17 @@ create index if not exists insights_subject_idx on public.insights (lower(subjec
 create index if not exists insights_embedding_hnsw_idx
     on public.insights using hnsw (embedding vector_cosine_ops)
     where embedding is not null;
+drop index if exists public.strategic_relations_subject_idx;
 create index if not exists strategic_relations_subject_idx
-    on public.strategic_relations (data_version, subject_type, subject_key);
+    on public.strategic_relations (data_version, ontology_version, subject_type, subject_key);
+drop index if exists public.strategic_relations_object_idx;
 create index if not exists strategic_relations_object_idx
-    on public.strategic_relations (data_version, object_type, object_key);
+    on public.strategic_relations (data_version, ontology_version, object_type, object_key);
+drop index if exists public.strategic_relations_stable_key_idx;
 create unique index if not exists strategic_relations_stable_key_idx
     on public.strategic_relations (
         data_version,
+        ontology_version,
         subject_type,
         subject_key,
         relation_type,

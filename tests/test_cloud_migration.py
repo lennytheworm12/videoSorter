@@ -145,6 +145,32 @@ class CloudMigrationTests(unittest.TestCase):
 
         self.assertEqual(rows, [])
 
+    def test_iter_strategic_payloads_defaults_legacy_relation_ontology_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = pathlib.Path(tmp) / "legacy.db"
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                """
+                CREATE TABLE strategic_relations (
+                    id TEXT PRIMARY KEY, subject_type TEXT, subject_key TEXT,
+                    relation_type TEXT, object_type TEXT, object_key TEXT,
+                    condition_json TEXT, effect_json TEXT, concepts TEXT,
+                    confidence REAL, provenance_type TEXT, patch_sensitivity TEXT,
+                    data_version TEXT, created_at TEXT, updated_at TEXT
+                )
+                """
+            )
+            conn.execute(
+                "INSERT INTO strategic_relations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("legacy", "ability", "Thresh E", "denies", "concept", "continuity", '""', '""', "[]", 0.8, "manual_fixture", "low", "strategic-fixtures-v0", None, None),
+            )
+            conn.commit()
+            conn.close()
+
+            rows = list(iter_strategic_payloads(db_path, "strategic_relations"))
+
+        self.assertEqual(rows[0]["ontology_version"], "strategic-ontology-v0")
+
     def test_iter_strategic_payloads_rejects_unknown_table(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown strategic table"):
             list(iter_strategic_payloads("missing.db", "not_a_strategic_table"))

@@ -8,10 +8,12 @@ import unittest
 import core.database as db
 from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
 from core.strategic_types import (
+    AUTOMATED_RELATION_DATA_VERSION,
     EvidenceRef,
     StrategicValidationError,
     load_strategic_fixture,
 )
+from pipeline.relation_extract import ExtractionDecision
 
 
 FIXTURE_PATH = Path("data/strategic_fixtures_v0.json")
@@ -82,7 +84,7 @@ class StrategicPersistenceTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM compiled_principle_evidence"
             ).fetchone()[0]
             stored_relation = conn.execute(
-                "SELECT condition_json, effect_json, concepts FROM strategic_relations LIMIT 1"
+                "SELECT condition_json, effect_json, concepts, ontology_version FROM strategic_relations LIMIT 1"
             ).fetchone()
             insight_count = conn.execute("SELECT COUNT(*) FROM insights").fetchone()[0]
 
@@ -105,6 +107,7 @@ class StrategicPersistenceTests(unittest.TestCase):
         self.assertIsInstance(json.loads(stored_relation["condition_json"]), str)
         self.assertIsInstance(json.loads(stored_relation["effect_json"]), str)
         self.assertIsInstance(json.loads(stored_relation["concepts"]), list)
+        self.assertEqual(stored_relation["ontology_version"], ONTOLOGY_VERSION)
         self.assertEqual(insight_count, 0)
 
     def test_repeated_fixture_write_is_idempotent(self) -> None:
@@ -127,6 +130,43 @@ class StrategicPersistenceTests(unittest.TestCase):
             evidence_count,
             sum(len(relation.evidence_refs) for relation in fixture.relations),
         )
+
+    def test_automated_relation_batch_uses_a_separate_version_without_mutating_manual_rows(self) -> None:
+        db.init_db()
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        manual = fixture.relations[0]
+        automated = replace(
+            manual,
+            id="auto-relation-version-test",
+            data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="coach_supported_inference",
+        )
+        db.persist_strategic_fixture(fixture)
+        db.persist_strategic_relations((ExtractionDecision({}, automated, "accepted"),))
+
+        with db.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT id, data_version, provenance_type FROM strategic_relations "
+                "WHERE id IN (?, ?) ORDER BY data_version",
+                (manual.id, automated.id),
+            ).fetchall()
+
+        by_id = {row["id"]: row for row in rows}
+        self.assertEqual(len(by_id), 2)
+        self.assertEqual(by_id[automated.id]["data_version"], AUTOMATED_RELATION_DATA_VERSION)
+        self.assertEqual(by_id[manual.id]["data_version"], fixture.data_version)
+        self.assertEqual(by_id[manual.id]["provenance_type"], "manual_fixture")
+
+    def test_automated_relation_review_decision_cannot_be_persisted(self) -> None:
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        automated = replace(
+            fixture.relations[0],
+            id="auto-review-version-test",
+            data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="coach_supported_inference",
+        )
+        with self.assertRaisesRegex(ValueError, "accepted compiler decisions"):
+            db.persist_strategic_relations((ExtractionDecision({}, automated, "review"),))
 
     def test_duplicate_relation_support_is_merged_before_persistence(self) -> None:
         db.init_db()
@@ -356,10 +396,21 @@ class StrategicPersistenceTests(unittest.TestCase):
 
         with db.get_connection() as conn:
             migrated = conn.execute(
-                "SELECT concepts FROM strategic_relations WHERE id = 'early-row'"
-            ).fetchone()[0]
+                "SELECT concepts, ontology_version FROM strategic_relations WHERE id = 'early-row'"
+            ).fetchone()
 
-        self.assertEqual(migrated, '["access"]')
+        self.assertEqual(migrated["concepts"], '["access"]')
+        self.assertEqual(migrated["ontology_version"], ONTOLOGY_VERSION)
+        with db.get_connection() as conn:
+            unique_identity_columns = {
+                tuple(
+                    row["name"]
+                    for row in conn.execute(f"PRAGMA index_info({index['name']})")
+                )
+                for index in conn.execute("PRAGMA index_list(strategic_relations)")
+                if index["unique"]
+            }
+        self.assertTrue(any("ontology_version" in columns for columns in unique_identity_columns))
 
     def test_orphan_relation_provenance_is_rejected(self) -> None:
         db.init_db()
@@ -410,6 +461,7 @@ class StrategicPersistenceTests(unittest.TestCase):
         self.assertIn("strategic_relations_stable_key_idx", schema)
         self.assertIn("references public.strategic_relations(id) on delete cascade", schema)
         self.assertIn("condition_json jsonb not null default '\"\"'::jsonb", schema)
+        self.assertIn("ontology_version text not null default 'strategic-ontology-v0'", schema)
 
 
 if __name__ == "__main__":

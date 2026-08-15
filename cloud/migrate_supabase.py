@@ -87,6 +87,7 @@ STRATEGIC_TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "provenance_type",
         "patch_sensitivity",
         "data_version",
+        "ontology_version",
         "created_at",
         "updated_at",
     ),
@@ -278,8 +279,15 @@ def iter_strategic_payloads(
         if not exists:
             return
         columns = STRATEGIC_TABLE_COLUMNS[table]
-        for row in conn.execute(f"SELECT {', '.join(columns)} FROM {table}"):
-            yield {column: row[column] for column in columns}
+        for row in conn.execute(f"SELECT * FROM {table}"):
+            yield {
+                column: _row_value(
+                    row,
+                    column,
+                    "strategic-ontology-v0" if column == "ontology_version" else None,
+                )
+                for column in columns
+            }
 
 
 def batched(items: Iterable[dict[str, Any]], size: int) -> Iterator[list[dict[str, Any]]]:

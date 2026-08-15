@@ -162,6 +162,21 @@ def get_all_champion_names() -> list[str]:
     return load_champion_names()
 
 
+@lru_cache(maxsize=512)
+def canonical_champion_name(value: str) -> str | None:
+    """Resolve one champion name or known transcription alias to its canonical form."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    normalized = re.sub(r"[^a-z0-9]", "", value.lower())
+    for champion in load_champion_names():
+        if re.sub(r"[^a-z0-9]", "", champion.lower()) == normalized:
+            return champion
+    corrected = correct_names(value).strip()
+    if corrected != value.strip():
+        return canonical_champion_name(corrected)
+    return None
+
+
 def champion_names_for_prompt() -> str:
     """Return a compact string of all champion names for injection into prompts."""
     return ", ".join(load_champion_names())

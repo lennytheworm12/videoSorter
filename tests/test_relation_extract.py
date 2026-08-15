@@ -1,0 +1,145 @@
+import json
+import unittest
+
+from core.champions import canonical_champion_name
+from pipeline.relation_extract import (
+    EvidenceItem,
+    ExtractionPacket,
+    compile_candidates,
+    extract_relations,
+    parse_model_response,
+)
+
+
+class RelationExtractionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.packet = ExtractionPacket(
+            evidence=(
+                EvidenceItem(
+                    insight_id="4798",
+                    source_id="z5IXabhMLzQ",
+                    text="Thresh Lantern saves teammates from danger.",
+                    confidence=0.62,
+                ),
+            ),
+            ability_aliases={"Thresh Flay": "Thresh E", "Flay": "Thresh E", "Thresh E": "Thresh E"},
+        )
+
+    def test_canonical_champion_aliases_reuse_existing_registry(self) -> None:
+        self.assertEqual(canonical_champion_name("kaisa"), "Kai'Sa")
+        self.assertIsNone(canonical_champion_name("not a champion"))
+
+    def test_aliases_and_evidence_provenance_compile_to_phase1_relation(self) -> None:
+        decision = compile_candidates(self.packet, [_candidate()])[0]
+
+        self.assertEqual(decision.status, "accepted")
+        self.assertEqual(decision.relation.subject_key, "Thresh E")
+        self.assertEqual(decision.relation.relation_type, "denies")
+        self.assertEqual(decision.relation.object_key, "continuity")
+        self.assertEqual(decision.relation.condition, "while Flay is available")
+        self.assertEqual(decision.relation.evidence_refs[0].insight_id, "4798")
+        self.assertEqual(decision.relation.data_version, "strategic-relations-v0")
+        self.assertGreater(decision.relation.confidence, 0.6)
+
+    def test_condition_changes_stable_identity_and_is_not_overmerged(self) -> None:
+        first = compile_candidates(self.packet, [_candidate(condition="while Flay is available")])[0].relation
+        second = compile_candidates(self.packet, [_candidate(condition="after Tristana lands W")])[0].relation
+
+        self.assertNotEqual(first.id, second.id)
+        self.assertNotEqual(first.stable_key(), second.stable_key())
+
+    def test_unknown_concept_verb_and_evidence_are_rejected(self) -> None:
+        for override, expected in [
+            ({"object": "made_up_concept"}, "unknown entity"),
+            ({"relation_type": "sort of helps"}, "unknown entity"),
+            ({"evidence_ids": ["not-in-packet"]}, "unknown evidence_id"),
+        ]:
+            candidate = _candidate(**override)
+            with self.subTest(override=override):
+                decision = compile_candidates(self.packet, [candidate])[0]
+                self.assertEqual(decision.status, "rejected")
+                self.assertIn(expected, decision.warnings[0])
+
+    def test_malformed_qualifiers_unknown_abilities_and_duplicate_evidence_are_rejected(self) -> None:
+        for override, expected in [
+            ({"condition": ["after Q misses"]}, "condition must be"),
+            ({"effect": {"event": "x"}}, "effect must be"),
+            ({"subject": "Thresh Banana"}, "unknown entity"),
+            ({"evidence_ids": ["4798", "4798"]}, "duplicate evidence_id"),
+            ({"relation_type": "counters"}, "unknown entity"),
+            ({"object_type": "event", "object": "invented artifact"}, "unknown entity"),
+        ]:
+            with self.subTest(override=override):
+                decision = compile_candidates(self.packet, [_candidate(**override)])[0]
+                self.assertEqual(decision.status, "rejected")
+                self.assertIn(expected, decision.warnings[0])
+
+    def test_packet_registered_state_is_the_only_allowed_state_node(self) -> None:
+        packet = ExtractionPacket(
+            evidence=self.packet.evidence,
+            ability_aliases=self.packet.ability_aliases,
+            entity_aliases={"state": {"after q misses": "after Q misses"}},
+        )
+        candidate = _candidate(object_type="state", object="after Q misses", concepts=["access"])
+        decision = compile_candidates(packet, [candidate])[0]
+        self.assertEqual(decision.status, "accepted")
+        self.assertEqual(decision.relation.object_key, "after Q misses")
+
+    def test_source_type_and_patch_sensitivity_are_not_weakened(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("guide-1", "guide-article", "Flay saves allies.", source_type="guide", confidence=0.8, patch_sensitivity="high"),),
+            ability_aliases={"Flay": "Thresh E"},
+        )
+        decision = compile_candidates(packet, [_candidate(evidence_ids=["guide-1"], patch_sensitivity="low")])[0]
+        self.assertEqual(decision.relation.evidence_refs[0].source_type, "guide")
+        self.assertEqual(decision.relation.patch_sensitivity, "high")
+
+    def test_empty_relations_is_valid_and_malformed_response_is_rejected(self) -> None:
+        self.assertEqual(parse_model_response('{"relations": []}'), [])
+        for raw in ("", "[]", '{"relations": ["bad"]}', '{"other": []}'):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                parse_model_response(raw)
+
+    def test_low_confidence_relation_is_held_for_review(self) -> None:
+        candidate = _candidate(extraction_confidence=0.1)
+        decision = extract_relations(
+            self.packet,
+            lambda **_: json.dumps({"relations": [candidate]}),
+            acceptance_threshold=0.6,
+        )[0]
+        self.assertEqual(decision.status, "review")
+        self.assertIsNotNone(decision.relation)
+
+    def test_model_is_prompted_only_with_packet_evidence_and_constraints(self) -> None:
+        captured = {}
+        extract_relations(
+            self.packet,
+            lambda **kwargs: captured.update(kwargs) or '{"relations": []}',
+        )
+        self.assertIn("SOURCE EVIDENCE", captured["user"])
+        self.assertIn("evidence_id=4798", captured["user"])
+        self.assertIn("Allowed relation types", captured["user"])
+        self.assertIn("Do not use League knowledge", captured["system"])
+
+
+def _candidate(**overrides):
+    value = {
+        "subject": "Flay",
+        "subject_type": "ability",
+        "relation_type": "breaks",
+        "object": "continued contact",
+        "object_type": "concept",
+        "condition": "while Flay is available",
+        "effect": "the enemy cannot sustain contact",
+        "concepts": ["continued contact", "threat preservation"],
+        "provenance_type": "coach_supported_inference",
+        "evidence_ids": ["4798"],
+        "extraction_confidence": 0.9,
+        "patch_sensitivity": "low",
+    }
+    value.update(overrides)
+    return value
+
+
+if __name__ == "__main__":
+    unittest.main()

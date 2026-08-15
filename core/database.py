@@ -8,7 +8,12 @@ from dataclasses import replace
 from typing import Optional
 
 from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
-from core.strategic_types import EvidenceRef, StrategicFixture, dedupe_relations
+from core.strategic_types import (
+    AUTOMATED_RELATION_DATA_VERSION,
+    EvidenceRef,
+    StrategicFixture,
+    dedupe_relations,
+)
 
 # Override with DB_PATH env var to target a different database file.
 # Secondary knowledge ingestion defaults to knowledge.db so broader scraped
@@ -89,10 +94,12 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
             provenance_type   TEXT NOT NULL,
             patch_sensitivity TEXT NOT NULL,
             data_version      TEXT NOT NULL,
+            ontology_version  TEXT NOT NULL DEFAULT 'strategic-ontology-v0',
             created_at        TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
             UNIQUE (
                 data_version,
+                ontology_version,
                 subject_type,
                 subject_key,
                 relation_type,
@@ -104,6 +111,7 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    _migrate_strategic_json_columns(conn)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS strategic_relation_evidence (
@@ -186,15 +194,16 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    conn.execute("DROP INDEX IF EXISTS strategic_relations_subject_idx")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS strategic_relations_subject_idx "
-        "ON strategic_relations (data_version, subject_type, subject_key)"
+        "ON strategic_relations (data_version, ontology_version, subject_type, subject_key)"
     )
+    conn.execute("DROP INDEX IF EXISTS strategic_relations_object_idx")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS strategic_relations_object_idx "
-        "ON strategic_relations (data_version, object_type, object_key)"
+        "ON strategic_relations (data_version, ontology_version, object_type, object_key)"
     )
-    _migrate_strategic_json_columns(conn)
 
 
 def _migrate_strategic_json_columns(conn: sqlite3.Connection) -> None:
@@ -229,6 +238,78 @@ def _migrate_strategic_json_columns(conn: sqlite3.Connection) -> None:
             )
             conn.execute(f"UPDATE {table} SET {new_name} = {old_name}")
             existing.add(new_name)
+        if table == "strategic_relations" and "ontology_version" not in existing:
+            conn.execute(
+                "ALTER TABLE strategic_relations ADD COLUMN ontology_version "
+                "TEXT NOT NULL DEFAULT 'strategic-ontology-v0'"
+            )
+            existing.add("ontology_version")
+    _rebuild_legacy_relation_identity(conn)
+
+
+def _rebuild_legacy_relation_identity(conn: sqlite3.Connection) -> None:
+    """Upgrade the old SQLite relation unique key without losing provenance rows."""
+    unique_indexes = conn.execute("PRAGMA index_list(strategic_relations)").fetchall()
+    for index in unique_indexes:
+        if not index["unique"]:
+            continue
+        columns = [
+            row["name"]
+            for row in conn.execute(f"PRAGMA index_info({index['name']})").fetchall()
+        ]
+        if "data_version" in columns and "subject_key" in columns:
+            if "ontology_version" in columns:
+                return
+            break
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.execute(
+            """
+            CREATE TABLE strategic_relations_v2 (
+                id TEXT PRIMARY KEY,
+                subject_type TEXT NOT NULL,
+                subject_key TEXT NOT NULL,
+                relation_type TEXT NOT NULL,
+                object_type TEXT NOT NULL,
+                object_key TEXT NOT NULL,
+                condition_json TEXT NOT NULL DEFAULT '\"\"',
+                effect_json TEXT NOT NULL DEFAULT '\"\"',
+                concepts TEXT NOT NULL DEFAULT '[]',
+                confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+                provenance_type TEXT NOT NULL,
+                patch_sensitivity TEXT NOT NULL,
+                data_version TEXT NOT NULL,
+                ontology_version TEXT NOT NULL DEFAULT 'strategic-ontology-v0',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (data_version, ontology_version, subject_type, subject_key,
+                    relation_type, object_type, object_key, condition_json, effect_json)
+            )
+            """
+        )
+        columns = (
+            "id, subject_type, subject_key, relation_type, object_type, object_key, "
+            "condition_json, effect_json, concepts, confidence, provenance_type, "
+            "patch_sensitivity, data_version, ontology_version, created_at, updated_at"
+        )
+        available = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(strategic_relations)").fetchall()
+        }
+        select_columns = [
+            column if column in available else "datetime('now')"
+            for column in columns.split(", ")
+        ]
+        conn.execute(
+            f"INSERT INTO strategic_relations_v2 ({columns}) "
+            f"SELECT {', '.join(select_columns)} FROM strategic_relations"
+        )
+        conn.execute("DROP TABLE strategic_relations")
+        conn.execute("ALTER TABLE strategic_relations_v2 RENAME TO strategic_relations")
+        conn.commit()
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
 
 
 def _json_list(values: tuple[str, ...]) -> str:
@@ -289,6 +370,13 @@ def _merge_evidence_refs(existing_refs: tuple, incoming_refs: tuple) -> tuple:
 
 
 def persist_strategic_fixture(fixture: StrategicFixture) -> None:
+    """Persist manual fixture data; automated batches use accepted decisions only."""
+    if fixture.data_version == AUTOMATED_RELATION_DATA_VERSION:
+        raise ValueError("automated relations must be persisted from accepted decisions")
+    _persist_strategic_fixture(fixture)
+
+
+def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
     """Persist validated derived knowledge while keeping it separate from insights."""
     fixture.validate()
     with get_connection() as conn:
@@ -321,12 +409,13 @@ def persist_strategic_fixture(fixture: StrategicFixture) -> None:
             stable_candidates = conn.execute(
                 """
                 SELECT id, confidence, subject_key, object_key FROM strategic_relations
-                WHERE data_version = ? AND subject_type = ?
+                WHERE data_version = ? AND ontology_version = ? AND subject_type = ?
                   AND relation_type = ? AND object_type = ?
                   AND condition_json = ? AND effect_json = ?
                 """,
                 (
                     relation.data_version,
+                    relation.ontology_version,
                     relation.subject_type,
                     relation.relation_type,
                     relation.object_type,
@@ -375,8 +464,8 @@ def persist_strategic_fixture(fixture: StrategicFixture) -> None:
                 INSERT INTO strategic_relations (
                     id, subject_type, subject_key, relation_type, object_type, object_key,
                     condition_json, effect_json, concepts, confidence, provenance_type,
-                    patch_sensitivity, data_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    patch_sensitivity, data_version, ontology_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     subject_type = excluded.subject_type,
                     subject_key = excluded.subject_key,
@@ -390,6 +479,7 @@ def persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     provenance_type = excluded.provenance_type,
                     patch_sensitivity = excluded.patch_sensitivity,
                     data_version = excluded.data_version,
+                    ontology_version = excluded.ontology_version,
                     updated_at = datetime('now')
                 """,
                 (
@@ -406,6 +496,7 @@ def persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     relation_to_persist.provenance_type,
                     relation_to_persist.patch_sensitivity,
                     relation_to_persist.data_version,
+                    relation_to_persist.ontology_version,
                 ),
             )
             _persist_evidence_refs(
@@ -503,6 +594,26 @@ def persist_strategic_fixture(fixture: StrategicFixture) -> None:
                 principle.evidence_refs,
             )
         conn.commit()
+
+
+def persist_strategic_relations(decisions: tuple | list) -> None:
+    """Persist only accepted Phase 2 compiler decisions, never review/rejected output."""
+    relations = []
+    for decision in decisions:
+        if getattr(decision, "status", None) != "accepted" or getattr(decision, "relation", None) is None:
+            raise ValueError("automated persistence requires accepted compiler decisions")
+        relation = decision.relation
+        if relation.data_version != AUTOMATED_RELATION_DATA_VERSION:
+            raise ValueError("automated persistence requires automated relation data")
+        relations.append(relation)
+    fixture = StrategicFixture(
+        ontology_version=ONTOLOGY_VERSION,
+        data_version=AUTOMATED_RELATION_DATA_VERSION,
+        fingerprints=(),
+        relations=dedupe_relations(relations),
+        principles=(),
+    )
+    _persist_strategic_fixture(fixture)
 
 
 def init_db() -> None:

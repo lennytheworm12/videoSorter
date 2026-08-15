@@ -24,6 +24,10 @@ from core.ontology import (
 
 
 CURRENT_STRATEGIC_DATA_VERSION = "strategic-fixtures-v0"
+AUTOMATED_RELATION_DATA_VERSION = "strategic-relations-v0"
+SUPPORTED_RELATION_DATA_VERSIONS = frozenset(
+    {CURRENT_STRATEGIC_DATA_VERSION, AUTOMATED_RELATION_DATA_VERSION}
+)
 
 
 class StrategicValidationError(ValueError):
@@ -78,6 +82,7 @@ class StrategicRelation:
     concepts: tuple[str, ...] = field(default_factory=tuple)
     patch_sensitivity: str = "very_low"
     data_version: str = CURRENT_STRATEGIC_DATA_VERSION
+    ontology_version: str = ONTOLOGY_VERSION
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "StrategicRelation":
@@ -100,6 +105,7 @@ class StrategicRelation:
             data_version=str(
                 data.get("data_version") or CURRENT_STRATEGIC_DATA_VERSION
             ).strip(),
+            ontology_version=str(data.get("ontology_version") or ONTOLOGY_VERSION).strip(),
         )
         relation.validate()
         return relation
@@ -136,9 +142,13 @@ class StrategicRelation:
             raise StrategicValidationError(
                 f"unknown patch_sensitivity: {self.patch_sensitivity}"
             )
-        if self.data_version != CURRENT_STRATEGIC_DATA_VERSION:
+        if self.data_version not in SUPPORTED_RELATION_DATA_VERSIONS:
             raise StrategicValidationError(
                 f"unsupported strategic data version: {self.data_version}"
+            )
+        if self.ontology_version != ONTOLOGY_VERSION:
+            raise StrategicValidationError(
+                f"unsupported ontology version: {self.ontology_version}"
             )
         if not 0.0 <= self.confidence <= 1.0:
             raise StrategicValidationError("relation confidence must be between 0 and 1")
@@ -356,14 +366,22 @@ class StrategicFixture:
             raise StrategicValidationError(
                 f"unsupported ontology version: {self.ontology_version}"
             )
-        if self.data_version != CURRENT_STRATEGIC_DATA_VERSION:
+        if self.data_version not in SUPPORTED_RELATION_DATA_VERSIONS:
             raise StrategicValidationError(
                 f"unsupported strategic data version: {self.data_version}"
+            )
+        if self.data_version == AUTOMATED_RELATION_DATA_VERSION and (
+            self.fingerprints or self.principles
+        ):
+            raise StrategicValidationError(
+                "automated relation fixtures cannot contain fingerprints or principles"
             )
         for fingerprint in self.fingerprints:
             fingerprint.validate()
         for relation in self.relations:
             relation.validate()
+            if relation.data_version != self.data_version:
+                raise StrategicValidationError("fixture relations must share data_version")
         for principle in self.principles:
             principle.validate()
         champion_names = [fp.champion.lower() for fp in self.fingerprints]
