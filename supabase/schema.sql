@@ -68,6 +68,7 @@ create table if not exists public.strategic_relations (
     object_type text not null,
     object_key text not null,
     condition_json jsonb not null default '""'::jsonb,
+    condition_event_json jsonb not null default 'null'::jsonb,
     effect_json jsonb not null default '""'::jsonb,
     alignment_json jsonb not null default '[]'::jsonb,
     concepts jsonb not null default '[]'::jsonb,
@@ -85,6 +86,9 @@ alter table public.strategic_relations
 
 alter table public.strategic_relations
     add column if not exists alignment_json jsonb not null default '[]'::jsonb;
+
+alter table public.strategic_relations
+    add column if not exists condition_event_json jsonb not null default 'null'::jsonb;
 
 create table if not exists public.strategic_relation_evidence (
     relation_id text not null references public.strategic_relations(id) on delete cascade,
@@ -180,6 +184,7 @@ create unique index if not exists strategic_relations_stable_key_idx
         object_type,
         object_key,
         condition_json,
+        condition_event_json,
         effect_json
     );
 

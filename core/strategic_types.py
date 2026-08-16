@@ -121,6 +121,41 @@ class RelationAlignment:
 
 
 @dataclass(frozen=True)
+class ConditionEvent:
+    """Source event and cautious derived state retained alongside condition prose."""
+
+    source_text: str
+    evidence_id: str
+    entity: str | None
+    event: str
+    derived_state: str | None
+    temporal_operator: str
+    mapping_version: str = "condition-event-v0"
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ConditionEvent":
+        return cls(
+            source_text=str(data.get("source_text") or "").strip(),
+            evidence_id=str(data.get("evidence_id") or "").strip(),
+            entity=str(data["entity"]).strip() if data.get("entity") else None,
+            event=str(data.get("event") or "").strip(),
+            derived_state=str(data["derived_state"]).strip() if data.get("derived_state") else None,
+            temporal_operator=str(data.get("temporal_operator") or "").strip(),
+            mapping_version=str(data.get("mapping_version") or "condition-event-v0").strip(),
+        )
+
+    def validate(self) -> None:
+        if not self.source_text or not self.evidence_id:
+            raise StrategicValidationError("condition event requires source_text and evidence_id")
+        if self.event != "missed":
+            raise StrategicValidationError(f"unknown condition event: {self.event}")
+        if self.temporal_operator not in {"after", "while", "when", "if", "before", "until"}:
+            raise StrategicValidationError("unknown condition temporal operator")
+        if self.derived_state not in {None, "temporarily_unavailable"}:
+            raise StrategicValidationError("missed event has invalid derived state")
+
+
+@dataclass(frozen=True)
 class StrategicRelation:
     id: str
     subject_type: str
@@ -132,6 +167,7 @@ class StrategicRelation:
     provenance_type: str
     evidence_refs: tuple[EvidenceRef, ...] = field(default_factory=tuple)
     condition: str | None = None
+    condition_event: ConditionEvent | None = None
     effect: str | None = None
     concepts: tuple[str, ...] = field(default_factory=tuple)
     alignments: tuple[RelationAlignment, ...] = field(default_factory=tuple)
@@ -154,6 +190,7 @@ class StrategicRelation:
                 EvidenceRef.from_dict(ref) for ref in data.get("evidence_refs", [])
             ),
             condition=str(data["condition"]).strip() if data.get("condition") else None,
+            condition_event=ConditionEvent.from_dict(data["condition_event"]) if data.get("condition_event") else None,
             effect=str(data["effect"]).strip() if data.get("effect") else None,
             concepts=tuple(str(c).strip() for c in data.get("concepts", [])),
             alignments=tuple(RelationAlignment.from_dict(item) for item in data.get("alignments", [])),
@@ -166,7 +203,7 @@ class StrategicRelation:
         relation.validate()
         return relation
 
-    def stable_key(self) -> tuple[str, str, str, str, str, str | None, str | None]:
+    def stable_key(self) -> tuple[str, str, str, str, str, str | None, str | None, ConditionEvent | None]:
         return (
             self.subject_type,
             _normalize_key(self.subject_key),
@@ -175,6 +212,7 @@ class StrategicRelation:
             _normalize_key(self.object_key),
             self.condition,
             self.effect,
+            self.condition_event,
         )
 
     def validate(self) -> None:
@@ -232,6 +270,12 @@ class StrategicRelation:
         if self.object_type == "concept" and self.object_key not in STRATEGIC_CONCEPTS:
             raise StrategicValidationError(f"unknown object concept: {self.object_key}")
         seen_alignments: set[tuple[str, str, str]] = set()
+        if self.condition_event:
+            self.condition_event.validate()
+            if self.condition is None:
+                raise StrategicValidationError("condition event requires relation condition")
+            if self.condition_event.evidence_id not in {ref.insight_id for ref in self.evidence_refs if ref.insight_id}:
+                raise StrategicValidationError("condition event evidence is not provenanced")
         for alignment in self.alignments:
             alignment.validate()
             key = (alignment.field, alignment.evidence_id, alignment.canonical_value)

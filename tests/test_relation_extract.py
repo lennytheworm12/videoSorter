@@ -219,6 +219,48 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(decision.status, "rejected")
         self.assertIn("condition source phrase does not support", decision.warnings[0])
 
+    def test_condition_event_preserves_miss_and_derived_unavailability(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem(
+                "lux", "video", "After Lux Q misses, it creates a forward access window while unavailable.", confidence=.8
+            ),),
+            ability_aliases={"Lux Q": "Lux Q", "Q": "Lux Q"},
+        )
+        candidate = _candidate(
+            subject="Lux Q", relation_type="creates", object="access", object_type="concept", concepts=["access"],
+            evidence_ids=["lux"], condition="After Lux Q misses", _source_subject="Lux Q",
+            _source_predicate="creates", _source_object="forward access",
+            condition_event={
+                "source_text": "After Lux Q misses", "evidence_id": "lux", "entity": "Lux Q",
+                "event": "missed", "derived_state": "temporarily_unavailable", "temporal_operator": "after",
+            },
+        )
+        decision = compile_candidates(packet, [candidate])[0]
+        self.assertEqual(decision.status, "accepted")
+        self.assertEqual(decision.relation.condition_event.entity, "Lux Q")
+        self.assertEqual(decision.relation.condition_event.derived_state, "temporarily_unavailable")
+
+    def test_event_distinct_conditions_receive_distinct_relation_ids(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem(
+                "lux", "video", "After Lux Q and Lux E miss, Lux Q creates a forward access window.", confidence=.8
+            ),),
+            ability_aliases={"Lux Q": "Lux Q", "Lux E": "Lux E"},
+        )
+        base = _candidate(
+            subject="Lux Q", relation_type="creates", object="access", object_type="concept", concepts=["access"],
+            evidence_ids=["lux"], condition="After Lux Q and Lux E miss", _source_subject="Lux Q",
+            _source_predicate="creates", _source_object="forward access",
+            condition_event={
+                "source_text": "After Lux Q and Lux E miss", "evidence_id": "lux", "entity": "Lux Q",
+                "event": "missed", "derived_state": "temporarily_unavailable", "temporal_operator": "after",
+            },
+        )
+        other = dict(base, condition_event={**base["condition_event"], "entity": "Lux E"})
+        first, second = compile_candidates(packet, [base, other])
+        self.assertEqual((first.status, second.status), ("accepted", "accepted"))
+        self.assertNotEqual(first.relation.id, second.relation.id)
+
     def test_condition_changes_stable_identity_and_is_not_overmerged(self) -> None:
         packet = ExtractionPacket((EvidenceItem("4798", "video", "Flay denies continued contact while available, after Tristana lands W.", confidence=.8),), ability_aliases=self.packet.ability_aliases)
         first = compile_candidates(packet, [_candidate(

@@ -56,10 +56,16 @@ def format_strategic_context(context: StrategicContext) -> str:
         lines = ["Causal relations:"]
         for relation in context.relations:
             condition = relation.get("condition") or "always"
+            event = relation.get("condition_event")
             effect = relation.get("effect") or "no explicit effect recorded"
+            event_detail = (
+                f"; source event: {event['source_text']} -> {event['derived_state'] or event['event']}"
+                if event
+                else ""
+            )
             lines.append(
                 f"- {relation['subject_key']} {relation['relation_type']} {relation['object_key']} "
-                f"when {condition}; effect: {effect} "
+                f"when {condition}{event_detail}; effect: {effect} "
                 f"(concepts: {', '.join(relation['concepts'])}; confidence {relation['confidence']:.2f}; "
                 f"evidence: {_format_evidence_refs(relation['evidence_refs'])})"
             )
@@ -203,13 +209,15 @@ def _relations(conn, question, entities, seen, minimum, max_hops, limit):
             if subject not in frontier and object_ not in frontier:
                 continue
             concepts = json.loads(row["concepts"])
-            condition, effect = json.loads(row["condition_json"]), json.loads(row["effect_json"])
+            condition, event, effect = json.loads(row["condition_json"]), json.loads(row.get("condition_event_json", "null")), json.loads(row["effect_json"])
             if not isinstance(concepts, list) or not all(isinstance(item, str) for item in concepts):
                 raise TypeError("relation concepts must be a JSON string list")
             if not isinstance(condition, str) or not isinstance(effect, str):
                 raise TypeError("relation condition and effect must be JSON strings")
             row["concepts"] = tuple(concepts)
-            row["condition"], row["effect"] = condition, effect
+            if event is not None and not isinstance(event, dict):
+                raise TypeError("relation condition event must be a JSON object or null")
+            row["condition"], row["condition_event"], row["effect"] = condition, event, effect
             row["evidence_refs"] = _evidence(conn, "strategic_relation_evidence", (row["id"],))
             if not row["evidence_refs"]: continue
             result.append(row); seen.add(row["id"]); next_frontier.update((subject, object_)); next_frontier.update(_normalize(c) for c in row["concepts"])

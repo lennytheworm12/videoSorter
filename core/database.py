@@ -11,6 +11,7 @@ from typing import Optional
 from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
 from core.strategic_types import (
     AUTOMATED_RELATION_DATA_VERSION,
+    ConditionEvent,
     EvidenceRef,
     RelationAlignment,
     StrategicFixture,
@@ -90,6 +91,7 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
             object_type       TEXT NOT NULL,
             object_key        TEXT NOT NULL,
             condition_json    TEXT NOT NULL DEFAULT '\"\"',
+            condition_event_json TEXT NOT NULL DEFAULT 'null',
             effect_json       TEXT NOT NULL DEFAULT '\"\"',
             alignment_json    TEXT NOT NULL DEFAULT '[]',
             concepts          TEXT NOT NULL DEFAULT '[]',
@@ -109,6 +111,7 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
                 object_type,
                 object_key,
                 condition_json,
+                condition_event_json,
                 effect_json
             )
         )
@@ -118,6 +121,8 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
     existing_relation_columns = {row["name"] for row in conn.execute("PRAGMA table_info(strategic_relations)")}
     if "alignment_json" not in existing_relation_columns:
         conn.execute("ALTER TABLE strategic_relations ADD COLUMN alignment_json TEXT NOT NULL DEFAULT '[]'")
+    if "condition_event_json" not in existing_relation_columns:
+        conn.execute("ALTER TABLE strategic_relations ADD COLUMN condition_event_json TEXT NOT NULL DEFAULT 'null'")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS strategic_relation_evidence (
@@ -264,7 +269,7 @@ def _rebuild_legacy_relation_identity(conn: sqlite3.Connection) -> None:
             for row in conn.execute(f"PRAGMA index_info({index['name']})").fetchall()
         ]
         if "data_version" in columns and "subject_key" in columns:
-            if "ontology_version" in columns:
+            if "ontology_version" in columns and "condition_event_json" in columns:
                 return
             break
     conn.commit()
@@ -280,7 +285,9 @@ def _rebuild_legacy_relation_identity(conn: sqlite3.Connection) -> None:
                 object_type TEXT NOT NULL,
                 object_key TEXT NOT NULL,
                 condition_json TEXT NOT NULL DEFAULT '\"\"',
+                condition_event_json TEXT NOT NULL DEFAULT 'null',
                 effect_json TEXT NOT NULL DEFAULT '\"\"',
+                alignment_json TEXT NOT NULL DEFAULT '[]',
                 concepts TEXT NOT NULL DEFAULT '[]',
                 confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
                 provenance_type TEXT NOT NULL,
@@ -290,13 +297,13 @@ def _rebuild_legacy_relation_identity(conn: sqlite3.Connection) -> None:
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 UNIQUE (data_version, ontology_version, subject_type, subject_key,
-                    relation_type, object_type, object_key, condition_json, effect_json)
+                    relation_type, object_type, object_key, condition_json, condition_event_json, effect_json)
             )
             """
         )
         columns = (
             "id, subject_type, subject_key, relation_type, object_type, object_key, "
-            "condition_json, effect_json, concepts, confidence, provenance_type, "
+            "condition_json, condition_event_json, effect_json, alignment_json, concepts, confidence, provenance_type, "
             "patch_sensitivity, data_version, ontology_version, created_at, updated_at"
         )
         available = {
@@ -304,7 +311,7 @@ def _rebuild_legacy_relation_identity(conn: sqlite3.Connection) -> None:
             for row in conn.execute("PRAGMA table_info(strategic_relations)").fetchall()
         }
         select_columns = [
-            column if column in available else "datetime('now')"
+            column if column in available else "'[]'" if column == "alignment_json" else "'null'" if column == "condition_event_json" else "datetime('now')"
             for column in columns.split(", ")
         ]
         conn.execute(
@@ -442,10 +449,10 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
         for relation in dedupe_relations(fixture.relations):
             stable_candidates = conn.execute(
                 """
-                SELECT id, confidence, subject_key, object_key, alignment_json FROM strategic_relations
+                SELECT id, confidence, subject_key, object_key, alignment_json, condition_event_json FROM strategic_relations
                 WHERE data_version = ? AND ontology_version = ? AND subject_type = ?
                   AND relation_type = ? AND object_type = ?
-                  AND condition_json = ? AND effect_json = ?
+                  AND condition_json = ? AND condition_event_json = ? AND effect_json = ?
                 """,
                 (
                     relation.data_version,
@@ -454,6 +461,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     relation.relation_type,
                     relation.object_type,
                     _json_scalar(relation.condition),
+                    json.dumps(asdict(relation.condition_event)) if relation.condition_event else "null",
                     _json_scalar(relation.effect),
                 ),
             ).fetchall()
@@ -489,6 +497,11 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     RelationAlignment.from_dict(item)
                     for item in json.loads(stable_match["alignment_json"])
                 )
+                stored_condition_event = (
+                    ConditionEvent.from_dict(json.loads(stable_match["condition_event_json"]))
+                    if json.loads(stable_match["condition_event_json"])
+                    else None
+                )
                 relation_to_persist = replace(
                     relation,
                     id=stable_match["id"],
@@ -497,15 +510,16 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     confidence=max(relation.confidence, stable_match["confidence"]),
                     evidence_refs=_merge_evidence_refs(stored_refs, relation.evidence_refs),
                     alignments=_merge_relation_alignments(stored_alignments, relation.alignments),
+                    condition_event=relation.condition_event or stored_condition_event,
                 )
             relation_to_persist.validate()
             conn.execute(
                 """
                 INSERT INTO strategic_relations (
                     id, subject_type, subject_key, relation_type, object_type, object_key,
-                    condition_json, effect_json, alignment_json, concepts, confidence, provenance_type,
+                    condition_json, condition_event_json, effect_json, alignment_json, concepts, confidence, provenance_type,
                     patch_sensitivity, data_version, ontology_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     subject_type = excluded.subject_type,
                     subject_key = excluded.subject_key,
@@ -513,6 +527,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     object_type = excluded.object_type,
                     object_key = excluded.object_key,
                     condition_json = excluded.condition_json,
+                    condition_event_json = excluded.condition_event_json,
                     effect_json = excluded.effect_json,
                     alignment_json = excluded.alignment_json,
                     concepts = excluded.concepts,
@@ -531,6 +546,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     relation_to_persist.object_type,
                     relation_to_persist.object_key,
                     _json_scalar(relation_to_persist.condition),
+                    json.dumps(asdict(relation_to_persist.condition_event)) if relation_to_persist.condition_event else "null",
                     _json_scalar(relation_to_persist.effect),
                     _json_list([asdict(item) for item in relation_to_persist.alignments]),
                     _json_list(relation_to_persist.concepts),

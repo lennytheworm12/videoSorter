@@ -263,6 +263,25 @@ so no reverse edge is fabricated from a bare verb. The exact positive
 negation cases are covered. 97 focused tests pass; independent review required
 and approved both alias-safety repairs.
 
+#### M6–M7: Structured Source Events for Conditions
+
+**Complete. Commit pending.** Added the optional `ConditionEvent` to the
+existing `StrategicRelation` representation. Phase 2C currently accepts only
+the audited mapping `missed -> temporarily_unavailable`. It retains the exact
+source phrase, evidence ID, canonical ability, temporal operator, event, and
+derived state alongside the legacy condition string. Entity and temporal words
+must appear in the event phrase; unknown events and unsupported states reject.
+
+`condition_event_json` is additive in SQLite, Supabase, and cloud migration.
+Legacy SQLite strategic tables rebuild their derived relation identity to add
+the field while retaining evidence and alignment JSON. Event identity is part
+of the domain stable key, generated relation ID, SQLite/Supabase unique keys,
+and persistence match query. Retrieval and the relation inspector expose the
+source event and derived state to the answer model and operator. 82 focused
+tests pass. Independent review found and verified fixes for source binding,
+event scope, retrieval visibility, legacy identity migration, and an
+event-distinct ID collision.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

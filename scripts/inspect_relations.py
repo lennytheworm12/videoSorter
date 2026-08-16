@@ -57,8 +57,8 @@ def load_review_decisions(path: Path) -> list[dict[str, Any]]:
 
 
 def _decode_relation(relation: dict[str, Any]) -> dict[str, Any]:
-    for field in ("condition_json", "effect_json", "alignment_json", "concepts"):
-        raw = relation.pop(field, "[]" if field == "alignment_json" else '\"\"')
+    for field in ("condition_json", "condition_event_json", "effect_json", "alignment_json", "concepts"):
+        raw = relation.pop(field, "[]" if field == "alignment_json" else "null" if field == "condition_event_json" else '\"\"')
         relation[field.removesuffix("_json")] = json.loads(raw)
     return relation
 
@@ -85,6 +85,7 @@ def render_relations(relations: list[dict[str, Any]]) -> str:
             (
                 f"{relation['id']} [{relation['data_version']}, {relation['ontology_version']}]",
                 f"  {relation['subject_key']} --{relation['relation_type']}--> {relation['object_key']}{condition}{effect}",
+                "  condition event: " + json.dumps(relation["condition_event"], sort_keys=True) if relation["condition_event"] else "  condition event: none",
                 f"  confidence={relation['confidence']:.2f}; provenance={relation['provenance_type']}; patch={relation['patch_sensitivity']}",
                 f"  concepts: {', '.join(relation['concepts'])}",
                 "  alignments: " + "; ".join(

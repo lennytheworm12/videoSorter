@@ -12,7 +12,7 @@ import os
 import re
 import sqlite3
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Callable, Mapping
 
 from core.ontology import ONTOLOGY_VERSION, RELATION_TYPES, STRATEGIC_CONCEPTS
@@ -26,9 +26,11 @@ from core.relation_normalization import (
 )
 from core.strategic_types import (
     AUTOMATED_RELATION_DATA_VERSION,
+    ConditionEvent,
     EvidenceRef,
     RelationAlignment,
     StrategicRelation,
+    StrategicValidationError,
     relation_types_conflict,
 )
 
@@ -90,7 +92,7 @@ where that phrase occurs. The source phrase must be copied from the supplied
 evidence, not paraphrased. Canonical terms do not need to appear literally,
 but their source phrase must support the mapping. Return exactly this JSON
 shape:
-{{"relations":[{{"subject":"...","subject_type":"...","relation_type":"...","object":"...","object_type":"...","condition":null,"effect":null,"concepts":["..."],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["..."],"extraction_confidence":0.0,"patch_sensitivity":"very_low|low|medium|high","grounding":{{"subject":{{"source_text":"...","evidence_id":"..."}},"predicate":{{"source_text":"...","evidence_id":"..."}},"object":{{"source_text":"...","evidence_id":"..."}},"condition":null}}}}]}}
+{{"relations":[{{"subject":"...","subject_type":"...","relation_type":"...","object":"...","object_type":"...","condition":null,"condition_event":null,"effect":null,"concepts":["..."],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["..."],"extraction_confidence":0.0,"patch_sensitivity":"very_low|low|medium|high","grounding":{{"subject":{{"source_text":"...","evidence_id":"..."}},"predicate":{{"source_text":"...","evidence_id":"..."}},"object":{{"source_text":"...","evidence_id":"..."}},"condition":null}}}}]}}
 """
 
 
@@ -408,6 +410,11 @@ def _compile_candidate(
     effect = canonical_condition(candidate.get("effect"))
     if condition and not _condition_is_supported(condition, evidence_ids, evidence_by_id):
         return ExtractionDecision(candidate, None, "rejected", ("condition is not supported by evidence",))
+    condition_event, condition_event_error = _compile_condition_event(
+        candidate.get("condition_event"), condition, evidence_by_id, evidence_ids, ability_aliases
+    )
+    if condition_event_error:
+        return ExtractionDecision(candidate, None, "rejected", (condition_event_error,))
     alignments, alignment_error = _compile_source_alignments(
         candidate,
         evidence_by_id,
@@ -440,7 +447,11 @@ def _compile_candidate(
     evidence_patch = max((evidence_by_id[item].patch_sensitivity for item in evidence_ids), key=_patch_rank)
     patch = max((patch, evidence_patch), key=_patch_rank)
     relation = StrategicRelation(
-        id=_stable_relation_id(subject.entity_type, subject.key, relation_type, obj.entity_type, obj.key, condition, effect),
+        id=_stable_relation_id(
+            subject.entity_type, subject.key, relation_type, obj.entity_type, obj.key,
+            condition, effect,
+            json.dumps(asdict(condition_event), sort_keys=True) if condition_event else None,
+        ),
         subject_type=subject.entity_type,
         subject_key=subject.key,
         relation_type=relation_type,
@@ -450,6 +461,7 @@ def _compile_candidate(
         provenance_type=provenance,
         evidence_refs=refs,
         condition=condition,
+        condition_event=condition_event,
         effect=effect,
         concepts=concepts,
         patch_sensitivity=patch,
@@ -464,6 +476,54 @@ def _compile_candidate(
         else ()
     )
     return ExtractionDecision(candidate, relation, "accepted", warnings, {"extraction": extraction_confidence, "evidence": source_quality, "canonicalization": canonicalization})
+
+
+def _compile_condition_event(
+    raw: Any,
+    condition: str | None,
+    evidence_by_id: Mapping[str, EvidenceItem],
+    evidence_ids: list[str],
+    ability_aliases: Mapping[str, str],
+) -> tuple[ConditionEvent | None, str | None]:
+    if raw is None:
+        return None, None
+    if condition is None or not isinstance(raw, Mapping):
+        return None, "condition event requires a condition object"
+    source_text, evidence_id = raw.get("source_text"), raw.get("evidence_id")
+    if not isinstance(source_text, str) or evidence_id not in evidence_ids:
+        return None, "invalid condition event source"
+    evidence = evidence_by_id[evidence_id]
+    if not _source_phrase_is_present(source_text, evidence.text):
+        return None, "condition event source phrase is not present in evidence"
+    event = raw.get("event")
+    temporal_operator = raw.get("temporal_operator")
+    entity = raw.get("entity")
+    canonical_entity_key = None
+    if entity is not None:
+        if not isinstance(entity, str):
+            return None, "invalid condition event entity"
+        canonical = canonical_entity("ability", entity, ability_aliases=ability_aliases)
+        if canonical is None:
+            return None, "unknown condition event entity"
+        canonical_entity_key = canonical.key
+        if not _source_phrase_is_present(entity, source_text):
+            return None, "condition event entity is not present in source phrase"
+    derived_state = raw.get("derived_state")
+    try:
+        event_detail = ConditionEvent(
+            source_text=source_text.strip(), evidence_id=evidence_id,
+            entity=canonical_entity_key, event=str(event),
+            derived_state=str(derived_state) if derived_state is not None else None,
+            temporal_operator=str(temporal_operator),
+        )
+        event_detail.validate()
+    except (StrategicValidationError, TypeError, ValueError):
+        return None, "invalid condition event"
+    if event_detail.event == "missed" and "miss" not in source_text.lower():
+        return None, "condition event is not supported by source phrase"
+    if event_detail.temporal_operator not in source_text.lower().split():
+        return None, "condition event temporal operator is not present in source phrase"
+    return event_detail, None
 
 
 def _compile_source_alignments(
