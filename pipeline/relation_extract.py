@@ -15,7 +15,7 @@ import time
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Callable, Mapping
 
-from core.ontology import ONTOLOGY_VERSION, RELATION_TYPES, STRATEGIC_CONCEPTS
+from core.ontology import ENTITY_TYPES, ONTOLOGY_VERSION, RELATION_TYPES, STRATEGIC_CONCEPTS
 from core.champions import champions_mentioned
 from core.relation_normalization import (
     canonical_condition,
@@ -80,6 +80,7 @@ co-occurrence into causation. Never create principles or matchup answers."""
 
 RELATION_EXTRACTION_USER = """Ontology version: {ontology_version}
 Allowed relation types: {relation_types}
+Allowed entity types: {entity_types}
 Strategic concepts: {concepts}
 Recognized ability aliases: {ability_aliases}
 Recognized non-concept entity aliases: {entity_aliases}
@@ -90,7 +91,13 @@ SOURCE EVIDENCE (the only factual basis):
 For each canonical field, include the exact source phrase and the evidence ID
 where that phrase occurs. The source phrase must be copied from the supplied
 evidence, not paraphrased. Canonical terms do not need to appear literally,
-but their source phrase must support the mapping. Return exactly this JSON
+but their source phrase must support the mapping. `subject_type` and
+`object_type` must be exactly an allowed entity type. Do not emit action,
+attribute, opportunity, environment, or any other free-form node type. Use an
+allowed canonical ability, champion, or strategic concept only when source
+evidence supports it. A non-core allowed entity type is permitted only when its
+exact value appears in Recognized non-concept entity aliases. Otherwise return
+zero relations. Return exactly this JSON
 shape:
 {{"relations":[{{"subject":"...","subject_type":"...","relation_type":"...","object":"...","object_type":"...","condition":null,"condition_event":null,"effect":null,"concepts":["..."],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["..."],"extraction_confidence":0.0,"patch_sensitivity":"very_low|low|medium|high","grounding":{{"subject":{{"source_text":"...","evidence_id":"..."}},"predicate":{{"source_text":"...","evidence_id":"..."}},"object":{{"source_text":"...","evidence_id":"..."}},"condition":null}}}}]}}
 """
@@ -150,6 +157,7 @@ class ExtractionPacket:
         return RELATION_EXTRACTION_USER.format(
             ontology_version=self.ontology_version,
             relation_types=", ".join(sorted(RELATION_TYPES)),
+            entity_types=", ".join(sorted(ENTITY_TYPES)),
             concepts=", ".join(sorted(STRATEGIC_CONCEPTS)),
             ability_aliases=aliases,
             entity_aliases=entity_aliases,

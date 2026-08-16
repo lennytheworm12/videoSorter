@@ -5,6 +5,7 @@ import unittest
 
 from core.champions import canonical_champion_name
 from core.relation_normalization import canonical_relation_type
+from core.ontology import ENTITY_TYPES
 from pipeline.relation_extract import (
     EvidenceItem,
     ExtractionPacket,
@@ -384,6 +385,11 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("SOURCE EVIDENCE", captured["user"])
         self.assertIn("evidence_id=4798", captured["user"])
         self.assertIn("Allowed relation types", captured["user"])
+        self.assertIn("Allowed entity types", captured["user"])
+        self.assertIn("Do not emit action", captured["user"])
+        self.assertIn("non-core allowed entity type", captured["user"])
+        for entity_type in ENTITY_TYPES:
+            self.assertIn(entity_type, captured["user"])
         self.assertIn("Do not use League knowledge", captured["system"])
         self.assertIn("Copy condition wording", captured["system"])
         self.assertIn("exact source phrase", captured["user"])
@@ -411,6 +417,11 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(trace.failure_stage, "parsing")
         self.assertEqual(trace.raw_response, "not-json")
         self.assertFalse(trace.decisions)
+
+    def test_trace_classifies_truncated_json_as_parsing_failure(self) -> None:
+        trace = extract_relation_trace(self.packet, lambda **_: '{"relations": [{"subject": "Flay"')
+        self.assertEqual(trace.failure_stage, "parsing")
+        self.assertIn("malformed JSON", trace.failure_message)
 
     def test_output_budget_config_rejects_malformed_or_non_positive_values(self) -> None:
         import os

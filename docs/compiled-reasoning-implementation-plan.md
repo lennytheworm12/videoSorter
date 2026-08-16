@@ -282,6 +282,23 @@ tests pass. Independent review found and verified fixes for source binding,
 event scope, retrieval visibility, legacy identity migration, and an
 event-distinct ID collision.
 
+#### M8: Source-Aligned Prompt Diagnostic
+
+**Complete. Commit pending.** The source-aligned prompt now enumerates every
+allowed entity type, prohibits free-form `action`/`attribute`/`opportunity`
+nodes, and permits non-core entities only when they occur in the packet's
+explicit alias registry. A deterministic test preserves truncated JSON as a
+parsing failure. Independent review approved the boundary.
+
+Live dry-run benchmark at a shared 1024-token output limit: Flash and Pro both
+accepted 0/18 reference relations. The larger limit eliminated Flash parsing
+failures, but not canonical failures. Flash emitted 23 unknown
+entity/concept/relation candidates and four subject-alignment mismatches; Pro
+emitted 21 and four respectively. This supports the Phase 2C Case C diagnosis:
+one call is overloaded with grounded proposition extraction and custom ontology
+abstraction. The validator is not being relaxed; the next experiment is the
+optional grounded-proposition fallback.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
