@@ -145,6 +145,29 @@ class RelationExtractionEvaluationTests(unittest.TestCase):
             extractor(object())
         self.assertEqual(extract.call_args.kwargs["model"], eval_relation_extraction.RELATION_PRO_MODEL)
 
+    def test_two_stage_live_mode_uses_fallback_and_reports_mode(self):
+        from unittest import mock
+        from scripts import eval_relation_extraction
+
+        with mock.patch("sys.argv", ["eval_relation_extraction", "--live", "--db", "videos.db", "--two-stage"]), \
+             mock.patch.object(eval_relation_extraction, "load_cases", return_value=()), \
+             mock.patch.object(eval_relation_extraction, "evaluate_cases", return_value={}) as evaluate:
+            eval_relation_extraction.main()
+
+        extractor = evaluate.call_args.args[1]
+        with mock.patch.object(eval_relation_extraction, "extract_relations_two_stage", return_value=()) as two_stage, \
+             mock.patch.object(eval_relation_extraction, "extract_relation_trace") as one_stage:
+            extractor(object())
+        two_stage.assert_called_once()
+        one_stage.assert_not_called()
+
+    def test_two_stage_requires_live_mode(self):
+        from unittest import mock
+        from scripts import eval_relation_extraction
+
+        with mock.patch("sys.argv", ["eval_relation_extraction", "--two-stage"]), self.assertRaises(SystemExit):
+            eval_relation_extraction.main()
+
     def test_custom_model_is_not_labeled_as_flash_or_pro_benchmark(self):
         from unittest import mock
         from scripts import eval_relation_extraction

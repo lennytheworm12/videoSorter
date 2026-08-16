@@ -24,6 +24,7 @@ from pipeline.relation_extract import (
     ExtractionPacket,
     compile_candidates,
     extract_relation_trace,
+    extract_relations_two_stage,
     extract_relations,
     packet_from_insight_ids,
 )
@@ -286,8 +287,11 @@ def main() -> None:
     parser.add_argument("--variant", choices=("flash", "pro"), help="DeepSeek relation model variant for a fair live comparison")
     parser.add_argument("--case-id", action="append", help="Evaluate only this fixture case; repeatable")
     parser.add_argument("--model", help="Explicit model identifier; overrides --variant")
+    parser.add_argument("--two-stage", action="store_true", help="Use the optional grounded-proposition fallback")
     parser.add_argument("--json-output", type=Path)
     args = parser.parse_args()
+    if args.two_stage and not args.live:
+        parser.error("--two-stage requires --live")
     if args.live and not args.db:
         parser.error("--live requires --db so evaluation uses the production packet loader")
     cases = load_cases(args.fixture, source_db=args.db)
@@ -308,10 +312,18 @@ def main() -> None:
     else:
         selected_model, model_label = None, "provider_default"
     if args.live:
-        result = evaluate_cases(cases, lambda packet: extract_relation_trace(packet, chat, model=selected_model))
+        result = evaluate_cases(
+            cases,
+            lambda packet: (
+                extract_relations_two_stage(packet, chat, model=selected_model)
+                if args.two_stage
+                else extract_relation_trace(packet, chat, model=selected_model)
+            ),
+        )
     else:
         result = {"status": "validated_fixture_only", "case_count": len(cases), "message": "Pass --live to make model calls."}
     result["model"] = {"backend": BACKEND, "model": selected_model or MODEL, "variant": model_label} if args.live else None
+    result["two_stage"] = args.two_stage
     rendered = json.dumps(result, indent=2)
     print(rendered)
     if args.json_output:
