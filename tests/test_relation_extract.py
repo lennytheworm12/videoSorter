@@ -12,6 +12,7 @@ from pipeline.relation_extract import (
     compile_candidates,
     extract_relations,
     extract_relation_trace,
+    extract_relations_two_stage,
     parse_model_response,
     packet_from_insight_ids,
     _positive_env_int,
@@ -422,6 +423,47 @@ class RelationExtractionTests(unittest.TestCase):
         trace = extract_relation_trace(self.packet, lambda **_: '{"relations": [{"subject": "Flay"')
         self.assertEqual(trace.failure_stage, "parsing")
         self.assertIn("malformed JSON", trace.failure_message)
+
+    def test_two_stage_fallback_preserves_grounded_sources_before_abstraction(self) -> None:
+        candidate = _candidate(condition=None)
+        responses = iter((
+            json.dumps({"propositions": [{
+                "subject_source": "Flay", "predicate_source": "denies",
+                "effect_source": "continued contact", "condition_source": None,
+                "evidence_ids": ["4798"],
+            }]}),
+            json.dumps({"relations": [candidate]}),
+        ))
+        trace = extract_relations_two_stage(self.packet, lambda **_: next(responses))
+        self.assertEqual(trace.decisions[0].status, "accepted")
+        self.assertEqual(trace.decisions[0].relation.object_key, "continuity")
+
+    def test_two_stage_fallback_rejects_fabricated_proposition_phrase(self) -> None:
+        trace = extract_relations_two_stage(
+            self.packet,
+            lambda **_: json.dumps({"propositions": [{
+                "subject_source": "Flay", "predicate_source": "denies",
+                "effect_source": "invented advantage", "condition_source": None,
+                "evidence_ids": ["4798"],
+            }]}),
+        )
+        self.assertEqual(trace.failure_stage, "grounded_proposition")
+
+    def test_two_stage_fallback_validates_threshold_before_model_call(self) -> None:
+        with self.assertRaisesRegex(ValueError, "acceptance_threshold"):
+            extract_relations_two_stage(self.packet, lambda **_: self.fail("model should not be called"), acceptance_threshold=1.1)
+
+    def test_two_stage_abstraction_prompt_excludes_raw_evidence(self) -> None:
+        calls = []
+        candidate = _candidate(condition=None)
+        responses = iter((
+            json.dumps({"propositions": [{"subject_source":"Flay","predicate_source":"denies","effect_source":"continued contact","condition_source":None,"evidence_ids":["4798"]}]}),
+            json.dumps({"relations": [candidate]}),
+        ))
+        extract_relations_two_stage(self.packet, lambda **kwargs: calls.append(kwargs) or next(responses))
+        self.assertNotIn("SOURCE EVIDENCE", calls[1]["user"])
+        self.assertIn("GROUNDED PROPOSITIONS", calls[1]["user"])
+        self.assertIn("continued contact", calls[1]["user"])
 
     def test_output_budget_config_rejects_malformed_or_non_positive_values(self) -> None:
         import os

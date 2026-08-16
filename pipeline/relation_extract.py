@@ -51,6 +51,8 @@ def _positive_env_int(name: str, default: int) -> int:
 
 
 DEFAULT_MAX_OUTPUT_TOKENS = _positive_env_int("RELATION_EXTRACTION_MAX_TOKENS", 4096)
+GROUNDED_PROPOSITION_MAX_OUTPUT_TOKENS = _positive_env_int("RELATION_PROPOSITION_MAX_TOKENS", 512)
+ONTOLOGY_ABSTRACTION_MAX_OUTPUT_TOKENS = _positive_env_int("RELATION_ABSTRACTION_MAX_TOKENS", 768)
 DEEPSEEK_THINKING_MODE = os.environ.get("RELATION_EXTRACTION_DEEPSEEK_THINKING", "disabled")
 if DEEPSEEK_THINKING_MODE not in {"enabled", "disabled"}:
     raise RuntimeError("RELATION_EXTRACTION_DEEPSEEK_THINKING must be enabled or disabled")
@@ -101,6 +103,21 @@ zero relations. Return exactly this JSON
 shape:
 {{"relations":[{{"subject":"...","subject_type":"...","relation_type":"...","object":"...","object_type":"...","condition":null,"condition_event":null,"effect":null,"concepts":["..."],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["..."],"extraction_confidence":0.0,"patch_sensitivity":"very_low|low|medium|high","grounding":{{"subject":{{"source_text":"...","evidence_id":"..."}},"predicate":{{"source_text":"...","evidence_id":"..."}},"object":{{"source_text":"...","evidence_id":"..."}},"condition":null}}}}]}}
 """
+
+GROUNDED_PROPOSITION_SYSTEM = """Return JSON only. Extract only literal or
+minimally paraphrased causal propositions from the supplied evidence. Do not
+choose strategic ontology concepts, relation types, champion mechanics, or
+advice. Return an empty list when no causal mechanism is stated."""
+
+GROUNDED_PROPOSITION_USER = """SOURCE EVIDENCE:
+{evidence}
+
+Return exactly: {{"propositions":[{{"subject_source":"...","predicate_source":"...","effect_source":"...","condition_source":null,"evidence_ids":["..."]}}]}}.
+Every non-null source field must be copied from one cited evidence record."""
+
+ONTOLOGY_ABSTRACTION_SYSTEM = """Return JSON only. Map supplied grounded
+propositions to constrained strategic relations. Do not add facts, entities,
+or conditions. Reuse the supplied source phrases verbatim in grounding."""
 
 
 @dataclass(frozen=True)
@@ -184,6 +201,28 @@ class ExtractionTrace:
     failure_message: str | None = None
     latency_ms: int = 0
     exception: Exception | None = field(default=None, repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class GroundedProposition:
+    subject_source: str
+    predicate_source: str
+    effect_source: str
+    condition_source: str | None
+    evidence_ids: tuple[str, ...]
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> "GroundedProposition":
+        values = tuple(raw.get("evidence_ids") or ())
+        if not all(isinstance(item, str) and item for item in values):
+            raise ValueError("grounded proposition requires evidence IDs")
+        fields = [raw.get("subject_source"), raw.get("predicate_source"), raw.get("effect_source")]
+        if not all(isinstance(item, str) and item.strip() for item in fields):
+            raise ValueError("grounded proposition requires source fields")
+        condition = raw.get("condition_source")
+        if condition is not None and not isinstance(condition, str):
+            raise ValueError("grounded proposition condition must be a string or null")
+        return cls(*(item.strip() for item in fields), condition.strip() if condition else None, values)
 
 
 def packet_from_insight_ids(db_path: str, insight_ids: tuple[str, ...] | list[str]) -> ExtractionPacket:
@@ -343,6 +382,87 @@ def extract_relation_trace(
     except Exception as exc:
         return _failed_trace("validation", raw, exc, started, candidates)
     return ExtractionTrace(raw, candidates, decisions, latency_ms=_elapsed_ms(started))
+
+
+def extract_relations_two_stage(
+    packet: ExtractionPacket,
+    chat: Callable[..., str],
+    *,
+    acceptance_threshold: float = DEFAULT_ACCEPTANCE_THRESHOLD,
+    model: str | None = None,
+) -> ExtractionTrace:
+    """Optional fallback: source proposition extraction followed by abstraction."""
+    if not 0.0 <= acceptance_threshold <= 1.0:
+        raise ValueError("acceptance_threshold must be between 0 and 1")
+    started = time.perf_counter()
+    proposition_raw: str | None = None
+    try:
+        proposition_raw = chat(
+            system=GROUNDED_PROPOSITION_SYSTEM,
+            user=_grounded_proposition_prompt(packet),
+            temperature=0.0,
+            max_tokens=GROUNDED_PROPOSITION_MAX_OUTPUT_TOKENS,
+            thinking=DEEPSEEK_THINKING_MODE,
+            model=model,
+        )
+        propositions = _parse_grounded_propositions(proposition_raw, packet)
+    except Exception as exc:
+        return _failed_trace("grounded_proposition", proposition_raw, exc, started)
+    if not propositions:
+        return ExtractionTrace(proposition_raw, (), (), latency_ms=_elapsed_ms(started))
+    try:
+        raw = chat(
+            system=ONTOLOGY_ABSTRACTION_SYSTEM,
+            user=_ontology_abstraction_prompt(packet, propositions),
+            temperature=0.0,
+            max_tokens=ONTOLOGY_ABSTRACTION_MAX_OUTPUT_TOKENS,
+            thinking=DEEPSEEK_THINKING_MODE,
+            model=model,
+        )
+        candidates = tuple(parse_model_response(raw))
+        decisions = tuple(_apply_threshold(item, acceptance_threshold) for item in compile_candidates(packet, list(candidates)))
+    except Exception as exc:
+        return _failed_trace("ontology_abstraction", raw if "raw" in locals() else None, exc, started)
+    return ExtractionTrace(raw, candidates, decisions, latency_ms=_elapsed_ms(started))
+
+
+def _grounded_proposition_prompt(packet: ExtractionPacket) -> str:
+    packet.validate()
+    evidence = "\n".join(f"[evidence_id={item.insight_id}] {item.text}" for item in packet.evidence)
+    return GROUNDED_PROPOSITION_USER.format(evidence=evidence)
+
+
+def _parse_grounded_propositions(raw: str, packet: ExtractionPacket) -> tuple[GroundedProposition, ...]:
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("propositions"), list):
+        raise ValueError("grounded proposition response requires propositions list")
+    evidence = {item.insight_id: item.text for item in packet.evidence}
+    results = []
+    for raw_item in parsed["propositions"]:
+        if not isinstance(raw_item, Mapping):
+            raise ValueError("grounded propositions must be objects")
+        proposition = GroundedProposition.from_dict(raw_item)
+        if any(item not in evidence for item in proposition.evidence_ids):
+            raise ValueError("grounded proposition has unknown evidence ID")
+        for phrase in (proposition.subject_source, proposition.predicate_source, proposition.effect_source, proposition.condition_source):
+            if phrase and not any(_source_phrase_is_present(phrase, evidence[item]) for item in proposition.evidence_ids):
+                raise ValueError("grounded proposition source phrase is not present in evidence")
+        results.append(proposition)
+    return tuple(results)
+
+
+def _ontology_abstraction_prompt(packet: ExtractionPacket, propositions: tuple[GroundedProposition, ...]) -> str:
+    packet.validate()
+    aliases = ", ".join(f"{key} -> {value}" for key, value in sorted(packet.ability_aliases.items())) or "(none)"
+    return (
+        "Allowed relation types: " + ", ".join(sorted(RELATION_TYPES))
+        + "\nAllowed entity types: " + ", ".join(sorted(ENTITY_TYPES))
+        + "\nStrategic concepts: " + ", ".join(sorted(STRATEGIC_CONCEPTS))
+        + "\nRecognized ability aliases: " + aliases
+        + "\n\nGROUNDED PROPOSITIONS (the only permitted abstraction inputs):\n"
+        + json.dumps([asdict(item) for item in propositions], separators=(",", ":"))
+        + "\n\nReturn the standard relations JSON. Grounding source_text and evidence_id must come from these propositions; do not use any unstated source evidence."
+    )
 
 
 def _failed_trace(

@@ -299,6 +299,20 @@ one call is overloaded with grounded proposition extraction and custom ontology
 abstraction. The validator is not being relaxed; the next experiment is the
 optional grounded-proposition fallback.
 
+#### M9: Optional Grounded-Proposition Fallback
+
+**Complete. Commit pending.** The fallback is explicitly two-stage and does
+not change the default one-pass compiler. Stage A extracts source-only causal
+propositions and rejects any phrase not present in cited evidence. Stage B sees
+only those validated propositions plus ontology and alias constraints, never
+the raw evidence packet; its output still passes the existing source-aligned
+candidate validator. Both stage budgets are configurable and bounded
+separately (512 and 768 defaults). Threshold validation occurs before model
+calls, and Stage A/B raw failures remain in the trace. Mocked tests cover a
+successful source-preserving path, fabricated source rejection, threshold
+short-circuiting, and Stage B raw-evidence isolation. Independent review
+approved the boundary.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
