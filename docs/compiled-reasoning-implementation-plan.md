@@ -475,6 +475,36 @@ prompt/parser confidence contradiction. All were fixed with regressions; the
 final review approved. Next: add the candidate relation ledger and aggregation
 states without promoting provisional output into existing strategic relations.
 
+#### M16: Provisional Candidate Ledger and Aggregation
+
+**Complete. Commit pending.** Added a lightweight in-memory candidate ledger;
+it does not touch the existing `StrategicRelation` persistence path. It retains
+`trusted`, `provisional_mapped`, `provisional_unmapped`, `contradicted`,
+`rejected`, and inspectable `no_relation` outcomes. All recorded evidence must
+be present in an immutable evidence-ID-to-video catalog injected when the
+ledger is created.
+
+Mapped selections are revalidated against a deterministically regenerated
+candidate set. The ledger owns the approved ability aliases and concept top-k;
+candidate metadata must match those values and the exact proposition signature.
+This prevents caller-supplied videos, arbitrary selections, forged candidates,
+or self-attested aliases from creating trusted graph knowledge. Only mapped
+hypotheses with two independent registered source videos and confidence at or
+above the configured threshold can be trusted. Repeated model samples from one
+video do not create source diversity. Different conditions coexist; only
+structurally conflicting relations under the same condition become
+`contradicted`.
+
+Tests: `uv run python -m unittest tests.test_candidate_ledger
+tests.test_constrained_mapper tests.test_candidate_generation
+tests.test_proposition_extract tests.test_relation_extract
+tests.test_source_windows` (86 passing). Independent review found and verified
+fixes for forged source diversity, direct/free-form mapper selections,
+uninspectable no-relation output, confidence/status bypasses, candidate reuse,
+candidate-set fabrication, and self-attested alias/top-k policy. Final review
+approved. Next: implement the evaluation harness, freeze configuration, and
+run development source-mode ablation before the one held-out checkpoint.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

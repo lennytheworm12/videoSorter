@@ -35,6 +35,9 @@ class ConditionCandidate:
 
 @dataclass(frozen=True)
 class CandidateSet:
+    proposition_signature: tuple[str, str, str, str | None, tuple[str, ...]]
+    ability_aliases: tuple[tuple[str, str], ...]
+    top_k_concepts: int
     subject: tuple[CanonicalCandidate, ...]
     relation: tuple[CanonicalCandidate, ...]
     object: tuple[CanonicalCandidate, ...]
@@ -50,11 +53,15 @@ def generate_candidates(
     """Generate legal canonical choices without mapping or persistence."""
     if top_k_concepts <= 0:
         raise ValueError("top_k_concepts must be positive")
+    aliases = tuple(sorted((str(key), str(value)) for key, value in (ability_aliases or {}).items()))
     return CandidateSet(
-        subject=_entity_candidates(proposition.subject_source, ability_aliases or {}),
+        proposition_signature=_proposition_signature(proposition),
+        ability_aliases=aliases,
+        top_k_concepts=top_k_concepts,
+        subject=_entity_candidates(proposition.subject_source, dict(aliases)),
         relation=_relation_candidates(proposition.predicate_source),
         object=_concept_candidates(proposition.effect_source, top_k_concepts),
-        condition=_condition_candidates(proposition.condition_source, ability_aliases or {}),
+        condition=_condition_candidates(proposition.condition_source, dict(aliases)),
     )
 
 
@@ -120,6 +127,16 @@ def _condition_candidates(text: str | None, ability_aliases: Mapping[str, str]) 
 
 def _tokens(text: str) -> tuple[str, ...]:
     return tuple(token for token in re.findall(r"[a-z0-9']+", text.lower()) if len(token) > 2)
+
+
+def _proposition_signature(proposition: GroundedProposition) -> tuple[str, str, str, str | None, tuple[str, ...]]:
+    return (
+        proposition.subject_source,
+        proposition.predicate_source,
+        proposition.effect_source,
+        proposition.condition_source,
+        proposition.evidence_ids,
+    )
 
 
 def _alias_in_phrase(alias: str, text: str) -> bool:
