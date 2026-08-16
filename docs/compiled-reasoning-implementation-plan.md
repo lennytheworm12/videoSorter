@@ -656,10 +656,10 @@ the current Stage A output were useful.
 
 ### Phase 2E: Span-First Stage A Restructure
 
-**Code boundary implemented and deterministic validation complete; live
-model-quality gate pending a network-enabled run.** The five eligible
-development cases now carry conservative, reviewed closed-ontology labels, so
-normalization recall is available on the same X/5 basis as the other slots.
+**Code boundary implemented and deterministically validated; the first valid
+live Flash run failed the Phase 2E gate.** The five eligible development cases
+carry conservative, reviewed closed-ontology labels, so normalization recall is
+available on the same X/5 basis as the other slots. Phase 2 remains in Stage A.
 
 #### Architecture: Span-First 7-Call Stage A
 
@@ -738,44 +738,59 @@ development cases enforce exactly one expected proposition, so the official
 gate stays X/5; (4) the frozen held-out fixture schema validates fail-closed
 before overlap checks run.
 
-#### Live Run Attempt: Not a Model Quality Result
+#### Valid Live Run: Phase 2E Gate Failed
 
-Attempted clean Flash transcript-only run:
+Clean Flash transcript-only run:
 
 ```bash
 LLM_PROVIDER=deepseek .venv/bin/python -m scripts.eval_phase2d_propositions \
   --live --variant flash --db videos.db --mode transcript \
-  --json-output /tmp/phase2e-dev-flash-transcript-span-first.json
+  --json-output /tmp/phase2e-dev-flash-transcript-span-first-network-final.json
 ```
 
-Latest artifact SHA-256
-`c9ee4745622fcd47587617ce440b7ecedd89c6e6215c88163779ccb6e5c8f1df` is
-**INVALID AS A MODEL QUALITY RESULT**: of 7 cases (5 eligible, 2
-unavailable/ambiguous), all five eligible cases failed at the first provider
-call (`evidence_localization`, `ProviderCallError`) before any raw output was
-produced, because this managed sandbox blocks network/DNS. Its deterministic
-schema correctly records normalization at a 5-case denominator, but no
-semantic, exact, normalization, or other slot-level model-quality claim is made
-from provider failures; it is neither a Phase 2E PASS nor a FAIL. No Pro,
-held-out, candidate-mapping, ledger-promotion, or downstream work was run.
-Rerun the exact command above in a network-enabled environment to obtain the
-first valid Phase 2E quality result. This invalidity applies only to this Phase
-2E artifact: the earlier retained Phase 2D artifacts
-(`/tmp/phase2d-dev-flash-source-modes-scored.json` and
-`/tmp/phase2d-dev-flash-transcript-coaching-repair.json`) remain valid Phase 2D
-model-quality results documenting 0/5 semantic and 0/5 exact proposition
-recall after repairs.
+Artifact inner `content_sha256`
+`e3a769b61dc4699d6e65bdc5572eb86e1741832abe1c84839a68e98564f55017`
+(file SHA-256
+`6527419b5b905964e42e6c4cbebc9b6a200ce03710e4f6d2f57161a5c1035fd8`)
+is a **valid model-quality result**: 7 cases, 5 eligible, 2 unavailable safe-zero
+cases, full eligible source coverage, and successful provider output.
+
+The result is **Phase 2E FAIL — CONTINUE STAGE A DECOMPOSITION**:
+
+- semantic proposition recall: **0/5**;
+- exact decomposition recall: **0/5**;
+- evidence-span recall: **2/5**;
+- causal-direction recall: **1/5**;
+- actor, event, effect, condition, and normalization recall: **0/5** each;
+- two cases completed all seven calls, while three stopped at evidence or actor
+  validation; unsupported proposition rate was **1.0**.
+
+The trace localizes the earliest architectural loss to clause selection and
+role assignment. Flash often selected a broad or adjacent coaching clause, then
+treated the grammatical `you` or the first nearby action as the causal actor.
+Examples include selecting `you portal away` instead of the sweeper mechanism,
+and returning `you` as the actor for the push/poke and hook-risk cases. This is
+not a normalization-only problem and does not justify aliases, relaxed
+grounding, Pro, candidate mapping, or held-out evaluation.
+
+Per the preregistered 0-2/5 rule, the next Stage A experiment must move lower:
+deterministically enumerate source-local clause candidates, have Flash choose
+the smallest mechanism-bearing clause or linked clause pair from IDs, and only
+then extract actor/event/effect/condition within that selected boundary. Keep
+the same five development cases, metrics, exact-span provenance, and frozen
+held-out isolation.
 
 #### Publication Status
 
-The code boundary and deterministic tests are complete. The writable
-publication clone `/tmp/videoSorter-phase2e-publish` is based on `91dc157` and
-carries the work as three focused commits: (a) core extraction + tests,
+The code boundary and deterministic tests are complete. The implementation was
+published directly to GitHub `main` through `b63d5e1`. The focused boundary is:
+(a) core extraction + tests,
 `5bcffcf` ("Add span-first semantic proposition extraction"); (b) evaluator,
 CLI, tests, and handoff, `da1ad9f` ("Add Phase 2E semantic evaluation and
 handoff"); and (c) reviewed normalization labels, scoring, tests, and final
-documentation. GitHub publication remains pending: DNS is still blocked in
-this environment, so nothing has been pushed.
+documentation, `b63d5e1` ("Add reviewed Phase 2E normalization scoring"). This
+valid-run record is the final closeout documentation boundary for the failed
+Phase 2E experiment.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
