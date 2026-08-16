@@ -15,9 +15,13 @@ from pipeline.proposition_extract import ExtractedProposition, PropositionPacket
 from pipeline.source_windows import SourceWindow, SourceWindowResolver
 
 
+_CONDITION_OPERATORS = frozenset(("if", "when", "after", "before", "while", "unless", "until", "once", "around"))
+
+
 def load_development_cases(path: str | Path) -> tuple[dict[str, Any], ...]:
     """Load the separately maintained Phase 2D development-only fixture."""
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    fixture_path = Path(path)
+    payload = json.loads(fixture_path.read_text(encoding="utf-8"))
     cases = payload.get("cases") if isinstance(payload, Mapping) else None
     if not isinstance(cases, list):
         raise ValueError("Phase 2D fixture requires a cases list")
@@ -31,7 +35,24 @@ def load_development_cases(path: str | Path) -> tuple[dict[str, Any], ...]:
             raise ValueError(f"Phase 2D fixture case {case['id']} has invalid proposition labels")
         if case["eligible"] != bool(case["expected_propositions"]):
             raise ValueError(f"Phase 2D fixture case {case['id']} has inconsistent eligible/safe-zero labels")
+        for expected in case["expected_propositions"]:
+            groups = expected.get("semantic_field_token_groups")
+            if groups is not None and (
+                not isinstance(groups, Mapping)
+                or not groups
+                or not {"subject", "predicate", "effect"}.issubset(groups)
+                or (expected.get("condition_source") is not None and "condition" not in groups)
+                or any(field not in {"subject", "predicate", "effect", "condition"} or not isinstance(values, list) or not values or any(not isinstance(group, list) or not group or not all(isinstance(token, str) and token for token in group) for group in values) for field, values in groups.items())
+            ):
+                raise ValueError(f"Phase 2D fixture case {case['id']} has invalid semantic field token groups")
+            operator = expected.get("condition_operator")
+            if operator is not None and (not isinstance(operator, str) or operator not in _CONDITION_OPERATORS):
+                raise ValueError(f"Phase 2D fixture case {case['id']} has invalid condition operator")
+            condition = expected.get("condition_source")
+            if isinstance(condition, str) and _tokenize(condition) and _tokenize(condition)[0] in _CONDITION_OPERATORS and operator != _tokenize(condition)[0]:
+                raise ValueError(f"Phase 2D fixture case {case['id']} must preserve its condition operator")
         result.append(dict(case))
+    _validate_held_out_separation(payload, result, fixture_path)
     return tuple(result)
 
 
@@ -77,14 +98,17 @@ def _score_mode(
     expected = list(case["expected_propositions"])
     unmatched = list(expected)
     matches = []
+    exact_matches = []
     for item in actual:
-        matched = next((value for value in unmatched if _matches(item, value, packet)), None)
+        matched = next((value for value in unmatched if _semantic_match(item, value, packet)), None)
         if matched is not None:
             unmatched.remove(matched)
             matches.append(matched)
+            if _matches(item, matched, packet):
+                exact_matches.append(matched)
     return {
         "mode": mode, "status": "completed", "predicted_count": len(actual),
-        "matched_count": len(matches), "expected_count": len(expected),
+        "matched_count": len(matches), "exact_matched_count": len(exact_matches), "expected_count": len(expected),
         "false_positive_count": len(actual) - len(matches),
         "missed_count": len(unmatched), "propositions": [_proposition_json(item) for item in actual],
     }
@@ -96,6 +120,62 @@ def _matches(actual: ExtractedProposition, expected: Mapping[str, Any], packet: 
         _normalize(getattr(proposition, field + "_source")) == _normalize(expected.get(field + "_source"))
         for field in ("subject", "predicate", "effect", "condition")
     )
+
+
+def _semantic_match(actual: ExtractedProposition, expected: Mapping[str, Any], packet: PropositionPacket) -> bool:
+    """Match reviewed causal mechanism labels without accepting ungrounded output."""
+    if not _has_valid_grounding(actual, packet):
+        return False
+    groups = expected.get("semantic_field_token_groups")
+    if not groups:
+        return _matches(actual, expected, packet)
+    for field, field_groups in groups.items():
+        value = getattr(actual.proposition, field + "_source")
+        if value is None:
+            return False
+        tokens = set(_tokenize(value))
+        if not all(tokens & set(_tokenize(" ".join(group))) for group in field_groups):
+            return False
+    operator = expected.get("condition_operator")
+    if operator is not None and _tokenize(actual.proposition.condition_source or "")[:1] != (operator,):
+        return False
+    return True
+
+
+def _tokenize(value: str) -> tuple[str, ...]:
+    import re
+    normalized = value.lower().replace("’", "'").replace("‘", "'").replace("`", "'")
+    normalized = re.sub(r"([a-z0-9])'([a-z0-9])", r"\1\2", normalized)
+    return tuple(re.findall(r"[a-z0-9]+", normalized))
+
+
+def _validate_held_out_separation(
+    payload: Mapping[str, Any], cases: list[dict[str, Any]], fixture_path: Path,
+) -> None:
+    held_out = payload.get("frozen_held_out_fixture")
+    if not isinstance(held_out, str) or not held_out.strip():
+        return
+    held_out_path = fixture_path.parent / Path(held_out).name
+    try:
+        held_out_payload = json.loads(held_out_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("Phase 2D fixture cannot load frozen held-out fixture") from exc
+    held_out_ids = {
+        str(item["insight_id"])
+        for case in held_out_payload.get("cases", []) if isinstance(case, Mapping)
+        for item in case.get("evidence", []) if isinstance(item, Mapping) and item.get("insight_id") is not None
+    }
+    overlap = {str(case["insight_id"]) for case in cases} & held_out_ids
+    if overlap:
+        raise ValueError("Phase 2D development fixture overlaps frozen held-out insight IDs: " + ", ".join(sorted(overlap)))
+    held_out_sources = {
+        str(item["source_id"])
+        for case in held_out_payload.get("cases", []) if isinstance(case, Mapping)
+        for item in case.get("evidence", []) if isinstance(item, Mapping) and item.get("source_id") is not None
+    }
+    source_overlap = {str(case["source_video_id"]) for case in cases} & held_out_sources
+    if source_overlap:
+        raise ValueError("Phase 2D development fixture overlaps frozen held-out source IDs: " + ", ".join(sorted(source_overlap)))
 
 
 def _has_valid_grounding(actual: ExtractedProposition, packet: PropositionPacket) -> bool:
@@ -165,6 +245,7 @@ def _summarize_source_modes(cases: list[dict[str, Any]], modes: tuple[SourceMode
         source_available = [entry for case in cases if case["eligible"] for entry in case["modes"] if entry["mode"] == mode and entry["status"] != "unavailable"]
         safe_zero = [entry for case in cases if not case["eligible"] for entry in case["modes"] if entry["mode"] == mode and entry["status"] == "completed"]
         tp = sum(item["matched_count"] for item in completed)
+        exact_tp = sum(item["exact_matched_count"] for item in completed)
         fp = sum(item["false_positive_count"] for item in completed)
         fn = sum(item["missed_count"] for item in completed)
         eligible_entry_count = sum(1 for case in cases if case["eligible"] for item in case["modes"] if item["mode"] == mode)
@@ -175,6 +256,7 @@ def _summarize_source_modes(cases: list[dict[str, Any]], modes: tuple[SourceMode
             "eligible_source_coverage": len(source_available) / eligible_entry_count if eligible_entry_count else None,
             "proposition_precision": tp / (tp + fp) if tp + fp else (0.0 if eligible else None),
             "proposition_recall": tp / (tp + fn) if tp + fn else (0.0 if eligible else None),
+            "exact_source_proposition_recall": exact_tp / (tp + fn) if tp + fn else (0.0 if eligible else None),
             "unsupported_proposition_rate": fp / max(tp + fp, 1),
             "safe_zero_accuracy": sum(item["predicted_count"] == 0 for item in safe_zero) / len(safe_zero) if safe_zero else 0.0,
             "eligible_case_count": len(eligible),

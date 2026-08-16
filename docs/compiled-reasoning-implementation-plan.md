@@ -595,6 +595,19 @@ apostrophe names), and mixed-source propositions. The accepted provenance is
 therefore stricter and more inspectable while removing an unnecessary index
 generation task from the model.
 
+**Development scoring repair (commit pending):** The first valid Stage A run
+showed that byte-exact field decomposition is too strict for proposition
+quality measurement: a model can preserve source spans yet choose a different
+actor/predicate/effect segmentation. The development fixture now has manually
+reviewed, role-specific semantic token groups. A match still requires valid
+source alignment plus subject, predicate, and effect evidence in their own
+roles; conditioned references additionally require condition evidence and the
+same leading operator. Exact decomposition recall remains a separately
+reported stricter metric. The loader verifies no insight ID or source video ID
+overlaps the declared frozen Phase 2B fixture. This applies only to the
+non-overlapping development fixture and does not alter prompts, aliases,
+candidate generation, or held-out labels.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

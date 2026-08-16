@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pipeline.phase2d_evaluation import evaluate_source_modes, load_development_cases
+from pipeline.phase2d_evaluation import _tokenize, evaluate_source_modes, load_development_cases
 from pipeline.proposition_extract import ExtractedProposition, PropositionAlignment, PropositionPacket
 from pipeline.relation_extract import GroundedProposition
 from pipeline.source_windows import SourceWindowResolver
@@ -26,7 +26,7 @@ class SourceModeEvaluationTests(unittest.TestCase):
         self.resolver = SourceWindowResolver(self.temp.name)
         self.cases = (
             {"id": "positive", "insight_id": "1", "source_video_id": "v1", "eligible": True,
-             "expected_propositions": [{"subject_source": "Flay", "predicate_source": "prevents", "effect_source": "staying on target", "condition_source": "after entry"}]},
+             "expected_propositions": [{"subject_source": "Flay", "predicate_source": "prevents", "effect_source": "staying on target", "condition_source": "after entry", "condition_operator": "after", "semantic_field_token_groups": {"subject": [["Flay"]], "predicate": [["prevent", "prevents"]], "effect": [["staying"]], "condition": [["after"], ["entry"]]}}]},
             {"id": "safe-zero", "insight_id": "2", "source_video_id": "v1", "eligible": False, "expected_propositions": []},
         )
 
@@ -102,6 +102,81 @@ class SourceModeEvaluationTests(unittest.TestCase):
         fixture.close()
         try:
             with self.assertRaisesRegex(ValueError, "inconsistent"):
+                load_development_cases(fixture.name)
+        finally:
+            Path(fixture.name).unlink()
+
+    def test_scores_grounded_role_preserving_alternate_as_semantic_match(self) -> None:
+        def extractor(packet):
+            text = packet.insight_text
+            values = (("subject", "Flay"), ("predicate", "prevents"), ("effect", "staying on target after entry"), ("condition", "after entry"))
+            return (ExtractedProposition(
+                GroundedProposition("Flay", "prevents", "staying on target after entry", "after entry", ("1",)),
+                tuple(PropositionAlignment(field, "insight", text.index(phrase), text.index(phrase) + len(phrase), phrase) for field, phrase in values),
+            ),)
+        result = evaluate_source_modes(self.cases[:1], resolver=self.resolver, extractor=extractor, modes=("insight",))
+        metrics = result["metrics"]["insight"]
+        self.assertEqual(metrics["proposition_recall"], 1.0)
+        self.assertEqual(metrics["exact_source_proposition_recall"], 0.0)
+
+    def test_does_not_score_reversed_grounded_roles_as_semantic_match(self) -> None:
+        def extractor(packet):
+            text = packet.insight_text
+            values = (("subject", "staying on target"), ("predicate", "prevents"), ("effect", "Flay"), ("condition", "after entry"))
+            return (ExtractedProposition(
+                GroundedProposition("staying on target", "prevents", "Flay", "after entry", ("1",)),
+                tuple(PropositionAlignment(field, "insight", text.index(phrase), text.index(phrase) + len(phrase), phrase) for field, phrase in values),
+            ),)
+        result = evaluate_source_modes(self.cases[:1], resolver=self.resolver, extractor=extractor, modes=("insight",))
+        self.assertEqual(result["metrics"]["insight"]["proposition_recall"], 0.0)
+
+    def test_rejects_development_fixture_with_held_out_overlap(self) -> None:
+        held = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        dev = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        held.write('{"cases":[{"evidence":[{"insight_id":"1"}]}]}'); held.close()
+        dev.write('{"frozen_held_out_fixture":"' + Path(held.name).name + '","cases":[{"id":"bad","insight_id":"1","source_video_id":"v1","eligible":false,"expected_propositions":[]}]}'); dev.close()
+        sibling = Path(dev.name).parent / Path(held.name).name
+        Path(held.name).replace(sibling)
+        try:
+            with self.assertRaisesRegex(ValueError, "overlaps"):
+                load_development_cases(dev.name)
+        finally:
+            Path(dev.name).unlink(); sibling.unlink()
+
+    def test_rejects_partial_semantic_roles_and_held_out_source_overlap(self) -> None:
+        held = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        dev = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        held.write('{"cases":[{"evidence":[{"insight_id":"other","source_id":"v1"}]}]}'); held.close()
+        dev.write('{"frozen_held_out_fixture":"' + Path(held.name).name + '","cases":[{"id":"bad","insight_id":"1","source_video_id":"v1","eligible":true,"expected_propositions":[{"semantic_field_token_groups":{"subject":[["x"]]}}]}]}'); dev.close()
+        sibling = Path(dev.name).parent / Path(held.name).name
+        Path(held.name).replace(sibling)
+        try:
+            with self.assertRaisesRegex(ValueError, "invalid semantic"):
+                load_development_cases(dev.name)
+            Path(dev.name).write_text('{"frozen_held_out_fixture":"' + sibling.name + '","cases":[{"id":"bad","insight_id":"1","source_video_id":"v1","eligible":false,"expected_propositions":[]}]}')
+            with self.assertRaisesRegex(ValueError, "source IDs"):
+                load_development_cases(dev.name)
+        finally:
+            Path(dev.name).unlink(); sibling.unlink()
+
+    def test_requires_condition_semantic_group_and_normalizes_contractions(self) -> None:
+        fixture = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        fixture.write('{"cases":[{"id":"bad","insight_id":"1","source_video_id":"v1","eligible":true,"expected_propositions":[{"condition_source":"after entry","semantic_field_token_groups":{"subject":[["x"]],"predicate":[["y"]],"effect":[["z"]]}}]}]}')
+        fixture.close()
+        try:
+            with self.assertRaisesRegex(ValueError, "invalid semantic"):
+                load_development_cases(fixture.name)
+        finally:
+            Path(fixture.name).unlink()
+        self.assertEqual(_tokenize("can’t commit"), ("cant", "commit"))
+        self.assertEqual(_tokenize("can commit"), ("can", "commit"))
+
+    def test_rejects_missing_or_reversed_condition_operator(self) -> None:
+        fixture = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        fixture.write('{"cases":[{"id":"bad","insight_id":"1","source_video_id":"v1","eligible":true,"expected_propositions":[{"condition_source":"if target is isolated","semantic_field_token_groups":{"subject":[["x"]],"predicate":[["y"]],"effect":[["z"]],"condition":[["isolated"]]}}]}]}')
+        fixture.close()
+        try:
+            with self.assertRaisesRegex(ValueError, "condition operator"):
                 load_development_cases(fixture.name)
         finally:
             Path(fixture.name).unlink()
