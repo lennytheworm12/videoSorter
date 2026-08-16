@@ -654,12 +654,13 @@ and condition from the same verified window before evaluating candidate sets,
 mapper selection, or any stronger model. Do not progress to M14-M17 as though
 the current Stage A output were useful.
 
-### Phase 2E: Span-First Stage A Restructure
+### Phase 2E: Span-First / Clause-First Stage A Restructure
 
-**Code boundary implemented and deterministically validated; the first valid
-live Flash run failed the Phase 2E gate.** The five eligible development cases
-carry conservative, reviewed closed-ontology labels, so normalization recall is
-available on the same X/5 basis as the other slots. Phase 2 remains in Stage A.
+**Closed as an architecture failure.** The five eligible development cases
+carry conservative, reviewed labels. The valid clause-first v2 run establishes
+that deterministic source coverage succeeded while model mechanism-clause
+selection failed. Do not continue tuning proposition-first or clause-first
+Stage A.
 
 #### Architecture: Span-First 7-Call Stage A
 
@@ -812,8 +813,43 @@ It records complete 5/5 catalog coverage, but all five model calls failed at
 evidence localization with `ProviderCallError` before raw output because the
 execution environment had no outbound network path. It is therefore an
 infrastructure-failure artifact, **not** a valid v2 0/5 model-quality result.
-The v2 quality gate and clean reproduction remain pending a network-capable
-Flash run. No Pro, frozen held-out quality run, downstream mapping, ledger
+That provider-failure artifact remains historical infrastructure evidence. It
+was later followed by the valid model-quality artifact
+`/tmp/phase2e-clause-first-v2-valid-run1.json` with canonical inner hash
+`04c185aaf324251b4733e76c87b2c71ea3946497f79a8956f268e88f28e2e17b`
+and file SHA-256
+`02725fb163ef752c98f51a070652ef5418a5b0d4916363d1c61c3071e957c808`.
+Its windows, catalogs, and reviewed expectations were regenerated exactly from
+commit `1b3063edd84237c32a391564e461416ec992c308`, the configured development
+fixture, and the configured database during Phase 2F reconciliation. The
+artifact itself does not embed those revision/input hashes, so future Phase 2F
+artifacts must do so.
+
+The valid result is semantic proposition **0/5**, exact decomposition **0/5**,
+all required semantic slots **0/5**, candidate-catalog coverage **5/5**, and
+zero unsupported/invented slots. It contains five raw provider outputs, zero
+completed eligible cases, five evidence-localization `ValueError` failures,
+and two unavailable ambiguous-lexical cases; downstream semantic stages never
+ran. All five outputs omitted the required `transcript:` prefix, so official
+parse-valid clause selection is **0/5**. Diagnostic prefix canonicalization is
+used only to locate the loss boundary: wave reset selected the reviewed
+mechanism; push/poke selected it plus irrelevant `c008`; sweeper, mid push, and
+hook risk selected the wrong clause pairs. Thus reviewed-mechanism containment
+is **2/5**, while exact/minimal selection is at most **1/5**. Fixing the parser
+cannot turn this into a viable architecture.
+
+Authoritative Phase 2E conclusion:
+
+```text
+deterministic candidate generation: 5/5
+    -> diagnostic mechanism containment: 2/5 (exact/minimal <= 1/5)
+    -> proposition extraction: unusable
+```
+
+Candidate generation succeeded, clause selection failed, and the first loss
+boundary is known. Official semantic recall is **0/5**, so per the
+preregistered 0–2/5 semantic-recall rule Phase 2E is **ARCHITECTURE STILL
+FAILING**. No Pro, frozen held-out quality run, downstream mapping, ledger
 promotion, persistence, or Phase 3 work was performed.
 
 #### Publication Status
@@ -827,12 +863,77 @@ handoff"); and (c) reviewed normalization labels, scoring, tests, and final
 documentation, `b63d5e1` ("Add reviewed Phase 2E normalization scoring"); and
 (d) the valid v1 gate record, `2f47f8f` ("Record Phase 2E Flash gate result").
 
-Clause-first v2 is committed locally on `publish-main` as `f1f38c4` (candidate
-enumeration/selection), `6624221` (artifact retention), and `fc80ade`
-(candidate-catalog coverage diagnostics). They await a network-capable push to
-GitHub `main` together with this documentation update. The Phase 2E experiment
-is not closed until a valid v2 Flash run and clean reproduction establish the
-preregistered gate outcome.
+Clause-first v2 was published to GitHub `main` as `f1f38c4` (candidate
+enumeration/selection), `6624221` (artifact retention), `fc80ade`
+(candidate-catalog coverage diagnostics), and `1b3063e` (the pre-run validation
+boundary). The valid artifact above closes the experiment without rewriting
+the earlier provider-failure history.
+
+### Phase 2F: Ground-Up Source Semantic Compiler
+
+**Authorized and in progress. Stop after Pass 1 representation proof.**
+
+Architectural source of truth: Notion page **Ground-Up Semantic Compiler
+Architecture — Source-Preserving Bronze → Strategic Knowledge**. Phase 2F
+implements only:
+
+```text
+bronze
+  -> Pass 0 deterministic segmentation/context
+  -> source-anchored semantic mentions
+  -> general semantic relations between mentions
+  -> proof-carrying source-semantic IR graph
+```
+
+It does not implement canonical source claims, League ontology normalization,
+strategic relations, motifs, fingerprints, production graph persistence,
+corpus backfill, Phase 3, or Flash optimization.
+
+#### Representation invariants
+
+- Bronze text is immutable and round-trippable from exact deterministic spans.
+- Model output selects stable source-local IDs; arbitrary model offsets are
+  never trusted.
+- Node types are limited initially to `ENTITY`, `ABILITY_OR_RESOURCE`, `EVENT`,
+  `ACTION`, `STATE`, `OUTCOME`, `QUANTITY`, `TIME`, and `LOCATION_OR_SPACE`.
+- General edges begin with roles, causal/enable/prevent/require relations,
+  condition/purpose/result, temporal relations/termination, contrast,
+  negation/modification, and reference.
+- Conditions, time, negation, modality, uncertainty, and unresolved references
+  remain first-class rather than being flattened into proposition strings.
+- Every accepted node and edge carries exact source and model/configuration
+  provenance. `UNKNOWN`, `AMBIGUOUS`, `INSUFFICIENT_EVIDENCE`, and no-relation
+  are valid outputs.
+- No Pass 1 object may contain hidden strategic concepts such as `access`,
+  `continuity`, `tempo`, `initiative`, or `wave_obligation`.
+
+#### Benchmark isolation and preregistered gate
+
+- Keep the five Phase 2E cases as a legacy failure regression set.
+- Keep `data/relation_extraction_phase2b_v0.json` frozen and unchanged.
+- Build a 200–500-window representative pool, then a separately reviewed
+  30–50-window benchmark with non-overlapping `DEV` and `FROZEN_EVAL` metadata.
+- Fail closed when source-span overlap cannot be verified. Tune only on DEV and
+  run the frozen strong-model evaluation once.
+- Report deterministic mention-catalog coverage and candidate-edge-pair
+  coverage separately from model selection/classification.
+
+The frozen thresholds must be finalized before its run. Initial preregistered
+hard-safety thresholds are: accepted node source anchoring **100%**, accepted
+edge/node/evidence provenance **100%**, fabricated offsets **0**, and hidden
+ontology normalization **0**. Initial semantic thresholds are DEV checksum
+**>= 0.90**, frozen checksum **>= 0.85**, unsupported node/edge invention
+**<= 0.05**, and no critical entity/event/condition/causal dimension below
+**0.80**. Any revised exact threshold must be justified from DEV evidence and
+committed before frozen labels/results are inspected.
+
+The final Phase 2F recommendation must be exactly one of:
+
+```text
+SEMANTIC IR VIABLE — READY TO DESIGN PASS 2
+SEMANTIC IR VIABLE WITH SPECIFIC LIMITATIONS — REPAIR BEFORE PASS 2
+SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
+```
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 

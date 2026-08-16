@@ -1,125 +1,167 @@
-# Handoff: Phase 2E Clause-First v2 Implemented; Valid Flash Gate Pending
+# Handoff: Phase 2E Closed as Architecture Failure; Phase 2F Authorized
 
-## 1. Goal and Guardrails
+## 1. Architectural decision
 
-Phase 2E must demonstrate at least **4/5 semantic proposition recall** on the
-existing five-case development slice by decomposing Stage A into grounded
-evidence selection, source-close actor/event/effect/condition extraction,
-explicit causal direction, separate ontology normalization, and deterministic
-assembly. Exact recall and every slot recall remain independently inspectable.
+Phase 2E clause-first v2 failed its preregistered Stage A gate. The
+proposition-first and clause-first architectures are closed; do not repair their
+parser, add fixture-specific aliases, tune their prompts further, or run V4 Pro
+through the same proposition boundary to rescue the result.
 
-Do not weaken grounding, conditions, provenance, or trusted-relation checks;
-do not tune on the frozen Phase 2B held-out fixture; do not run V4 Pro to mask a
-Flash architecture failure; and do not proceed to candidate mapping, ledger
-promotion, persistence, fingerprints, or Phase 3 until the Stage A gate passes.
+The next authorized work is Phase 2F: a clean-room, source-preserving compiler
+from bronze transcript windows to source-anchored semantic mentions and general
+semantic edges. Stop after proving Pass 0 and Pass 1 source-semantic IR. Do not
+begin canonical claims, League ontology normalization, strategic relations,
+fingerprints, production persistence, corpus backfill, Phase 3, or Flash
+optimization.
 
-## 2. Authoritative State
+Architectural source of truth: Notion page **Ground-Up Semantic Compiler
+Architecture — Source-Preserving Bronze → Strategic Knowledge**
+(`3bef8ba7-8bf3-8148-b4fd-e9ee584d3c30`) and its parent design page
+(`3bbf8ba7-8bf3-811d-9b96-cc7c4d2df5b4`).
 
-- Publication clone: `/tmp/videoSorter-phase2e-publish`, branch `publish-main`.
-- Shared review worktree: `/tmp/videoSorter-main`; its Phase 2E source/test
-  files are synchronized with the publication clone, but its Git metadata is
-  read-only and it intentionally displays the implementation as local diffs.
-- Evidence database: `/home/bphan944/PersonalProjects/videoSorter/videos.db`.
-- GitHub `main` currently ends at `2f47f8f`. The unpublished series contains
-  these implementation commits plus this handoff update:
-  - `f1f38c4` — `Add clause-first evidence candidate selection`
-  - `6624221` — `Retain clause candidates in Phase 2E artifacts`
-  - `fc80ade` — `Measure Phase 2E clause catalog coverage`
+## 2. Authoritative Phase 2E result
 
-The visible primary workspace is on an unrelated homework branch with user
-changes. Do not copy, reset, commit, or otherwise disturb that branch.
+Valid Flash artifact:
+`/tmp/phase2e-clause-first-v2-valid-run1.json`
 
-## 3. Implemented Architecture
+The artifact's windows, catalogs, and reviewed expectations were regenerated
+and matched exactly against commit
+`1b3063edd84237c32a391564e461416ec992c308`, the configured development
+fixture, and the configured local database during Phase 2F reconciliation.
 
-`pipeline/proposition_extract.py` now uses prompt version
-`phase2e-clause-first-v2`:
-
-1. Deterministically enumerate exact source-local clause candidates with
-   stable IDs (`insight:cNNN` / `transcript:cNNN`). Sentence/discourse
-   boundaries are primary; punctuation-poor regions use overlapping 32-token
-   windows with stride 16. Catalogs are capped at 20 candidates per source by
-   deterministic even coverage.
-2. Flash selects one or two candidate IDs from one source. It cannot generate
-   evidence text or offsets.
-3. Code validates IDs, derives exact local/transcript-absolute offsets, merges
-   only overlap or whitespace adjacency, and preserves real gaps.
-4. Actor, event, effect, and condition are selected as exact source spans;
-   condition supports safe null/`NONE`.
-5. Causal direction is explicitly classified.
-6. Ontology normalization runs only after the source-semantic frame exists.
-7. Final proposition assembly is deterministic and fails closed.
-
-Every success, abstention, malformed response, and provider failure retains
-the candidate catalog plus per-stage raw/parsed output, selected spans,
-recovered slots, direction, normalization, frames, and assembled propositions.
-
-`pipeline/phase2d_evaluation.py` additionally measures deterministic candidate
-catalog coverage before model selection. A reviewed proposition is covered
-only when one or two unique, grounded candidates from one source can contain
-all exact reviewed source fields after the same production coalescing logic.
-Duplicate IDs and fabricated offsets fail closed. This diagnostic is separate
-from semantic model credit.
-
-## 4. Verification
-
-- Focused nine-module Phase 2 suite: **237 tests passed**.
-- Broad suite: **419 tests and 128 subtests passed**
-  (`419 passed, 128 subtests passed in 20.10s`).
-- The actual five eligible transcript cases have deterministic candidate
-  catalog coverage **5/5**:
-  - wave reset: `transcript:c009`
-  - push/poke: `transcript:c005`
-  - sweeper: `transcript:c004` + `transcript:c006`
-  - mid push: `transcript:c006` + `transcript:c007`
-  - hook risk: `transcript:c003` + `transcript:c008`
-
-This proves candidate generation preserves every reviewed mechanism under the
-one/two-ID contract. It does **not** prove Flash will select or decompose those
-candidates correctly.
-
-## 5. Model-Quality Evidence
-
-The retained v1 artifact remains the latest valid model-quality result:
-
-- `/tmp/phase2e-dev-flash-transcript-span-first-network-final.json`
-- inner `content_sha256`:
-  `e3a769b61dc4699d6e65bdc5572eb86e1741832abe1c84839a68e98564f55017`
+- canonical inner `content_sha256`:
+  `04c185aaf324251b4733e76c87b2c71ea3946497f79a8956f268e88f28e2e17b`
 - file SHA-256:
-  `6527419b5b905964e42e6c4cbebc9b6a200ce03710e4f6d2f57161a5c1035fd8`
-- result: semantic **0/5**, exact **0/5**, evidence **2/5**,
-  direction **1/5**, all other required slots **0/5**.
+  `02725fb163ef752c98f51a070652ef5418a5b0d4916363d1c61c3071e957c808`
+- semantic proposition recall: **0/5**
+- exact decomposition recall: **0/5**
+- every required semantic slot: **0/5**
+- deterministic candidate-catalog coverage: **5/5**
+- unsupported or invented slots: **0**
+- five raw provider outputs; **0** completed eligible cases and **5**
+  `ValueError` failures at evidence localization;
+- two additional fixture cases unavailable because their lexical source-window
+  resolutions were ambiguous; downstream semantic stages never ran.
 
-That valid v1 result justified the lower-level clause-first v2 architecture.
-It is not evidence about v2 quality.
+All five raw outputs omitted the required source prefix (`c009` rather than
+`transcript:c009`). That envelope defect makes the production parser reject the
+selections, but diagnostic prefix canonicalization is sufficient to locate the
+semantic loss without granting model credit:
 
-The newest v2 retry artifact is:
+- wave reset: reviewed mechanism selected;
+- push/poke: reviewed mechanism plus one irrelevant clause selected;
+- sweeper: wrong clause pair;
+- mid push: wrong clause pair;
+- hook risk: wrong clause pair.
 
-- `/tmp/phase2e-clause-first-v2-catalog-network-retry.json`
-- inner `content_sha256`:
-  `ecfce104b38fe57e3f8db767057254177a150b93a377b05ab1f12781fe61f0b2`
-- file SHA-256:
-  `7e1a4cbb62bf638ff3d83b2106ab7a8682837f2f2ef00bbab1afa89ff1b7b957`
-- candidate catalog coverage: **5/5**, complete
-- all five eligible calls failed at evidence localization with
-  `ProviderCallError` before raw model output.
+Official parse-valid clause selection is **0/5**. After diagnostic-only prefix
+expansion, reviewed-mechanism containment is **2/5**; exact/minimal selection
+would be at most **1/5** because push/poke included irrelevant `c008`.
+Therefore parser robustness is not the central failure and fixing the prefix
+would not repair the architecture.
 
-Therefore this retry is an inspectable infrastructure-failure artifact, **not
-a valid 0/5 v2 quality result**. Restricted outbound networking is the current
-remaining gate. Earlier v2 network-failure artifacts are likewise invalid for
-quality claims.
+## 3. Known first-loss boundary
 
-## 6. Next Justified Action
+```text
+DETERMINISTIC SOURCE COVERAGE
+        5/5
+          ↓
+DIAGNOSTIC REVIEWED-MECHANISM CONTAINMENT
+        2/5 (exact/minimal <= 1/5)
+          ↓
+PROPOSITION EXTRACTION
+        unusable
+```
 
-1. In a network-capable run, execute Flash transcript-only on the unchanged
-   five-case development fixture and retain the JSON artifact.
-2. If the first valid v2 run reaches 4–5/5 semantic recall, perform a clean
-   second run to prove reproducibility, then report the complete Phase 2E gate.
-3. If it reaches 3/5, make only one principled repair supported by a localized
-   slot bottleneck. If it reaches 0–2/5, do not keep tuning this decomposition;
-   move to entity/action/consequence mention selection and pairwise causality.
-4. Push `publish-main:main` once GitHub is reachable. Update Notion only after
-   its connector is reauthenticated; the previous token was expired.
+Record this precisely:
 
-Do not claim PASS, TARGETED REPAIR, or ARCHITECTURE STILL FAILING for v2 until
-a valid provider run exists. Do not use the network-failure zeros as semantic
-recall evidence.
+- candidate generation succeeded;
+- clause selection failed;
+- the first semantic loss boundary is known;
+- Phase 2E is an architecture failure, not an unfinished experiment.
+
+## 4. Preserved historical negative evidence
+
+The valid artifact supersedes only the earlier statement that v2 quality was
+pending. It does not replace or reclassify prior evidence:
+
+- valid span-first v1 model-quality failure:
+  `/tmp/phase2e-dev-flash-transcript-span-first-network-final.json`; inner hash
+  `e3a769b61dc4699d6e65bdc5572eb86e1741832abe1c84839a68e98564f55017`;
+  file hash
+  `6527419b5b905964e42e6c4cbebc9b6a200ce03710e4f6d2f57161a5c1035fd8`;
+  semantic/exact **0/5**, evidence **2/5**, direction **1/5**, all other
+  required slots **0/5**.
+- clause-first v2 provider-failure retry:
+  `/tmp/phase2e-clause-first-v2-catalog-network-retry.json`; inner hash
+  `ecfce104b38fe57e3f8db767057254177a150b93a377b05ab1f12781fe61f0b2`;
+  file hash
+  `7e1a4cbb62bf638ff3d83b2106ab7a8682837f2f2ef00bbab1afa89ff1b7b957`;
+  catalog coverage **5/5**, but all eligible calls failed with
+  `ProviderCallError` before raw output. This remains infrastructure evidence,
+  not a quality result.
+
+## 5. Repository state and isolation
+
+- GitHub `main` at Phase 2F start:
+  `1b3063edd84237c32a391564e461416ec992c308`.
+- Authoritative clean clone at Phase 2F start:
+  `/tmp/videoSorter-phase2e-publish`.
+- Evidence database:
+  `/home/bphan944/PersonalProjects/videoSorter/videos.db`.
+- The visible primary workspace is on an unrelated homework branch with user
+  changes. Do not reset, overwrite, copy Phase 2 files into, or commit those
+  changes.
+- Preserve all Phase 2D/2E implementation, tests, fixtures, and artifacts as
+  historical evidence. Phase 2F uses a separate module boundary.
+- Audit limitation: the valid v2 JSON is temporary and does not embed a commit,
+  timestamp, fixture hash, or database hash. Its current linkage was verified
+  by regeneration, not by the artifact hash alone. Phase 2F artifacts must
+  embed revision and input-content hashes.
+
+## 6. Phase 2F lower-boundary contract
+
+The new target is:
+
+```text
+bronze transcript
+  -> deterministic source segmentation/context
+  -> source-anchored mention candidates
+  -> constrained mention selection and typing
+  -> bounded candidate mention pairs
+  -> general semantic edge classification
+  -> proof-carrying source-semantic IR graph
+```
+
+Bronze is immutable. Model-supplied arbitrary offsets are untrusted;
+deterministic code resolves selected IDs to exact spans. Conditions, time,
+negation, modality, ambiguity, and unresolved references are first-class.
+Every node and edge must trace to exact source evidence. `UNKNOWN`,
+`AMBIGUOUS`, `INSUFFICIENT_EVIDENCE`, and no-relation are valid outputs.
+
+Pass 1 must not contain League strategic concepts such as `access`,
+`continuity`, `tempo`, `initiative`, or `wave_obligation`. It must not emit a
+mandatory actor/predicate/effect/condition tuple.
+
+## 7. Evaluation discipline
+
+- Retain the five Phase 2E cases as a legacy failure regression set, not the
+  only benchmark.
+- Keep `data/relation_extraction_phase2b_v0.json` frozen and unchanged.
+- Build non-overlapping semantic-IR `DEV` and `FROZEN_EVAL` fixtures; fail
+  closed when overlap cannot be verified.
+- Measure deterministic mention-catalog and candidate-edge-pair coverage before
+  model selection/classification.
+- Tune only on DEV. Preregister the representation gate before one frozen run.
+- Use a strong configured reference model to test representation viability;
+  cheap-model optimization is a future goal.
+- Provider failure and model-quality failure remain distinct in artifacts and
+  denominators.
+
+Final Phase 2F recommendation must be exactly one of:
+
+```text
+SEMANTIC IR VIABLE — READY TO DESIGN PASS 2
+SEMANTIC IR VIABLE WITH SPECIFIC LIMITATIONS — REPAIR BEFORE PASS 2
+SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
+```
