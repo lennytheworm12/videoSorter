@@ -320,10 +320,44 @@ JSON contract, requires `evidence_ids` and separate subject/predicate/object
 grounding, and forbids alternate `source`/`target` structures. It remains
 isolated from raw evidence and supports every allowed entity type. Independent
 review approved it. A live Flash fallback rerun removed the missing-evidence-ID
-failure mode, but still accepted 0/18 references: 15 unknown
-entity/concept/relation rejections, two subject-alignment mismatches, one
-unsupported concept, and two Stage A source-phrase failures. The fallback is
-safe but has not demonstrated useful recall.
+failure mode, but still accepted 0/18 references: one grounded-proposition
+failure, 15 unknown entity/concept/relation rejections, two subject-alignment
+mismatches, and one unsupported-concept rejection. The fallback is safe but
+has not demonstrated useful recall.
+
+#### M11: Causal Eligibility Audit
+
+**Complete. Commit pending.** A deterministic 50-record slice of real
+`videos.db` insights was manually classified in
+`docs/phase2c-causal-eligibility-sample.md`: 23 explicit A mechanisms, 16
+implicit-but-recoverable B mechanisms, 11 advice-only C records, and no D
+noise records. A/B eligible share is 78%; C/D safe-zero share is 22%. This
+small contiguous three-video audit shows that causal material exists beyond
+the benchmark, but is not corpus-representative and does not isolate compiler
+failure from ontology coverage, alias coverage, or insight granularity. The
+per-record rationale is preserved; a stratified, independently labeled sample
+is required before deciding whether upstream extraction needs rework.
+
+### Phase 2C Stop Gate
+
+**Decision: NOT READY — CONTINUE PHASE 2 REPAIR. Do not start Phase 3.**
+
+The hard safety properties are implemented: raw evidence stays separate,
+accepted relations retain alignment and provenance, concrete entities remain
+strictly grounded, conditions/events survive persistence, and unsupported or
+free-form candidates reject. However, the required useful-recall gate failed.
+On the 18-reference live set, Flash and Pro one-pass source-aligned extraction
+both accepted 0/18 at a shared 1024-token limit. The optional two-stage Flash
+fallback also accepted 0/18 after schema repair. Its final trace contains one
+grounded-proposition failure, 15 unknown entity/concept/relation rejections,
+two subject-alignment mismatches, and one unsupported-concept rejection. The
+small audit provides insufficient evidence to blame the compiler alone or to
+justify a blanket corpus reparse.
+
+Required next Phase 2 work: replace free-form Stage B generation with a
+stronger schema-constrained mapper or deterministic proposal-to-ontology
+adapter, then re-run the held-out benchmark with precision/recall and review
+bucket metrics. Do not build automated fingerprints on this output.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
