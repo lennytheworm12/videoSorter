@@ -426,6 +426,32 @@ cross-source condition stitching, which was fixed and rerun. The next
 milestone adds legal canonical candidate generation; no live model run has
 occurred during M13 tuning.
 
+#### M14: Auditable Legal Candidate Generation
+
+**Complete. Commit pending.** Added deterministic candidate generation before
+any ontology mapper call. It produces scored, reasoned legal IDs for subjects
+from complete-token champion/ability aliases; relation types from the existing
+closed vocabulary; concepts from curated aliases and ontology-description
+overlap; and source-preserving conditions. No candidate generator can create a
+new ontology node. Empty candidate sets are retained for grounded but
+unmappable propositions.
+
+Safety rules: one-character ability aliases must match complete tokens, generic
+capability words (`cannot`, `let`) do not imply a causal direction, and a broad
+set of negation/failure constructions suppresses directional relation
+candidates. A `missed -> temporarily_unavailable` condition is inferred only
+when exactly one known ability alias is present as complete tokens. Candidate
+sets include scores and reasons so later evaluation can distinguish missing
+candidates from mapper mistakes.
+
+Tests: `uv run python -m unittest tests.test_candidate_generation
+tests.test_proposition_extract tests.test_relation_extract
+tests.test_source_windows` (66 passing). Independent review found substring
+ability-alias poisoning, generic directional verb inference, incomplete
+negation handling, and condition-event alias poisoning. All were fixed with
+adversarial regressions and the final review approved. The next milestone is
+an ID-only mapper; it must select only these candidates or `UNMAPPED`.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

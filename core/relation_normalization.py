@@ -22,6 +22,7 @@ SEMANTIC_CONCEPT_ALIASES = {
     "continued attachment": "continuity",
     "stay attached": "continuity",
     "stay on target": "continuity",
+    "staying on target": "continuity",
     "stay on your adc": "continuity",
     "staying on your adc": "continuity",
     "remain on target": "continuity",
