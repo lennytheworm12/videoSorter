@@ -62,18 +62,22 @@ reviewed effect), not from separate direction labels.
 from __future__ import annotations
 
 from dataclasses import asdict
+from itertools import combinations
 import json
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 from core.ontology import RELATION_TYPES, STRATEGIC_CONCEPTS
 from pipeline.proposition_extract import (
+    ClauseCandidate,
     ExtractedProposition,
     PropositionPacket,
+    SourceAlignment,
     SourceMode,
     SourceSemanticFrame,
     StageAExtraction,
     assemble_grounded_proposition,
+    coalesce_selected_evidence,
 )
 from pipeline.source_windows import SourceWindow, SourceWindowResolver
 
@@ -308,6 +312,9 @@ def _score_stage_a_mode(
         partial = {}
     matched_count = len(pairings)
     exact_count = sum(1 for index in pairings if _matches(produced[pairings[index]], expected[index], packet))
+    candidate_catalog_coverage = _candidate_catalog_coverage(
+        expected, actual.candidate_catalog, packet,
+    )
     return {
         "mode": mode,
         "status": "completed" if actual.failure_stage is None else "failure",
@@ -327,6 +334,7 @@ def _score_stage_a_mode(
         },
         "artifacts": [asdict(item) for item in actual.artifacts],
         "candidate_catalog": [asdict(item) for item in actual.candidate_catalog],
+        "candidate_catalog_coverage": candidate_catalog_coverage,
         "evidence_spans": _stage_evidence_spans(actual, frame),
         "recovered_slots": _stage_slot_entries(actual, frame),
         "semantic_frames": [asdict(item) for item in actual.frames],
@@ -923,6 +931,84 @@ def _evidence_span_hit(expected: Mapping[str, Any], span_texts: Iterable[str]) -
     )
 
 
+def _candidate_catalog_coverage(
+    expected: list[Mapping[str, Any]], candidates: tuple[ClauseCandidate, ...],
+    packet: PropositionPacket,
+) -> dict[str, Any]:
+    """Measure whether one/two selectable candidates can contain each label.
+
+    This is a deterministic pre-model diagnostic, not semantic model credit.
+    It mirrors the evidence-localizer contract: at most two IDs, one source,
+    followed by the same overlap/adjacency coalescing used in live Stage A.
+    A reviewed source field must occur wholly inside one resulting evidence
+    span.  Duplicate IDs and ungrounded alignments are excluded fail-closed.
+    """
+    id_counts: dict[str, int] = {}
+    for candidate in candidates:
+        if isinstance(candidate.candidate_id, str):
+            id_counts[candidate.candidate_id] = id_counts.get(candidate.candidate_id, 0) + 1
+    sources = {source.kind: source.text for source in packet.sources()}
+    valid = tuple(
+        candidate for candidate in candidates
+        if isinstance(candidate.candidate_id, str)
+        and bool(candidate.candidate_id)
+        and id_counts[candidate.candidate_id] == 1
+        and _alignment_grounded(candidate.alignment, sources, packet)
+    )
+
+    comparisons_output: list[dict[str, Any]] = []
+    for expected_index, label in enumerate(expected):
+        covering: tuple[ClauseCandidate, ...] | None = None
+        covering_spans: tuple[SourceAlignment, ...] = ()
+        for size in (1, 2):
+            for selected in combinations(valid, size):
+                if len({candidate.alignment.source_kind for candidate in selected}) != 1:
+                    continue
+                try:
+                    spans = coalesce_selected_evidence(
+                        tuple(candidate.alignment for candidate in selected), packet,
+                    )
+                except ValueError:
+                    continue
+                if _catalog_spans_cover_label(label, spans):
+                    covering = selected
+                    covering_spans = spans
+                    break
+            if covering is not None:
+                break
+        comparisons_output.append({
+            "expected_index": expected_index,
+            "covered": covering is not None,
+            "source_kind": (
+                covering[0].alignment.source_kind if covering is not None else None
+            ),
+            "candidate_ids": (
+                [candidate.candidate_id for candidate in covering]
+                if covering is not None else []
+            ),
+            "coalesced_spans": [asdict(span) for span in covering_spans],
+        })
+    return {
+        "hit_count": sum(item["covered"] for item in comparisons_output),
+        "expected_count": len(expected),
+        "catalog_count": len(candidates),
+        "valid_candidate_count": len(valid),
+        "invalid_candidate_count": len(candidates) - len(valid),
+        "comparisons": comparisons_output,
+    }
+
+
+def _catalog_spans_cover_label(
+    expected: Mapping[str, Any], spans: tuple[SourceAlignment, ...],
+) -> bool:
+    """Whether exact reviewed source fields fit inside selected evidence."""
+    return all(
+        expected.get(field + "_source") is None
+        or any(expected[field + "_source"] in span.source_text for span in spans)
+        for field in _SLOT_FIELDS
+    )
+
+
 def _normalization_abstained(frame: SourceSemanticFrame) -> bool:
     normalization = frame.normalization
     if normalization is None:
@@ -1254,6 +1340,33 @@ def _summarize_source_modes(cases: list[dict[str, Any]], modes: tuple[SourceMode
             "mapped_count": sum(entry["slot_scores"]["normalization_stage"]["mapped_count"] for entry in normalization_scored),
             "failed_count": sum(entry["slot_scores"]["normalization_stage"]["failed_count"] for entry in normalization_scored),
         }
+        candidate_catalog_scored = [
+            entry for entry in eligible_entries
+            if "candidate_catalog_coverage" in entry
+        ]
+        candidate_catalog_denominator = sum(
+            entry["candidate_catalog_coverage"]["expected_count"]
+            for entry in candidate_catalog_scored
+        )
+        candidate_catalog_hits = sum(
+            entry["candidate_catalog_coverage"]["hit_count"]
+            for entry in candidate_catalog_scored
+        )
+        eligible_expected_count = sum(entry["expected_count"] for entry in eligible_entries)
+        candidate_catalog_coverage = {
+            "hit_count": candidate_catalog_hits,
+            "denominator": candidate_catalog_denominator,
+            "recall": (
+                candidate_catalog_hits / candidate_catalog_denominator
+                if candidate_catalog_denominator else None
+            ),
+            "evaluated_entry_count": len(candidate_catalog_scored),
+            "eligible_entry_count": len(eligible_entries),
+            "complete": (
+                candidate_catalog_denominator == eligible_expected_count
+                and len(candidate_catalog_scored) == len(eligible_entries)
+            ),
+        }
         summary[mode] = {
             "case_count": len(entries), "completed_case_count": len(completed),
             "unavailable_case_count": sum(item["status"] == "unavailable" for item in entries),
@@ -1268,6 +1381,7 @@ def _summarize_source_modes(cases: list[dict[str, Any]], modes: tuple[SourceMode
             "slot_recall": slot_recall,
             "slot_reached": slot_reached,
             "normalization_stage": normalization_stage,
+            "candidate_catalog_coverage": candidate_catalog_coverage,
             "unsupported_slot_total": sum(entry.get("slot_scores", {}).get("unsupported_slots", {}).get("count", 0) for entry in eligible_entries),
             "invented_slot_total": sum(entry.get("slot_scores", {}).get("invented_slots", {}).get("count", 0) for entry in eligible_entries),
         }

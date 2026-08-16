@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 import sqlite3
 import tempfile
@@ -465,6 +465,20 @@ class SourceModeEvaluationTests(unittest.TestCase):
             "candidate_id": "insight:c001",
             "alignment": entry["evidence_spans"][0],
         }])
+        self.assertEqual(entry["candidate_catalog_coverage"], {
+            "hit_count": 1,
+            "expected_count": 1,
+            "catalog_count": 1,
+            "valid_candidate_count": 1,
+            "invalid_candidate_count": 0,
+            "comparisons": [{
+                "expected_index": 0,
+                "covered": True,
+                "source_kind": "insight",
+                "candidate_ids": ["insight:c001"],
+                "coalesced_spans": [entry["evidence_spans"][0]],
+            }],
+        })
         self.assertEqual(entry["evidence_spans"][0]["source_text"], source.strip())
         self.assertEqual(entry["semantic_frames"][0]["causal_direction"], "actor_event_causes_effect")
         self.assertEqual(entry["semantic_frames"][0]["normalization"], {"actor_concept": None, "event_relation": None, "effect_concept": None})
@@ -486,7 +500,93 @@ class SourceModeEvaluationTests(unittest.TestCase):
         self.assertEqual(metrics["slot_reached"]["actor"], {"reached_count": 1, "hit_count": 1, "denominator": 1, "accuracy_when_reached": 1.0})
         self.assertEqual(metrics["slot_reached"]["normalization"], {"reached_count": 1, "hit_count": 1, "denominator": 1, "accuracy_when_reached": 1.0})
         self.assertEqual(metrics["slot_reached"]["exact_decomposition"], {"reached_count": 1, "hit_count": 1, "denominator": 1, "accuracy_when_reached": 1.0})
+        self.assertEqual(metrics["candidate_catalog_coverage"], {
+            "hit_count": 1, "denominator": 1, "recall": 1.0,
+            "evaluated_entry_count": 1, "eligible_entry_count": 1,
+            "complete": True,
+        })
         self.assertEqual(metrics["unsupported_slot_total"], 0)
+
+    def test_candidate_catalog_coverage_accepts_two_grounded_spans(self) -> None:
+        source = "Flay prevents Tristana from staying on target after entry."
+        extraction = _stage_extraction(
+            source, actor="Flay", event="prevents", effect="staying on target",
+            condition="after entry",
+        )
+
+        def candidate(candidate_id: str, phrase: str) -> ClauseCandidate:
+            start = source.index(phrase)
+            return ClauseCandidate(
+                candidate_id,
+                SourceAlignment("insight", start, start + len(phrase), phrase),
+            )
+
+        extraction = replace(extraction, candidate_catalog=(
+            candidate("insight:c001", "Flay prevents"),
+            candidate("insight:c002", "staying on target after entry"),
+        ))
+        result = evaluate_source_modes(
+            self.cases[:1], resolver=self.resolver,
+            extractor=lambda packet: extraction, modes=("insight",),
+        )
+        coverage = result["cases"][0]["modes"][0]["candidate_catalog_coverage"]
+        self.assertEqual(coverage["hit_count"], 1)
+        self.assertEqual(
+            coverage["comparisons"][0]["candidate_ids"],
+            ["insight:c001", "insight:c002"],
+        )
+        self.assertEqual(len(coverage["comparisons"][0]["coalesced_spans"]), 2)
+
+    def test_candidate_catalog_coverage_rejects_three_candidate_requirement(self) -> None:
+        source = "Flay prevents Tristana from staying on target after entry."
+        extraction = _stage_extraction(
+            source, actor="Flay", event="prevents", effect="staying on target",
+            condition="after entry",
+        )
+
+        def candidate(candidate_id: str, phrase: str) -> ClauseCandidate:
+            start = source.index(phrase)
+            return ClauseCandidate(
+                candidate_id,
+                SourceAlignment("insight", start, start + len(phrase), phrase),
+            )
+
+        extraction = replace(extraction, candidate_catalog=(
+            candidate("insight:c001", "Flay prevents"),
+            candidate("insight:c002", "staying on target"),
+            candidate("insight:c003", "after entry"),
+        ))
+        result = evaluate_source_modes(
+            self.cases[:1], resolver=self.resolver,
+            extractor=lambda packet: extraction, modes=("insight",),
+        )
+        coverage = result["cases"][0]["modes"][0]["candidate_catalog_coverage"]
+        self.assertEqual(coverage["hit_count"], 0)
+        self.assertFalse(coverage["comparisons"][0]["covered"])
+        self.assertEqual(coverage["comparisons"][0]["candidate_ids"], [])
+
+    def test_candidate_catalog_coverage_excludes_ungrounded_and_duplicate_ids(self) -> None:
+        source = "Flay prevents Tristana from staying on target after entry."
+        extraction = _stage_extraction(
+            source, actor="Flay", event="prevents", effect="staying on target",
+            condition="after entry",
+        )
+        full = SourceAlignment("insight", 0, len(source), source)
+        fabricated = SourceAlignment("insight", 1, len(source), source)
+        extraction = replace(extraction, candidate_catalog=(
+            ClauseCandidate("insight:c001", full),
+            ClauseCandidate("insight:c001", full),
+            ClauseCandidate("insight:c002", fabricated),
+        ))
+        result = evaluate_source_modes(
+            self.cases[:1], resolver=self.resolver,
+            extractor=lambda packet: extraction, modes=("insight",),
+        )
+        coverage = result["cases"][0]["modes"][0]["candidate_catalog_coverage"]
+        self.assertEqual(coverage["catalog_count"], 3)
+        self.assertEqual(coverage["valid_candidate_count"], 0)
+        self.assertEqual(coverage["invalid_candidate_count"], 3)
+        self.assertEqual(coverage["hit_count"], 0)
 
     def test_normalization_recall_scores_exact_reviewed_mapping(self) -> None:
         source = "Flay prevents Tristana from staying on target after entry."
