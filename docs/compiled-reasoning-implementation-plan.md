@@ -1,6 +1,6 @@
 # Compiled Reasoning Implementation Plan
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## Architectural Objective
 
@@ -653,6 +653,127 @@ extraction so that it can reliably recover actor, causal direction, effect,
 and condition from the same verified window before evaluating candidate sets,
 mapper selection, or any stronger model. Do not progress to M14-M17 as though
 the current Stage A output were useful.
+
+### Phase 2E: Span-First Stage A Restructure
+
+**Code boundary implemented and deterministic validation complete; live
+model-quality gate pending a network-enabled run.** Normalization recall
+remains explicitly unavailable because the development fixture has no reviewed
+normalization labels; see the evaluator section below.
+
+#### Architecture: Span-First 7-Call Stage A
+
+Stage A is restructured from one difficult weak-model semantic-generation act
+into a sequence of seven narrow, observable, source-grounded model calls
+(`prompt_version` `phase2e-span-first-v1`,
+`pipeline.proposition_extract.extract_span_first_propositions`):
+
+1. evidence localization: select the smallest exact source span(s) and one
+   permitted source label;
+2. actor slot; 3. event slot; 4. effect slot; 5. condition slot (explicit
+   `NONE` when absent);
+6. causal direction classification; 7. ontology normalization.
+
+Deterministic code derives unique token-bounded source spans and assembles the
+final proposition; the model never supplies character offsets. A failure in any
+stage returns no proposition for that case rather than inventing one.
+
+#### Provenance, Failure Taxonomy, and Artifacts
+
+- Every stage retains a `StageArtifact` (stage, raw provider output, parsed
+  output, failure class); `StageAExtraction` carries frames, slots, evidence
+  spans, `unsupported_slot_count`, and the first `failure_stage`.
+- The failure taxonomy includes `ProviderCallError` plus per-stage structured
+  output parse/validation failures; ungrounded or fabricated frames score no
+  evidence, slot, or semantic hit.
+- Run artifacts are JSON files with deterministic `content_sha256` and full
+  model/provider/configuration metadata (backend, model, variant, thinking,
+  max_tokens, prompt version, fixture, held-out fixture, db, live).
+
+#### Slot-Level Evaluator and Mandatory Held-Out Separation
+
+`pipeline.phase2d_evaluation` measures slot-level recall (actor, event, effect,
+condition, causal direction, evidence span, semantic proposition, assembled
+proposition, exact decomposition) with X/5 denominators that count every
+source-available eligible case: an unreached stage is a miss, never a
+denominator exclusion. Causal direction expectations are derived from the
+reviewed subject/predicate/effect role labels. Held-out separation is
+mandatory: every development fixture, including arbitrary or metadata-less
+files, is compared against the frozen Phase 2B fixture resolved from a trusted
+explicit path, and an unavailable frozen fixture is an error. The development
+fixture has no reviewed normalization labels, so normalization recall is
+reported unavailable while normalization-stage reached/completed/abstained/
+mapped/failed counts are exposed separately.
+
+#### Tests
+
+Broader current evidence: `.venv/bin/python -m pytest tests
+--ignore=tests/test_auth.py -q` passes **402 tests with 110 subtests**
+(`402 passed, 110 subtests passed in 23.42s`). Focused Phase 2 evidence
+retained: `unittest` across the Phase 2 evaluation modules
+(`test_phase2d_evaluation`, `test_proposition_extract`,
+`test_eval_phase2d_propositions_cli`, `test_phase2d_metrics`,
+`test_candidate_ledger`, `test_constrained_mapper`,
+`test_candidate_generation`, `test_relation_extract`,
+`test_source_windows`): **220 tests passing** (`Ran 220 tests ... OK`). New
+coverage includes evidence-span provenance, condition vs no-condition, causal
+direction, actor/effect reversal, multiple-digit/source-span offsets,
+malformed/partial model output, safe `NONE`, deterministic proposition
+assembly, source spans containing multiple possible actors/events, and refusal
+to construct a proposition when required evidence is absent.
+
+#### Independent Review Closure
+
+Independent review of the Phase 2E deterministic boundary is closed on four
+points: (1) semantic-slot phrase uniqueness is selected-evidence-local rather
+than packet-wide, preserving exact offsets and failing on multiple selected
+occurrences; (2) the evaluator defensively requires grounded, slot-consistent,
+direction-consistent, deterministic frame assembly before granting final
+assembled/exact credit, while preserving per-slot diagnostics; (3) eligible
+development cases enforce exactly one expected proposition, so the official
+gate stays X/5; (4) the frozen held-out fixture schema validates fail-closed
+before overlap checks run.
+
+#### Live Run Attempt: Not a Model Quality Result
+
+Attempted clean Flash transcript-only run:
+
+```bash
+LLM_PROVIDER=deepseek .venv/bin/python -m scripts.eval_phase2d_propositions \
+  --live --variant flash --db videos.db --mode transcript \
+  --json-output /tmp/phase2e-dev-flash-transcript-span-first.json
+```
+
+Artifact SHA-256
+`95c17f6c29d59c7b042b447af33c0c3a4f8fcbf21a3cfe900a22ea32e7228eee` is
+**INVALID AS A MODEL QUALITY RESULT**: of 7 cases (5 eligible, 2
+unavailable/ambiguous), all five eligible cases failed at the first provider
+call (`evidence_localization`, `ProviderCallError`) before any raw output was
+produced, because this managed sandbox blocks network/DNS. No semantic recall,
+exact recall, or slot-level model-quality claim is made from this artifact; it
+is neither a Phase 2E PASS nor a FAIL. No Pro, held-out, candidate-mapping,
+ledger-promotion, or downstream work was run. Rerun the exact command above in
+a network-enabled environment to obtain the first valid Phase 2E quality
+result. This invalidity applies only to this Phase 2E artifact: the earlier
+retained Phase 2D artifacts (`/tmp/phase2d-dev-flash-source-modes-scored.json`
+and `/tmp/phase2d-dev-flash-transcript-coaching-repair.json`) remain valid
+Phase 2D model-quality results documenting 0/5 semantic and 0/5 exact
+proposition recall after repairs.
+
+#### Publication Status
+
+The code boundary and deterministic tests are complete. The writable
+publication clone `/tmp/videoSorter-phase2e-publish` is based on `91dc157` and
+carries the work as two focused commits: the first is `5bcffcf` ("Add
+span-first semantic proposition extraction"; `pipeline/proposition_extract.py`,
+`tests/test_proposition_extract.py`), followed by evaluator/CLI/tests + docs.
+GitHub publication remains pending: DNS is still blocked in this environment,
+so nothing has been pushed. The two-commit boundary is: (a) core extraction
++ test (`pipeline/proposition_extract.py`, `tests/test_proposition_extract.py`),
+then (b) evaluator/CLI/tests + docs (`pipeline/phase2d_evaluation.py`,
+`scripts/eval_phase2d_propositions.py`, `tests/test_phase2d_evaluation.py`,
+`tests/test_eval_phase2d_propositions_cli.py`, `handoff.md`,
+`docs/compiled-reasoning-implementation-plan.md`).
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 

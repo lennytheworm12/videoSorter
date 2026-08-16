@@ -1,43 +1,65 @@
-# Handoff: Repair Phase 2D grounded-proposition extraction before any Phase 3 work
+# Handoff: Phase 2E Span-First Stage A Code Boundary Implemented; Live Model-Quality Gate Pending
 
 ## 1. Project Context & Goal
-- **Strategic Objective:** Build a source-grounded causal-relation compiler for videoSorter so cheap answer models can use compiled strategic knowledge alongside existing RAG. Phase 2D is stopped because Stage A cannot yet recover reliable causal propositions from verified bronze transcript windows.
+- **Strategic Objective:** Build a source-grounded causal-relation compiler for videoSorter so cheap answer models can use compiled strategic knowledge alongside existing RAG. Phase 2E restructured Phase 2D Stage A into a span-first, 7-call decomposition so a weak model performs small, observable, source-grounded decisions while deterministic code preserves causal structure.
 - **Tech Stack:** Python 3.12, `uv`, SQLite (`videos.db`), optional Supabase/Postgres, DeepSeek OpenAI-compatible API, `unittest`.
-- **Hard Constraints:** Do not start Phase 3/fingerprint automation; do not weaken provenance, entity grounding, condition preservation, ontology closure, or trusted-relation promotion; do not tune against `data/relation_extraction_phase2b_v0.json`; no corpus-wide reparse/backfill; use focused commits pushed directly to `main`; obtain an independent sub-agent review for each meaningful boundary.
+- **Hard Constraints:** Do not start Phase 3/fingerprint automation; do not weaken source grounding, condition validation, provenance, or trusted-relation validation; do not tune against the frozen `data/relation_extraction_phase2b_v0.json` held-out fixture; do not persist or promote candidate relations; do not use V4 Pro to bypass a broken Flash architecture; use focused commits pushed to `main` once Git is writable; obtain an independent sub-agent review for each meaningful boundary.
 
 ## 2. Current State
-- **Git Status:** `/tmp/videoSorter-main` is a clean detached worktree at `163ddf4` (`Record Phase 2D Stage A stop gate`), already pushed to `origin/main`.
-- **System Health:** `uv run python -m unittest tests.test_phase2d_evaluation tests.test_proposition_extract tests.test_eval_phase2d_propositions_cli tests.test_phase2d_metrics tests.test_candidate_ledger tests.test_constrained_mapper tests.test_candidate_generation tests.test_relation_extract tests.test_source_windows` passes: 116 tests.
-- **Completed Items:** M12 resolver; M13 source-mode proposition extraction; M14 closed-world candidate generation; M15 ID-only mapper; M16 provisional-only ledger; M17 evaluation/CLI; durable repo plan and Notion stop-gate update. Bronze audit: 385/494 videos have transcripts; 7,755/8,495 insights map to nonempty local transcript text.
+- **Worktree:** `/tmp/videoSorter-main` is a shared linked worktree with read-only Git metadata, so it still displays all eight Phase 2E diffs — six modified code/test files plus two documentation files — because the commits live in the separate writable publication clone, not in this worktree:
+  - `pipeline/proposition_extract.py`: span-first 7-call Stage A (`extract_span_first_propositions`, `SPAN_FIRST_PROMPT_VERSION=phase2e-span-first-v1`): evidence localization, actor, event, effect, condition, causal direction, ontology normalization; deterministic span derivation; per-stage `StageArtifact` provenance; `ProviderCallError`/parse failure taxonomy; safe `NONE`; no proposition when required evidence is absent.
+  - `pipeline/phase2d_evaluation.py`: slot-level evaluator (actor/event/effect/condition/direction/evidence/semantic/assembled/exact) with X/5 denominators counting every source-available eligible case (unreached stage = miss); mandatory held-out separation via trusted `DEFAULT_HELD_OUT_FIXTURE` for every fixture, including arbitrary/metadata-less files; direction derived from reviewed role labels; normalization recall reported unavailable with stage diagnostics.
+  - `scripts/eval_phase2d_propositions.py`: read-only live CLI; records provider/config/prompt-version metadata; deterministic `content_sha256` artifacts.
+  - `tests/test_proposition_extract.py`, `tests/test_phase2d_evaluation.py`, `tests/test_eval_phase2d_propositions_cli.py`: new provenance, condition, direction, reversal, offset, malformed-output, `NONE`, assembly, and refusal regressions.
+  - `handoff.md` and `docs/compiled-reasoning-implementation-plan.md`: this takeover record and the durable Phase 2E plan section (code boundary, deterministic validation, test evidence, invalid-artifact record, rerun command).
+- **System Health:** Broader current evidence: `.venv/bin/python -m pytest tests --ignore=tests/test_auth.py -q` passes **402 tests with 110 subtests** (`402 passed, 110 subtests passed in 23.42s`). Focused Phase 2 evidence retained: `unittest` across the nine Phase 2 modules (`test_phase2d_evaluation`, `test_proposition_extract`, `test_eval_phase2d_propositions_cli`, `test_phase2d_metrics`, `test_candidate_ledger`, `test_constrained_mapper`, `test_candidate_generation`, `test_relation_extract`, `test_source_windows`) passes: **220 tests** (`Ran 220 tests ... OK`).
+- **Live run status:** The attempted clean Flash transcript run is **INVALID AS A MODEL QUALITY RESULT**; do not report PASS/FAIL model quality (see section 4).
+- **Git:** The writable publication clone `/tmp/videoSorter-phase2e-publish` is based on `91dc157` and carries the work as two focused commits: core extraction + test (`5bcffcf`, `Add span-first semantic proposition extraction`) followed by evaluator/CLI/tests + docs. GitHub publication remains pending: DNS is still blocked in this managed sandbox, so nothing has been pushed.
 
 ## 3. Decisions Made (Do Not Re-Litigate)
-- **Phase 2D data stays separate from trusted relations:** `CandidateLedger` is in-memory/provisional and never writes `StrategicRelation`; only independently supported, validated mappings can become trusted later.
-- **Source alignment is strict and deterministic:** Stage A must quote exact source phrases and choose a source label; `pipeline.proposition_extract` derives unique token-bounded spans and rejects paraphrases, ambiguous matches, cross-source propositions, fabricated evidence, and model-supplied offsets.
-- **Canonical mapping is closed-world:** `pipeline.candidate_generation` creates legal candidate IDs; `pipeline.constrained_mapper` may only select those IDs or return `unmapped`/`no_relation`.
-- **The Phase 2B fixture is held out:** `data/relation_extraction_phase2b_v0.json` is not for prompt, alias, top-k, threshold, or candidate tuning. Development fixture loading enforces no held-out insight-ID or source-video-ID overlap.
-- **Do not spend on Pro yet:** Flash Stage A must first produce enough valid propositions to make candidate/mapper comparisons interpretable. Pro was intentionally not run in Phase 2D.
+- **Span-first 7-call Stage A:** the model only localizes evidence, fills narrow slots, classifies direction, and normalizes; deterministic code derives unique token-bounded spans and assembles propositions. Model-supplied offsets remain rejected.
+- **Strict provenance/failure taxonomy/artifacts:** every stage keeps raw output, parsed output, and failure class; ungrounded or fabricated frames score no evidence/slot/semantic hit; artifacts carry deterministic `content_sha256` plus full model/provider/config metadata.
+- **Slot-level evaluator with mandatory held-out separation:** official recall denominators count every source-available eligible case; an unreached stage is a visible miss, never a denominator exclusion. Held-out separation is enforced for all development fixtures, and an unavailable frozen fixture is an error.
+- **Scope of the Phase 2E claim:** the code boundary is implemented and deterministic validation is complete; the live model-quality gate is pending a network-enabled run. Normalization recall is explicitly unavailable because the development fixture has no reviewed normalization labels.
+- **No model-quality claim from the blocked run:** the artifact records an environmental provider failure, not a Phase 2E result. First valid quality measurement requires rerunning in a network-enabled environment.
 
-## 4. Failed Attempts & Dead Ends
-- **Free-form Phase 2/2B relation compilation:** Flash accepted 0/18 held-out references; Pro peaked at 3/18 before stricter safe grounding variants returned 0. Do not loosen validator thresholds to change this result.
-- **Initial Phase 2D Flash calls:** Omitting DeepSeek non-thinking returned empty content. Stage A now forwards `RELATION_EXTRACTION_DEEPSEEK_THINKING=disabled` for DeepSeek only.
-- **LLM-supplied offsets and ambiguous source enums:** Flash echoed `insight|transcript` and generated invalid spans. The prompt now lists valid source labels per packet, and code derives spans; do not restore model-generated offsets.
-- **Current Stage A prompt repair:** Even with verified local transcript windows containing the reviewed mechanism, Flash transcript-only scored 0/5 semantic and 0/5 exact recall. It returned four safe zeros and one source-grounded but causally misstructured proposition. This is the current blocker.
-- **Pooled semantic-token scoring:** It accepted reversed causal roles and lost condition polarity. Development scoring now requires reviewed subject/predicate/effect groups, condition groups, and leading condition operators; do not revert to pooled matching.
+## 4. Independent Review Closure
+- **Selected-evidence-local semantic uniqueness:** semantic-slot phrase uniqueness is checked only within the selected evidence span, not packet-wide; exact offsets are preserved, and multiple selected occurrences fail the case instead of silently choosing one.
+- **Defensive final credit:** assembled/exact credit is granted only after grounded, slot-consistent, direction-consistent, deterministic frame assembly; per-slot diagnostics remain preserved for every case.
+- **Single-proposition eligibility:** eligible development cases enforce exactly one expected proposition, keeping the official gate at X/5.
+- **Fail-closed held-out validation:** the frozen held-out fixture schema is validated fail-closed before any overlap checks are performed.
 
-## 5. Next Immediate Steps
-1. **Read the durable stop gate and inspect the five development bronze windows:** Start with `docs/compiled-reasoning-implementation-plan.md`, `data/relation_extraction_phase2d_dev_v0.json`, `pipeline/proposition_extract.py`, and `/tmp/phase2d-dev-flash-transcript-coaching-repair.json`. Form a narrow redesign hypothesis for Stage A that preserves exact source grounding while recovering actor, causal direction, effect, and condition.
-2. **Implement and review only the Stage A repair:** Add deterministic tests and run the development transcript-only evaluation first. Do not run the held-out fixture, candidate mapper, ledger promotion, Pro, or Phase 3 until development Stage A has useful high-precision recall.
+## 5. Current Live-Run Blocker (Environmental)
+- Attempted command:
+  ```bash
+  LLM_PROVIDER=deepseek .venv/bin/python -m scripts.eval_phase2d_propositions \
+    --live --variant flash --db videos.db --mode transcript \
+    --json-output /tmp/phase2e-dev-flash-transcript-span-first.json
+  ```
+- Artifact SHA-256 `95c17f6c29d59c7b042b447af33c0c3a4f8fcbf21a3cfe900a22ea32e7228eee`
+  (inner `content_sha256`): 7 cases, 5 eligible, 2 unavailable (ambiguous
+  lexical). All five eligible cases failed at the first provider call
+  (`evidence_localization`, `ProviderCallError`) before any raw output, because
+  this managed sandbox blocks network/DNS. No Pro, held-out, candidate-mapping,
+  ledger-promotion, or downstream Phase 2 work was run.
+- Next step is to rerun the exact command in a network-enabled environment; do
+  not treat the blocked artifact as evidence about the architecture.
 
-## 6. Context Files
-- `docs/compiled-reasoning-implementation-plan.md`: Durable architecture, phase history, exact stop-gate rationale, commands, and constraints.
+## 6. Next Immediate Steps
+1. Rerun the exact command above in a network-enabled environment and inspect per-case artifacts (reached stages, `first_failure`, raw/parsed stage outputs), not just aggregate metrics.
+2. Apply the Phase 2E gate on the valid run: >=4/5 semantic proposition recall (with slot diagnostics) justifies continuing Phase 2 evaluation into candidate/mapping experiments; 3/5 justifies one targeted repair only if a localized bottleneck is identified; 0-2/5 requires further decomposition before another end-to-end run.
+3. Push the two focused commits from `/tmp/videoSorter-phase2e-publish` to `main` once network access is restored: (a) core extraction + test (`pipeline/proposition_extract.py`, `tests/test_proposition_extract.py`), then (b) evaluator/CLI/tests + docs (`pipeline/phase2d_evaluation.py`, `scripts/eval_phase2d_propositions.py`, `tests/test_phase2d_evaluation.py`, `tests/test_eval_phase2d_propositions_cli.py`, `handoff.md`, `docs/compiled-reasoning-implementation-plan.md`); keep all run artifacts with hashes.
+4. Do not run Pro, the held-out fixture, candidate mapping, ledger promotion, or Phase 3 until the gate passes on a valid run.
+
+## 7. Context Files
+- `docs/compiled-reasoning-implementation-plan.md`: Durable architecture, Phase 2E code-boundary status (span-first 7-call architecture, provenance/failure taxonomy, slot-level evaluator, mandatory held-out separation, 220 focused + 402 broader tests, invalid-artifact record, exact rerun command).
 - `handoff.md`: This takeover record.
-- `pipeline/source_windows.py`: Read-only insight-to-own-video bronze transcript resolver.
-- `pipeline/proposition_extract.py`: Current Stage A contract and exact source-span validation; immediate repair target.
-- `pipeline/phase2d_evaluation.py`: Source-mode, semantic-role, condition, and held-out-separation metrics.
-- `scripts/eval_phase2d_propositions.py`: Read-only live Stage A evaluation CLI.
-- `data/relation_extraction_phase2d_dev_v0.json`: Non-overlapping development labels; use for iteration only.
+- `pipeline/proposition_extract.py`: Span-first 7-call Stage A contract and deterministic span validation.
+- `pipeline/phase2d_evaluation.py`: Slot-level Phase 2E evaluation and mandatory held-out separation.
+- `scripts/eval_phase2d_propositions.py`: Read-only live Stage A evaluation CLI with deterministic artifact hashes.
+- `data/relation_extraction_phase2d_dev_v0.json`: Non-overlapping development labels; iteration only.
 - `data/relation_extraction_phase2b_v0.json`: Frozen 18-positive Phase 2B held-out fixture; do not tune on it.
 - `pipeline/candidate_generation.py`, `pipeline/constrained_mapper.py`, `pipeline/candidate_ledger.py`: Completed downstream Phase 2D components; do not change until Stage A passes its gate.
-- `tests/test_proposition_extract.py`, `tests/test_phase2d_evaluation.py`: Required safety/metric regressions for the immediate Stage A boundary.
-- `/tmp/phase2d-dev-flash-source-modes-scored.json`: Latest all-mode Flash artifact, SHA-256 `515a151d15fbba3c3122695f0258ce9dc40c12a373c4149749eeaafd0f0f7f82`.
-- `/tmp/phase2d-dev-flash-transcript-coaching-repair.json`: Latest transcript-only Flash artifact, SHA-256 `a11c8590b6a1dcd6f6544974a40c609c1ec0c40bdfc7eaf42c42e63ec989e740`.
+- `tests/test_proposition_extract.py`, `tests/test_phase2d_evaluation.py`, `tests/test_eval_phase2d_propositions_cli.py`: Required Phase 2E safety/metric regressions (220 tests total across the nine Phase 2 modules).
+- `/tmp/phase2e-dev-flash-transcript-span-first.json`: **INVALID as a model quality result** because the provider failed before producing raw output; SHA-256 `95c17f6c29d59c7b042b447af33c0c3a4f8fcbf21a3cfe900a22ea32e7228eee`.
+- `/tmp/phase2d-dev-flash-source-modes-scored.json` (SHA-256 `515a151d15fbba3c3122695f0258ce9dc40c12a373c4149749eeaafd0f0f7f82`) and `/tmp/phase2d-dev-flash-transcript-coaching-repair.json` (SHA-256 `a11c8590b6a1dcd6f6544974a40c609c1ec0c40bdfc7eaf42c42e63ec989e740`): **valid retained Phase 2D model-quality artifacts** documenting 0/5 semantic and 0/5 exact proposition recall after repairs. Only the Phase 2E artifact above is invalid as a quality result.
