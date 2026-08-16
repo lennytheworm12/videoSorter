@@ -5,7 +5,7 @@ import unittest
 
 import core.database as db
 from core.strategic_types import EvidenceRef, StrategicRelation
-from scripts.inspect_relations import load_relations, load_review_decisions, render_relations
+from scripts.inspect_relations import _decode_relation, load_relations, load_review_decisions, render_relations
 
 
 class RelationInspectorTests(unittest.TestCase):
@@ -40,6 +40,10 @@ class RelationInspectorTests(unittest.TestCase):
         path = Path(self.tmp.name) / "dry-run.json"
         path.write_text(json.dumps({"decisions": [{"status": "accepted"}, {"status": "review"}, {"status": "rejected"}]}), encoding="utf-8")
         self.assertEqual([item["status"] for item in load_review_decisions(path)], ["review", "rejected"])
+
+    def test_legacy_relation_without_alignment_json_decodes_as_empty(self):
+        decoded = _decode_relation({"condition_json": '\"\"', "effect_json": '\"\"', "concepts": "[]"})
+        self.assertEqual(decoded["alignment"], [])
 
 
 if __name__ == "__main__":

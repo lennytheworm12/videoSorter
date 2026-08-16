@@ -133,6 +133,7 @@ class CloudMigrationTests(unittest.TestCase):
 
         self.assertEqual(set(relations[0]), set(STRATEGIC_TABLE_COLUMNS["strategic_relations"]))
         self.assertIn("condition_json", relations[0])
+        self.assertIn("alignment_json", relations[0])
         self.assertIn("preferred_states", fingerprints[0])
         self.assertTrue(relation_evidence)
 
@@ -170,6 +171,7 @@ class CloudMigrationTests(unittest.TestCase):
             rows = list(iter_strategic_payloads(db_path, "strategic_relations"))
 
         self.assertEqual(rows[0]["ontology_version"], "strategic-ontology-v0")
+        self.assertEqual(rows[0]["alignment_json"], "[]")
 
     def test_iter_strategic_payloads_rejects_unknown_table(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown strategic table"):

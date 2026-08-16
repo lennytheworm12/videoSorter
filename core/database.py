@@ -1,16 +1,18 @@
 """SQLite database setup and insert/query helpers for videoSorter."""
 
+import json
 import os
 import re
 import sqlite3
 import pathlib
-from dataclasses import replace
+from dataclasses import asdict, replace
 from typing import Optional
 
 from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
 from core.strategic_types import (
     AUTOMATED_RELATION_DATA_VERSION,
     EvidenceRef,
+    RelationAlignment,
     StrategicFixture,
     dedupe_relations,
 )
@@ -89,6 +91,7 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
             object_key        TEXT NOT NULL,
             condition_json    TEXT NOT NULL DEFAULT '\"\"',
             effect_json       TEXT NOT NULL DEFAULT '\"\"',
+            alignment_json    TEXT NOT NULL DEFAULT '[]',
             concepts          TEXT NOT NULL DEFAULT '[]',
             confidence        REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
             provenance_type   TEXT NOT NULL,
@@ -112,6 +115,9 @@ def _init_strategic_tables(conn: sqlite3.Connection) -> None:
         """
     )
     _migrate_strategic_json_columns(conn)
+    existing_relation_columns = {row["name"] for row in conn.execute("PRAGMA table_info(strategic_relations)")}
+    if "alignment_json" not in existing_relation_columns:
+        conn.execute("ALTER TABLE strategic_relations ADD COLUMN alignment_json TEXT NOT NULL DEFAULT '[]'")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS strategic_relation_evidence (
@@ -369,6 +375,34 @@ def _merge_evidence_refs(existing_refs: tuple, incoming_refs: tuple) -> tuple:
     return tuple(merged)
 
 
+def _merge_relation_alignments(
+    existing: tuple[RelationAlignment, ...], incoming: tuple[RelationAlignment, ...]
+) -> tuple[RelationAlignment, ...]:
+    """Merge source mappings by their domain identity with a stable winner.
+
+    A relation has one audit mapping per canonical field/evidence/target.  On a
+    rerun, prefer the mapping with the higher mapping confidence; deterministic
+    lexical tie-breakers keep persistence idempotent when model wording differs.
+    """
+    merged: dict[tuple[str, str, str], RelationAlignment] = {}
+    for alignment in existing + incoming:
+        key = (alignment.field, alignment.evidence_id, alignment.canonical_value)
+        current = merged.get(key)
+        if current is None or _alignment_sort_key(alignment) > _alignment_sort_key(current):
+            merged[key] = alignment
+    return tuple(merged[key] for key in sorted(merged))
+
+
+def _alignment_sort_key(alignment: RelationAlignment) -> tuple[float, str, str, tuple[int, int], str]:
+    return (
+        alignment.mapping_confidence,
+        alignment.mapping_type,
+        alignment.source_text,
+        alignment.source_span or (-1, -1),
+        alignment.mapping_version,
+    )
+
+
 def persist_strategic_fixture(fixture: StrategicFixture) -> None:
     """Persist manual fixture data; automated batches use accepted decisions only."""
     if fixture.data_version == AUTOMATED_RELATION_DATA_VERSION:
@@ -408,7 +442,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
         for relation in dedupe_relations(fixture.relations):
             stable_candidates = conn.execute(
                 """
-                SELECT id, confidence, subject_key, object_key FROM strategic_relations
+                SELECT id, confidence, subject_key, object_key, alignment_json FROM strategic_relations
                 WHERE data_version = ? AND ontology_version = ? AND subject_type = ?
                   AND relation_type = ? AND object_type = ?
                   AND condition_json = ? AND effect_json = ?
@@ -451,6 +485,10 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                         (stable_match["id"],),
                     )
                 )
+                stored_alignments = tuple(
+                    RelationAlignment.from_dict(item)
+                    for item in json.loads(stable_match["alignment_json"])
+                )
                 relation_to_persist = replace(
                     relation,
                     id=stable_match["id"],
@@ -458,14 +496,16 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     object_key=stable_match["object_key"],
                     confidence=max(relation.confidence, stable_match["confidence"]),
                     evidence_refs=_merge_evidence_refs(stored_refs, relation.evidence_refs),
+                    alignments=_merge_relation_alignments(stored_alignments, relation.alignments),
                 )
+            relation_to_persist.validate()
             conn.execute(
                 """
                 INSERT INTO strategic_relations (
                     id, subject_type, subject_key, relation_type, object_type, object_key,
-                    condition_json, effect_json, concepts, confidence, provenance_type,
+                    condition_json, effect_json, alignment_json, concepts, confidence, provenance_type,
                     patch_sensitivity, data_version, ontology_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     subject_type = excluded.subject_type,
                     subject_key = excluded.subject_key,
@@ -474,6 +514,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     object_key = excluded.object_key,
                     condition_json = excluded.condition_json,
                     effect_json = excluded.effect_json,
+                    alignment_json = excluded.alignment_json,
                     concepts = excluded.concepts,
                     confidence = excluded.confidence,
                     provenance_type = excluded.provenance_type,
@@ -491,6 +532,7 @@ def _persist_strategic_fixture(fixture: StrategicFixture) -> None:
                     relation_to_persist.object_key,
                     _json_scalar(relation_to_persist.condition),
                     _json_scalar(relation_to_persist.effect),
+                    _json_list([asdict(item) for item in relation_to_persist.alignments]),
                     _json_list(relation_to_persist.concepts),
                     relation_to_persist.confidence,
                     relation_to_persist.provenance_type,

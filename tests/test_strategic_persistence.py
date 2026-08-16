@@ -10,6 +10,7 @@ from core.ontology import ONTOLOGY_VERSION, STRATEGIC_CONCEPTS
 from core.strategic_types import (
     AUTOMATED_RELATION_DATA_VERSION,
     EvidenceRef,
+    RelationAlignment,
     StrategicValidationError,
     load_strategic_fixture,
 )
@@ -186,6 +187,54 @@ class StrategicPersistenceTests(unittest.TestCase):
             ).fetchone()[0]
 
         self.assertEqual(evidence_count, 2)
+
+    def test_same_automated_relation_merges_alignment_provenance_across_reruns(self) -> None:
+        db.init_db()
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        first = replace(
+            fixture.relations[0], id="auto-alignment-rerun", data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="coach_supported_inference", evidence_refs=(EvidenceRef("insight", "video-1", "insight-1"),),
+            alignments=(RelationAlignment("subject", "source subject", "insight-1", fixture.relations[0].subject_key, "entity_alias", 1.0),),
+        )
+        second = replace(first, evidence_refs=(EvidenceRef("insight", "video-2", "insight-2"),), alignments=(RelationAlignment("object", "source effect", "insight-2", fixture.relations[0].object_key, "ontology_alias", .9),))
+        db.persist_strategic_relations((ExtractionDecision({}, first, "accepted"),))
+        db.persist_strategic_relations((ExtractionDecision({}, second, "accepted"),))
+        with db.get_connection() as conn:
+            alignments = json.loads(conn.execute("SELECT alignment_json FROM strategic_relations WHERE id = ?", (first.id,)).fetchone()[0])
+        self.assertEqual({item["evidence_id"] for item in alignments}, {"insight-1", "insight-2"})
+
+    def test_same_alignment_identity_uses_highest_confidence_mapping_on_rerun(self) -> None:
+        db.init_db()
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        first = replace(
+            fixture.relations[0], id="auto-alignment-conflict", data_version=AUTOMATED_RELATION_DATA_VERSION,
+            provenance_type="coach_supported_inference", evidence_refs=(EvidenceRef("insight", "video-1", "insight-1"),),
+            alignments=(RelationAlignment("subject", "Flay", "insight-1", fixture.relations[0].subject_key, "entity_alias", .8),),
+        )
+        second = replace(
+            first,
+            alignments=(RelationAlignment("subject", "Thresh E", "insight-1", fixture.relations[0].subject_key, "exact", .9),),
+        )
+        db.persist_strategic_relations((ExtractionDecision({}, first, "accepted"),))
+        db.persist_strategic_relations((ExtractionDecision({}, second, "accepted"),))
+
+        with db.get_connection() as conn:
+            alignments = json.loads(conn.execute(
+                "SELECT alignment_json FROM strategic_relations WHERE id = ?", (first.id,)
+            ).fetchone()[0])
+
+        self.assertEqual(len(alignments), 1)
+        self.assertEqual(alignments[0]["source_text"], "Thresh E")
+
+    def test_alignment_canonical_target_must_match_relation_field(self) -> None:
+        fixture = load_strategic_fixture(FIXTURE_PATH)
+        base = fixture.relations[0]
+        relation = replace(
+            base,
+            alignments=(RelationAlignment("subject", "Flay", base.evidence_refs[0].insight_id, "Lux E", "entity_alias", 1.0),),
+        )
+        with self.assertRaisesRegex(StrategicValidationError, "does not match subject"):
+            relation.validate()
 
     def test_later_automated_cluster_with_same_condition_conflict_is_not_persisted(self) -> None:
         db.init_db()

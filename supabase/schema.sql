@@ -69,6 +69,7 @@ create table if not exists public.strategic_relations (
     object_key text not null,
     condition_json jsonb not null default '""'::jsonb,
     effect_json jsonb not null default '""'::jsonb,
+    alignment_json jsonb not null default '[]'::jsonb,
     concepts jsonb not null default '[]'::jsonb,
     confidence double precision not null check (confidence >= 0 and confidence <= 1),
     provenance_type text not null,
@@ -81,6 +82,9 @@ create table if not exists public.strategic_relations (
 
 alter table public.strategic_relations
     add column if not exists ontology_version text not null default 'strategic-ontology-v0';
+
+alter table public.strategic_relations
+    add column if not exists alignment_json jsonb not null default '[]'::jsonb;
 
 create table if not exists public.strategic_relation_evidence (
     relation_id text not null references public.strategic_relations(id) on delete cascade,

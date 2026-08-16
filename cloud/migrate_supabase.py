@@ -82,6 +82,7 @@ STRATEGIC_TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "object_key",
         "condition_json",
         "effect_json",
+        "alignment_json",
         "concepts",
         "confidence",
         "provenance_type",
@@ -167,7 +168,9 @@ TABLE_CONFLICT_COLUMNS: dict[str, tuple[str, ...]] = {
 }
 
 JSON_COLUMNS_BY_TABLE: dict[str, frozenset[str]] = {
-    "strategic_relations": frozenset({"condition_json", "effect_json", "concepts"}),
+    "strategic_relations": frozenset(
+        {"condition_json", "effect_json", "alignment_json", "concepts"}
+    ),
     "champion_fingerprints": frozenset(
         {
             "preferred_states",
@@ -284,7 +287,13 @@ def iter_strategic_payloads(
                 column: _row_value(
                     row,
                     column,
-                    "strategic-ontology-v0" if column == "ontology_version" else None,
+                    (
+                        "strategic-ontology-v0"
+                        if column == "ontology_version"
+                        else "[]"
+                        if column == "alignment_json"
+                        else None
+                    ),
                 )
                 for column in columns
             }

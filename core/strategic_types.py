@@ -81,6 +81,46 @@ class EvidenceRef:
 
 
 @dataclass(frozen=True)
+class RelationAlignment:
+    """Source expression supporting one canonical component of a relation."""
+
+    field: str
+    source_text: str
+    evidence_id: str
+    canonical_value: str
+    mapping_type: str
+    mapping_confidence: float
+    source_span: tuple[int, int] | None = None
+    mapping_version: str = "relation-alignment-v0"
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RelationAlignment":
+        span = data.get("source_span")
+        alignment = cls(
+            field=str(data.get("field") or "").strip(),
+            source_text=str(data.get("source_text") or "").strip(),
+            evidence_id=str(data.get("evidence_id") or "").strip(),
+            canonical_value=str(data.get("canonical_value") or "").strip(),
+            mapping_type=str(data.get("mapping_type") or "").strip(),
+            mapping_confidence=_parse_confidence(data.get("mapping_confidence"), "alignment"),
+            source_span=(int(span[0]), int(span[1])) if isinstance(span, list) and len(span) == 2 else None,
+            mapping_version=str(data.get("mapping_version") or "relation-alignment-v0").strip(),
+        )
+        alignment.validate()
+        return alignment
+
+    def validate(self) -> None:
+        if self.field not in {"subject", "predicate", "object", "condition"}:
+            raise StrategicValidationError(f"unknown alignment field: {self.field}")
+        if not self.source_text or not self.evidence_id or not self.canonical_value or not self.mapping_type:
+            raise StrategicValidationError("alignment requires source_text, evidence_id, canonical_value, and mapping_type")
+        if not 0.0 <= self.mapping_confidence <= 1.0:
+            raise StrategicValidationError("alignment mapping_confidence must be between 0 and 1")
+        if self.source_span and (self.source_span[0] < 0 or self.source_span[1] <= self.source_span[0]):
+            raise StrategicValidationError("alignment source_span must be an increasing non-negative pair")
+
+
+@dataclass(frozen=True)
 class StrategicRelation:
     id: str
     subject_type: str
@@ -94,6 +134,7 @@ class StrategicRelation:
     condition: str | None = None
     effect: str | None = None
     concepts: tuple[str, ...] = field(default_factory=tuple)
+    alignments: tuple[RelationAlignment, ...] = field(default_factory=tuple)
     patch_sensitivity: str = "very_low"
     data_version: str = CURRENT_STRATEGIC_DATA_VERSION
     ontology_version: str = ONTOLOGY_VERSION
@@ -115,6 +156,7 @@ class StrategicRelation:
             condition=str(data["condition"]).strip() if data.get("condition") else None,
             effect=str(data["effect"]).strip() if data.get("effect") else None,
             concepts=tuple(str(c).strip() for c in data.get("concepts", [])),
+            alignments=tuple(RelationAlignment.from_dict(item) for item in data.get("alignments", [])),
             patch_sensitivity=str(data.get("patch_sensitivity") or "very_low").strip(),
             data_version=str(
                 data.get("data_version") or CURRENT_STRATEGIC_DATA_VERSION
@@ -189,6 +231,25 @@ class StrategicRelation:
             raise StrategicValidationError(f"unknown subject concept: {self.subject_key}")
         if self.object_type == "concept" and self.object_key not in STRATEGIC_CONCEPTS:
             raise StrategicValidationError(f"unknown object concept: {self.object_key}")
+        seen_alignments: set[tuple[str, str, str]] = set()
+        for alignment in self.alignments:
+            alignment.validate()
+            key = (alignment.field, alignment.evidence_id, alignment.canonical_value)
+            if key in seen_alignments:
+                raise StrategicValidationError(f"relation {self.id} has duplicate alignment {key}")
+            seen_alignments.add(key)
+            if alignment.evidence_id not in {ref.insight_id for ref in self.evidence_refs if ref.insight_id}:
+                raise StrategicValidationError(f"relation {self.id} alignment evidence is not provenanced")
+            expected = {
+                "subject": self.subject_key,
+                "predicate": self.relation_type,
+                "object": self.object_key,
+                "condition": self.condition,
+            }[alignment.field]
+            if expected is None or alignment.canonical_value != expected:
+                raise StrategicValidationError(
+                    f"relation {self.id} alignment canonical value does not match {alignment.field}"
+                )
 
 
 @dataclass(frozen=True)
@@ -427,6 +488,7 @@ def dedupe_relations(relations: Any) -> tuple[StrategicRelation, ...]:
                 existing,
                 confidence=max(existing.confidence, relation.confidence),
                 evidence_refs=tuple(refs),
+                alignments=tuple(dict.fromkeys(existing.alignments + relation.alignments)),
             )
             continue
         indexes[key] = len(deduped)

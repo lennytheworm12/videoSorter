@@ -186,6 +186,42 @@ evaluate a two-stage grounded-proposition representation or a condition-aware
 semantic entailment reviewer on a held-out corpus, with the same provenance and
 review quarantine invariants.
 
+### Phase 2C: Source-Aligned Semantic Grounding
+
+**Status: In progress. Do not start Phase 3.**
+
+Hypothesis: a canonical strategic term need not be literal source wording when
+each canonical field retains an inspectable, evidence-bound source-to-canonical
+mapping. Concrete entity grounding remains strict; semantic entailment and
+ontology abstraction are separate validation steps.
+
+#### M1: Preserve Phase 2B Baseline
+
+**Complete.** The Phase 2B artifacts remain the comparison baseline: Flash
+non-thinking accepted 0/18 reference true positives, Pro non-thinking peaked
+at 3/18 with precision 1.00 and recall 0.17, and stricter grounding variants
+accepted none. No historical run has been replaced or reclassified.
+
+#### M2: Alignment Domain and Persistence
+
+**Complete. Commit pending.** Added `RelationAlignment` to the existing
+`StrategicRelation` model. It preserves field, source text/span, evidence ID,
+canonical target, mapping type/confidence, and mapping version. SQLite,
+Supabase schema/migration payloads, relation merging, and the relation
+inspector retain it. Legacy databases receive an empty alignment list.
+
+Invariants: an alignment must reference relation evidence and target the exact
+canonical relation field. Reruns merge using `(field, evidence_id,
+canonical_value)` and deterministically retain the highest-confidence mapping;
+the merged relation is validated before persistence. Existing Phase 1 manual
+relations remain valid with no alignments.
+
+Tests: 49 focused persistence, inspector, domain, and cloud-migration tests
+pass. Independent review found an initial invalid alignment-merge state and a
+missing Supabase propagation path; both were fixed and re-reviewed approved.
+This milestone is storage and inspection only. The extractor has not yet begun
+to emit alignments; that is the next isolated behavior change.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
