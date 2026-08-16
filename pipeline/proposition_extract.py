@@ -25,7 +25,13 @@ canonical relation types, or canonical entities. Return zero propositions for
 advice without a stated or clearly entailed causal mechanism. Each non-null
 field must copy one supplied source span exactly, including wording and tense.
 Do not paraphrase. The system derives character spans; return only the source
-label that contains each exact quoted field."""
+label that contains each exact quoted field. A coaching recommendation is a
+causal proposition when the same supplied text states both an action/resource
+and its strategic effect (for example, "use X to remove Y"). In that case,
+quote the actor/action as subject, the stated causal phrase as predicate, and
+the affected result as effect. Do not return zero merely because the source
+uses "should", "want to", or "to" rather than "because". Return zero for
+advice that lacks a stated or directly entailed mechanism."""
 
 
 @dataclass(frozen=True)

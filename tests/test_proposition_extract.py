@@ -126,6 +126,10 @@ class PropositionExtractionTests(unittest.TestCase):
         self.assertNotIn("denies", calls[0]["system"].lower())
         self.assertEqual(calls[0]["thinking"], "disabled")
 
+    def test_prompt_allows_stated_coaching_mechanisms_without_ontology_terms(self) -> None:
+        self.assertIn("action/resource", __import__("pipeline.proposition_extract", fromlist=["PROPOSITION_SYSTEM"]).PROPOSITION_SYSTEM)
+        self.assertIn("should", __import__("pipeline.proposition_extract", fromlist=["PROPOSITION_SYSTEM"]).PROPOSITION_SYSTEM)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -608,6 +608,15 @@ overlaps the declared frozen Phase 2B fixture. This applies only to the
 non-overlapping development fixture and does not alter prompts, aliases,
 candidate generation, or held-out labels.
 
+**Stage A instruction repair (commit pending):** Bronze-window inspection
+showed explicit action-plus-effect mechanisms, but Flash returned zero because
+the extractor did not explicitly recognize coaching constructions such as
+"use X to remove Y". The generic Stage A contract now permits such a
+proposition only when the supplied text itself contains both the action or
+resource and the stated strategic effect. It still requires exact source
+quotes, retains zero output for advice without a mechanism, and introduces no
+ontology term, champion fact, or benchmark-specific example.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
