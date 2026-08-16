@@ -394,6 +394,38 @@ overclaiming, boolean span bounds, and ambiguous-window status leakage; all
 were fixed and re-reviewed approved. The next milestone is a non-overlapping
 development fixture and source-mode proposition benchmark.
 
+#### M13: Source-Mode Grounded Proposition Extraction
+
+**Complete. Commit pending.** Added a Phase 2D-only proposition extractor that
+reuses the existing cheap-model callable and `GroundedProposition` fields, but
+does not select ontology concepts, canonical entities, relation types, or
+persist relations. It supports `insight`, `transcript`, and `combined` source
+modes. Every non-null proposition field cites an exact source span. Transcript
+alignments retain both local window offsets and absolute offsets into the
+immutable bronze transcript.
+
+Combined mode is deliberately conservative: all subject, predicate, effect,
+and condition fields in one proposition must come from the same source text.
+This prevents a model from stitching individually real but causally unrelated
+insight and transcript fragments into a new claim. A grounded proposition can
+therefore be retained for later provisional mapping without being made a
+canonical or trusted relation.
+
+`data/relation_extraction_phase2d_dev_v0.json` is a separate seven-case
+development fixture from three non-held-out videos. Five causal cases require
+verified transcript windows; two advice-only safe-zero cases remain insight
+mode because their transcript locations are ambiguous. It has zero insight-ID
+overlap with the frozen Phase 2B held-out fixture.
+
+Tests: `uv run python -m unittest tests.test_proposition_extract
+tests.test_relation_extract tests.test_source_windows` (59 passing).
+Independent review found three issues: missing absolute transcript offsets,
+cross-source causal-field stitching, and an underspecified development source
+mode. All were fixed with regressions; a follow-up review additionally caught
+cross-source condition stitching, which was fixed and rerun. The next
+milestone adds legal canonical candidate generation; no live model run has
+occurred during M13 tuning.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

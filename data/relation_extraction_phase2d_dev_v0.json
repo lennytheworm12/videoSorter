@@ -1,0 +1,63 @@
+{
+  "purpose": "Phase 2D development-only proposition benchmark. These IDs and video sources do not overlap the frozen Phase 2B held-out fixture. Labels describe source-grounded propositions, not canonical ontology relations.",
+  "frozen_held_out_fixture": "data/relation_extraction_phase2b_v0.json",
+  "bronze_window_policy": "SourceWindowResolver defaults; positive cases require a verified lexical_window and quote only transcript text within that window.",
+  "cases": [
+    {
+      "id": "wave-reset-after-kill",
+      "insight_id": "4758",
+      "source_video_id": "3nKrtwpZ6sQ",
+      "expected_source_mode": "transcript",
+      "eligible": true,
+      "expected_propositions": [{"subject_source": "run into Tower and just die", "predicate_source": "pull", "effect_source": "the wave up again", "condition_source": "when you kill him here"}]
+    },
+    {
+      "id": "push-poke-wave-crash",
+      "insight_id": "4782",
+      "source_video_id": "uAdWuLPYn-0",
+      "expected_source_mode": "transcript",
+      "eligible": true,
+      "expected_propositions": [{"subject_source": "keep poking and pushing and hitting creeps", "predicate_source": "make sure", "effect_source": "you crash", "condition_source": "when you're playing Push and poke lanes"}]
+    },
+    {
+      "id": "sweeper-limits-mid-play",
+      "insight_id": "4792",
+      "source_video_id": "uAdWuLPYn-0",
+      "expected_source_mode": "transcript",
+      "eligible": true,
+      "expected_propositions": [{"subject_source": "sweeper", "predicate_source": "remove", "effect_source": "their ability to play on Mid", "condition_source": "around mid"}]
+    },
+    {
+      "id": "mid-push-prevents-side-collapse",
+      "insight_id": "4801",
+      "source_video_id": "z5IXabhMLzQ",
+      "expected_source_mode": "transcript",
+      "eligible": true,
+      "expected_propositions": [{"subject_source": "deep mid push", "predicate_source": "cannot punish", "effect_source": "you guys going four for Gwen", "condition_source": "if you guys got deep mid push"}]
+    },
+    {
+      "id": "unwarded-bush-hook-risk",
+      "insight_id": "4781",
+      "source_video_id": "uAdWuLPYn-0",
+      "expected_source_mode": "transcript",
+      "eligible": true,
+      "expected_propositions": [{"subject_source": "stepping into hook", "predicate_source": "hard lose", "effect_source": "level one", "condition_source": "you guys hard lose level one"}]
+    },
+    {
+      "id": "support-leadership-safe-zero",
+      "insight_id": "4757",
+      "source_video_id": "3nKrtwpZ6sQ",
+      "expected_source_mode": "insight",
+      "eligible": false,
+      "expected_propositions": []
+    },
+    {
+      "id": "practice-volume-safe-zero",
+      "insight_id": "4775",
+      "source_video_id": "3nKrtwpZ6sQ",
+      "expected_source_mode": "insight",
+      "eligible": false,
+      "expected_propositions": []
+    }
+  ]
+}
