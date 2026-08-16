@@ -516,7 +516,7 @@ run development source-mode ablation before the one held-out checkpoint.
 
 #### M17: Evaluation Attribution and Candidate Coverage Metrics
 
-**Complete. Commit pending final review.** Added deterministic metrics that
+**Complete. Commit:** `04bf11b` (`main`). Added deterministic metrics that
 separate subject, predicate, object, and condition candidate coverage from
 mapper selection. The report now distinguishes end-to-end mapping success from
 mapper accuracy conditional on a full legal candidate set. Conditions score
@@ -533,6 +533,26 @@ tests.test_candidate_generation tests.test_constrained_mapper
 tests.test_candidate_ledger` (37 passing before final review). No model calls,
 source mutation, persistence, or trusted-relation promotion occur in this
 boundary.
+
+**Source-mode evaluator (commit pending):** Added the development-only
+`pipeline.phase2d_evaluation` harness. It resolves each case through the
+read-only M12 resolver and evaluates identical Stage A extraction in
+`insight`, `transcript`, and `combined` modes. An unresolved bronze window is
+reported as unavailable and contributes to source coverage, never as a safe
+zero or a perfect quality score. Exact source-aligned proposition labels are
+matched as multisets, and evaluator-side validation rechecks evidence IDs,
+field completeness, span type/bounds/slices, transcript absolute offsets, and
+single-source coherence before a mocked or bypassed output can count as a true
+positive. Fixture validation prohibits noneligible/safe-zero cases from
+containing expected propositions.
+
+Tests: `uv run python -m unittest tests.test_phase2d_evaluation
+tests.test_phase2d_metrics tests.test_proposition_extract
+tests.test_source_windows` (34 passing). Independent review found and fixed
+ungrounded mock matches, unavailable-case perfect metrics, inconsistent
+safe-zero labels, fabricated offsets/evidence, and boolean offsets. This is
+only the Stage A/source-ablation measurement harness; canonical candidate
+coverage and mapper evaluation remain next.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
