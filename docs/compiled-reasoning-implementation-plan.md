@@ -359,6 +359,41 @@ stronger schema-constrained mapper or deterministic proposal-to-ontology
 adapter, then re-run the held-out benchmark with precision/recall and review
 bucket metrics. Do not build automated fingerprints on this output.
 
+### Phase 2D: High-Recall Candidate Mapping + Bronze Transcript Recompilation
+
+**Status: In progress. Do not start Phase 3.** The 18-positive-reference
+Phase 2B fixture is frozen as held-out evaluation. Phase 2D uses a separate
+development set and does not tune prompts, aliases, candidate ranking, or
+thresholds on the held-out IDs.
+
+#### M12: Bronze Source-Window Resolver
+
+**Complete. Commit pending.** Added a read-only resolver from an insight ID to
+the transcript for that insight's own `video_id`. Bronze source text remains
+in `videos.transcription`; insight summaries remain in `insights.text`; there
+are no retained per-insight timestamps, speaker segments, or source spans in
+the existing schema. Resolution therefore prefers externally verified spans
+when supplied, then unique exact text, then bounded lexical retrieval within
+the same transcript. It never searches a different video.
+
+`SourceWindow` exposes the insight, video ID, character window, method, score,
+exact locations, and lexical candidate locations. Only verified explicit spans,
+unique exact matches, and unambiguous multi-token lexical matches are marked
+resolved. Multiple exact matches, near-tied lexical matches, and caller spans
+without verified metadata remain inspectable but cannot become provenance.
+
+Bronze audit: 385 of 494 videos contain transcript text. Of 8,495 insights,
+7,755 map to a nonempty local transcript and 740 do not. Historical transcript
+ingestion stripped VTT timing and speaker segments, so Phase 2D can recover
+character windows but cannot reconstruct timestamps or speakers from the
+stored bronze text.
+
+Tests: `uv run python -m unittest tests.test_source_windows` (11 passing).
+Independent review found weak single-token lexical matches, unverified span
+overclaiming, boolean span bounds, and ambiguous-window status leakage; all
+were fixed and re-reviewed approved. The next milestone is a non-overlapping
+development fixture and source-mode proposition benchmark.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
