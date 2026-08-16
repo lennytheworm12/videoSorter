@@ -18,6 +18,25 @@ class CandidateGenerationTests(unittest.TestCase):
         self.assertEqual(result.object[0].id, "continuity")
         self.assertEqual(result.object[0].reason, "semantic_alias:staying on target")
 
+    def test_offers_source_grounded_ability_as_a_legal_object_target(self) -> None:
+        result = generate_candidates(
+            _proposition(
+                subject="Explosive Charge",
+                predicate="enables",
+                effect="Rocket Jump resets",
+            ),
+            ability_aliases={"Explosive Charge": "Tristana E", "Rocket Jump": "Tristana W"},
+        )
+        self.assertEqual(result.subject[0].id, "ability:Tristana E")
+        self.assertIn("ability:Tristana W", {item.id for item in result.object})
+
+    def test_does_not_offer_ability_object_absent_from_effect_source(self) -> None:
+        result = generate_candidates(
+            _proposition(effect="the reset happens"),
+            ability_aliases={"Rocket Jump": "Tristana W"},
+        )
+        self.assertNotIn("ability:Tristana W", {item.id for item in result.object})
+
     def test_preserves_multiple_relation_candidates_without_new_verbs(self) -> None:
         result = generate_candidates(_proposition(predicate="prevents"))
         self.assertEqual([item.id for item in result.relation], ["denies", "reduces", "increases_cost_of"])

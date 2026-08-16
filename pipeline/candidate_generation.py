@@ -60,7 +60,7 @@ def generate_candidates(
         top_k_concepts=top_k_concepts,
         subject=_entity_candidates(proposition.subject_source, dict(aliases)),
         relation=_relation_candidates(proposition.predicate_source),
-        object=_concept_candidates(proposition.effect_source, top_k_concepts),
+        object=_object_candidates(proposition.effect_source, dict(aliases), top_k_concepts),
         condition=_condition_candidates(proposition.condition_source, dict(aliases)),
     )
 
@@ -112,6 +112,21 @@ def _concept_candidates(text: str, top_k: int) -> tuple[CanonicalCandidate, ...]
             if previous is None or score > previous.score:
                 results[key] = CanonicalCandidate(key, score, "ontology_description_overlap", "concept")
     return tuple(sorted(results.values(), key=lambda item: (-item.score, item.id))[:top_k])
+
+
+def _object_candidates(
+    text: str, ability_aliases: Mapping[str, str], top_k_concepts: int,
+) -> tuple[CanonicalCandidate, ...]:
+    """Offer source-grounded entity targets alongside closed ontology concepts.
+
+    StrategicRelation v0 permits ability and champion objects as well as
+    strategic concepts.  The mapper still receives IDs generated only from
+    explicit source aliases or the fixed ontology; it cannot create a target.
+    """
+    candidates = {item.id: item for item in _concept_candidates(text, top_k_concepts)}
+    for item in _entity_candidates(text, ability_aliases):
+        candidates.setdefault(item.id, item)
+    return tuple(sorted(candidates.values(), key=lambda item: (-item.score, item.id)))
 
 
 def _condition_candidates(text: str | None, ability_aliases: Mapping[str, str]) -> tuple[ConditionCandidate, ...]:
