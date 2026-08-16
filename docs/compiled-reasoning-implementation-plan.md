@@ -452,6 +452,15 @@ negation handling, and condition-event alias poisoning. All were fixed with
 adversarial regressions and the final review approved. The next milestone is
 an ID-only mapper; it must select only these candidates or `UNMAPPED`.
 
+**Follow-up correction (commit `9a770c1`):** Object candidates now include
+source-grounded ability and champion IDs as well as ontology concepts. The
+existing `StrategicRelation` contract allows those object types, so limiting
+the mapper to concepts made legitimate ability-to-ability relations impossible
+to select. The generator exposes an entity target only when its alias or
+champion name occurs in the effect source; it does not introduce an entity
+from metadata alone. Independent review verified that the expanded object list
+does not affect relation candidates or bypass ledger regeneration.
+
 #### M15: Schema-Constrained ID-Only Mapper
 
 **Complete. Commit pending.** Added an ID-only mapper that receives a grounded
@@ -504,6 +513,26 @@ uninspectable no-relation output, confidence/status bypasses, candidate reuse,
 candidate-set fabrication, and self-attested alias/top-k policy. Final review
 approved. Next: implement the evaluation harness, freeze configuration, and
 run development source-mode ablation before the one held-out checkpoint.
+
+#### M17: Evaluation Attribution and Candidate Coverage Metrics
+
+**Complete. Commit pending final review.** Added deterministic metrics that
+separate subject, predicate, object, and condition candidate coverage from
+mapper selection. The report now distinguishes end-to-end mapping success from
+mapper accuracy conditional on a full legal candidate set. Conditions score
+only when the candidate and selected candidate index match the expected
+source-preserved condition, not merely because a condition is non-null.
+
+Failure categories remain closed: candidate-slot misses precede mapper
+misselection, while structured output, parsing, provider, timeout, and invalid
+selection failures are explicitly classified. This ensures a failed source
+window/candidate generator cannot be misreported as an LLM mapper failure.
+
+Tests: `uv run python -m unittest tests.test_phase2d_metrics
+tests.test_candidate_generation tests.test_constrained_mapper
+tests.test_candidate_ledger` (37 passing before final review). No model calls,
+source mutation, persistence, or trusted-relation promotion occur in this
+boundary.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
