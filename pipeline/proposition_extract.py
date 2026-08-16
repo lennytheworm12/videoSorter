@@ -23,7 +23,9 @@ PROPOSITION_SYSTEM = """Return JSON only. Extract source-grounded causal
 propositions from supplied source text. Do not select ontology concepts,
 canonical relation types, or canonical entities. Return zero propositions for
 advice without a stated or clearly entailed causal mechanism. Each non-null
-field must quote one supplied source span exactly."""
+field must copy one supplied source span exactly, including wording and tense.
+Do not paraphrase. The system derives character spans; return only the source
+label that contains each exact quoted field."""
 
 
 @dataclass(frozen=True)
@@ -67,8 +69,8 @@ class PropositionPacket:
         return (
             "EVIDENCE ID: " + self.evidence_id + "\nSOURCE TEXT:\n" + rendered
             + "\n\nAllowed grounding source values: " + json.dumps(source_kinds)
-            + ". Return exactly: {\"propositions\":[{\"subject_source\":\"...\",\"predicate_source\":\"...\",\"effect_source\":\"...\",\"condition_source\":null,\"grounding\":{\"subject\":{\"source\":\"<allowed source value>\",\"start\":0,\"end\":1},\"predicate\":{\"source\":\"<allowed source value>\",\"start\":0,\"end\":1},\"effect\":{\"source\":\"<allowed source value>\",\"start\":0,\"end\":1},\"condition\":null}}]}."
-            + " Do not invent text or use text outside the supplied sources."
+            + ". Return exactly: {\"propositions\":[{\"subject_source\":\"...\",\"predicate_source\":\"...\",\"effect_source\":\"...\",\"condition_source\":null,\"grounding\":{\"subject\":{\"source\":\"<allowed source value>\"},\"predicate\":{\"source\":\"<allowed source value>\"},\"effect\":{\"source\":\"<allowed source value>\"},\"condition\":null}}]}."
+            + " Copy every non-null field exactly from the supplied source. Do not invent text or use text outside the supplied sources."
         )
 
 
@@ -154,15 +156,37 @@ def _parse_alignment(
     if not isinstance(raw, Mapping):
         raise ValueError(f"grounded proposition {field} requires grounding")
     kind = raw.get("source")
-    start, end = raw.get("start"), raw.get("end")
-    if kind not in sources or not isinstance(start, int) or isinstance(start, bool) or not isinstance(end, int) or isinstance(end, bool):
-        raise ValueError(f"grounded proposition {field} has invalid source span")
+    if set(raw) != {"source"} or kind not in sources:
+        raise ValueError(f"grounded proposition {field} has invalid source grounding")
     source = sources[kind]
-    if start < 0 or end <= start or end > len(source) or source[start:end] != phrase:
-        raise ValueError(f"grounded proposition {field} source span does not match quoted phrase")
+    locations = _exact_locations(source, phrase)
+    if len(locations) != 1:
+        raise ValueError(f"grounded proposition {field} must quote one unambiguous exact source phrase")
+    start, end = locations[0]
     absolute_start = absolute_end = None
     if kind == "transcript":
         assert source_window is not None and source_window.window_start is not None
         absolute_start = source_window.window_start + start
         absolute_end = source_window.window_start + end
     return PropositionAlignment(field, kind, start, end, phrase, absolute_start, absolute_end)
+
+
+def _exact_locations(source: str, phrase: str) -> tuple[tuple[int, int], ...]:
+    """Find byte-identical source phrases; ambiguity cannot become provenance."""
+    positions = []
+    start = 0
+    while True:
+        index = source.find(phrase, start)
+        if index < 0:
+            return tuple(positions)
+        end = index + len(phrase)
+        if (
+            (index == 0 or not _token_character(source[index - 1]))
+            and (end == len(source) or not _token_character(source[end]))
+        ):
+            positions.append((index, end))
+        start = index + 1
+
+
+def _token_character(value: str) -> bool:
+    return value.isalnum() or value in {"'", "’", "‘", "`", "_"}

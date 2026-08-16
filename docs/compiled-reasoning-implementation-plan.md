@@ -585,6 +585,16 @@ packet and still requires all fields in a proposition to use one source. This
 is an unambiguous structured-output contract correction, not an alias,
 candidate, validation, ontology, or benchmark-label change.
 
+**Deterministic span repair (commit pending):** Subsequent raw output showed
+that Flash was asked to perform both semantic extraction and brittle character
+offset bookkeeping. Stage A now requires byte-identical source phrases and a
+permitted source label; it computes a unique, token-bounded span
+deterministically. It rejects paraphrases, missing phrases, duplicate source
+locations, model-supplied offsets, embedded token fragments (including Unicode
+apostrophe names), and mixed-source propositions. The accepted provenance is
+therefore stricter and more inspectable while removing an unnecessary index
+generation task from the model.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
