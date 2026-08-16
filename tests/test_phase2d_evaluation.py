@@ -14,6 +14,7 @@ from pipeline.phase2d_evaluation import (
     load_development_cases,
 )
 from pipeline.proposition_extract import (
+    ClauseCandidate,
     ExtractedProposition,
     OntologyNormalization,
     PropositionAlignment,
@@ -71,7 +72,10 @@ def _stage_extraction(
     )
     if direction != "actor_event_causes_effect" or normalization_failure is not None:
         failure_stage = "ontology_normalization" if normalization_failure is not None else None
-        return StageAExtraction((), (frame,), (artifact,), failure_stage)
+        return StageAExtraction(
+            (), (frame,), (artifact,), failure_stage,
+            candidate_catalog=(ClauseCandidate("insight:c001", evidence),),
+        )
     proposition = GroundedProposition(actor, event, effect, condition, ("1",))
     slot_fields = (("subject", frame.actor), ("predicate", frame.event), ("effect", frame.effect))
     if frame.condition is not None:
@@ -80,7 +84,10 @@ def _stage_extraction(
         PropositionAlignment(field, value.alignment.source_kind, value.alignment.start, value.alignment.end, value.text)
         for field, value in slot_fields
     )
-    return StageAExtraction((ExtractedProposition(proposition, alignments),), (frame,), (artifact,))
+    return StageAExtraction(
+        (ExtractedProposition(proposition, alignments),), (frame,), (artifact,),
+        candidate_catalog=(ClauseCandidate("insight:c001", evidence),),
+    )
 
 
 class SourceModeEvaluationTests(unittest.TestCase):
@@ -454,6 +461,10 @@ class SourceModeEvaluationTests(unittest.TestCase):
         self.assertEqual(entry["exact_matched_count"], 1)
         self.assertEqual(len(entry["artifacts"]), 1)
         self.assertEqual(entry["artifacts"][0]["stage"], "evidence_localization")
+        self.assertEqual(entry["candidate_catalog"], [{
+            "candidate_id": "insight:c001",
+            "alignment": entry["evidence_spans"][0],
+        }])
         self.assertEqual(entry["evidence_spans"][0]["source_text"], source.strip())
         self.assertEqual(entry["semantic_frames"][0]["causal_direction"], "actor_event_causes_effect")
         self.assertEqual(entry["semantic_frames"][0]["normalization"], {"actor_concept": None, "event_relation": None, "effect_concept": None})

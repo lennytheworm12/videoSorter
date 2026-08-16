@@ -326,6 +326,7 @@ def _score_stage_a_mode(
             "assembly_consistent": assembly_consistent,
         },
         "artifacts": [asdict(item) for item in actual.artifacts],
+        "candidate_catalog": [asdict(item) for item in actual.candidate_catalog],
         "evidence_spans": _stage_evidence_spans(actual, frame),
         "recovered_slots": _stage_slot_entries(actual, frame),
         "semantic_frames": [asdict(item) for item in actual.frames],
