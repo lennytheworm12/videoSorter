@@ -22,11 +22,18 @@ from core.relation_normalization import (
     canonical_entity,
     canonical_relation_type,
     concept_is_mentioned,
+    normalized_key,
 )
-from core.strategic_types import AUTOMATED_RELATION_DATA_VERSION, EvidenceRef, StrategicRelation, relation_types_conflict
+from core.strategic_types import (
+    AUTOMATED_RELATION_DATA_VERSION,
+    EvidenceRef,
+    RelationAlignment,
+    StrategicRelation,
+    relation_types_conflict,
+)
 
 
-EXTRACTION_PROMPT_VERSION = "strategic-relation-extraction-v0"
+EXTRACTION_PROMPT_VERSION = "strategic-relation-extraction-v1-source-aligned"
 DEFAULT_ACCEPTANCE_THRESHOLD = 0.60
 
 
@@ -78,8 +85,12 @@ Recognized non-concept entity aliases: {entity_aliases}
 SOURCE EVIDENCE (the only factual basis):
 {evidence}
 
-Return exactly this JSON shape:
-{{"relations":[{{"subject":"...","subject_type":"...","relation_type":"...","object":"...","object_type":"...","condition":null,"effect":null,"concepts":["..."],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["..."],"extraction_confidence":0.0,"patch_sensitivity":"very_low|low|medium|high"}}]}}
+For each canonical field, include the exact source phrase and the evidence ID
+where that phrase occurs. The source phrase must be copied from the supplied
+evidence, not paraphrased. Canonical terms do not need to appear literally,
+but their source phrase must support the mapping. Return exactly this JSON
+shape:
+{{"relations":[{{"subject":"...","subject_type":"...","relation_type":"...","object":"...","object_type":"...","condition":null,"effect":null,"concepts":["..."],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["..."],"extraction_confidence":0.0,"patch_sensitivity":"very_low|low|medium|high","grounding":{{"subject":{{"source_text":"...","evidence_id":"..."}},"predicate":{{"source_text":"...","evidence_id":"..."}},"object":{{"source_text":"...","evidence_id":"..."}},"condition":null}}}}]}}
 """
 
 
@@ -397,6 +408,19 @@ def _compile_candidate(
     effect = canonical_condition(candidate.get("effect"))
     if condition and not _condition_is_supported(condition, evidence_ids, evidence_by_id):
         return ExtractionDecision(candidate, None, "rejected", ("condition is not supported by evidence",))
+    alignments, alignment_error = _compile_source_alignments(
+        candidate,
+        evidence_by_id,
+        evidence_ids,
+        ability_aliases,
+        entity_aliases,
+        subject,
+        relation_type,
+        obj,
+        condition,
+    )
+    if alignment_error:
+        return ExtractionDecision(candidate, None, "rejected", (alignment_error,))
     patch = candidate.get("patch_sensitivity", "low")
     if patch not in {"very_low", "low", "medium", "high"}:
         return ExtractionDecision(candidate, None, "rejected", ("unknown patch sensitivity",))
@@ -431,6 +455,7 @@ def _compile_candidate(
         patch_sensitivity=patch,
         data_version=AUTOMATED_RELATION_DATA_VERSION,
         ontology_version=ontology_version,
+        alignments=alignments,
     )
     relation.validate()
     warnings = (
@@ -439,6 +464,107 @@ def _compile_candidate(
         else ()
     )
     return ExtractionDecision(candidate, relation, "accepted", warnings, {"extraction": extraction_confidence, "evidence": source_quality, "canonicalization": canonicalization})
+
+
+def _compile_source_alignments(
+    candidate: Mapping[str, Any],
+    evidence_by_id: Mapping[str, EvidenceItem],
+    evidence_ids: list[str],
+    ability_aliases: Mapping[str, str],
+    entity_aliases: Mapping[str, Mapping[str, str]],
+    subject: Any,
+    relation_type: str,
+    obj: Any,
+    condition: str | None,
+) -> tuple[tuple[RelationAlignment, ...], str | None]:
+    """Verify that each canonical field retains a literal evidence anchor."""
+    grounding = candidate.get("grounding")
+    if not isinstance(grounding, Mapping):
+        return (), "missing source grounding"
+    targets = {
+        "subject": subject.key,
+        "predicate": relation_type,
+        "object": obj.key,
+    }
+    if condition is not None:
+        targets["condition"] = condition
+    alignments: list[RelationAlignment] = []
+    for field, target in targets.items():
+        raw = grounding.get(field)
+        if not isinstance(raw, Mapping):
+            return (), f"missing {field} source grounding"
+        source_text = raw.get("source_text")
+        evidence_id = raw.get("evidence_id")
+        if not isinstance(source_text, str) or not source_text.strip() or evidence_id not in evidence_ids:
+            return (), f"invalid {field} source grounding"
+        evidence = evidence_by_id[evidence_id]
+        source_text = source_text.strip()
+        if not _source_phrase_is_present(source_text, evidence.text):
+            return (), f"{field} source phrase is not present in evidence"
+        if field == "condition":
+            if not _condition_source_supports(source_text, target):
+                return (), "condition source phrase does not support canonical condition"
+            if not _condition_is_supported(target, [evidence_id], evidence_by_id):
+                return (), "condition source phrase does not support canonical condition"
+            canonical, mapping_type = target, "condition_source_phrase"
+        else:
+            canonical, mapping_type = _canonical_from_source(
+                field, source_text, subject, obj, ability_aliases, entity_aliases
+            )
+        if canonical != target:
+            return (), f"{field} source phrase does not support canonical field"
+        alignments.append(
+            RelationAlignment(
+                field=field,
+                source_text=source_text,
+                evidence_id=evidence_id,
+                canonical_value=target,
+                mapping_type=mapping_type,
+                mapping_confidence=1.0,
+            )
+        )
+    if condition is None and grounding.get("condition") is not None:
+        return (), "unexpected condition source grounding"
+    return tuple(alignments), None
+
+
+def _source_phrase_is_present(source_text: str, evidence_text: str) -> bool:
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(source_text) + r"(?![a-z0-9])", evidence_text, re.IGNORECASE))
+
+
+def _canonical_from_source(
+    field: str,
+    source_text: str,
+    subject: Any,
+    obj: Any,
+    ability_aliases: Mapping[str, str],
+    entity_aliases: Mapping[str, Mapping[str, str]],
+) -> tuple[str | None, str]:
+    if field == "subject":
+        source = canonical_entity(
+            subject.entity_type,
+            source_text,
+            ability_aliases=ability_aliases,
+            entity_aliases=entity_aliases.get(subject.entity_type, {}),
+        )
+        if source is None:
+            return None, "entity_alias"
+        return source.key, "exact" if normalized_key(source_text) == normalized_key(source.key) else "entity_alias"
+    if field == "predicate":
+        canonical = canonical_relation_type(source_text)
+        return canonical, "exact" if normalized_key(source_text) == normalized_key(canonical or "") else "relation_alias"
+    if field == "condition":
+        return canonical_condition(source_text), "condition_exact"
+    source = canonical_entity(
+        obj.entity_type,
+        source_text,
+        ability_aliases=ability_aliases,
+        entity_aliases=entity_aliases.get(obj.entity_type, {}),
+    )
+    if source is None:
+        return None, "ontology_abstraction"
+    mapping_type = "exact" if normalized_key(source_text) == normalized_key(source.key) else "ontology_abstraction"
+    return source.key, mapping_type
 
 
 def _canonical_concepts(raw: Any, subject: Any, obj: Any) -> tuple[str, ...] | None:
@@ -484,6 +610,17 @@ def _condition_is_supported(
                 continue
             return True
     return False
+
+
+def _condition_source_supports(source_phrase: str, canonical_condition: str) -> bool:
+    """Ensure a condition alignment names a qualifier, not arbitrary nearby text."""
+    source_terms = _condition_terms(source_phrase)
+    condition_terms = _condition_terms(canonical_condition)
+    if not source_terms or not _is_subsequence(source_terms, condition_terms):
+        return False
+    return any(term in _NEGATION_TERMS for term in source_terms) == any(
+        term in _NEGATION_TERMS for term in condition_terms
+    )
 
 
 def _condition_terms(text: str) -> list[str]:

@@ -222,6 +222,28 @@ missing Supabase propagation path; both were fixed and re-reviewed approved.
 This milestone is storage and inspection only. The extractor has not yet begun
 to emit alignments; that is the next isolated behavior change.
 
+#### M3: Strict Source-Aligned Extraction Contract
+
+**Complete. Commit pending.** The extraction prompt now requires source text
+and an evidence ID for the subject, predicate, object, and any condition. The
+compiler rejects a missing, fabricated, uncited, or canonically mismatched
+anchor. Accepted automated relations persist `RelationAlignment` records for
+all of those fields.
+
+Condition anchors must be literal evidence wording, name an ordered
+negation-compatible part of the canonical condition, and the full canonical
+condition must remain supported by the same cited evidence. This rejects an
+unrelated nearby phrase being attached as condition provenance. The previous
+strategic-context integration fixture was updated to the new candidate
+contract.
+
+Tests: 93 focused extractor, context, persistence, inspector, domain, and
+cloud-migration tests pass. Independent review found an initially unpropagated
+context fixture and a condition-alignment provenance bypass; both were fixed
+and approved. This remains intentionally strict: nonliteral semantic concept
+and condition aliases are still rejected until the next alias/entailment
+milestone.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

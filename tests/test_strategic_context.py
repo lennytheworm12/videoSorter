@@ -173,6 +173,12 @@ class StrategicContextTests(unittest.TestCase):
             "concepts": ["continuity"], "provenance_type": "source_claim",
             "evidence_ids": ["source-1"], "extraction_confidence": 0.95,
             "patch_sensitivity": "low",
+            "grounding": {
+                "subject": {"source_text": "Flay", "evidence_id": "source-1"},
+                "predicate": {"source_text": "denies", "evidence_id": "source-1"},
+                "object": {"source_text": "continued contact", "evidence_id": "source-1"},
+                "condition": {"source_text": "while available", "evidence_id": "source-1"},
+            },
         }
         decision = compile_candidates(packet, [candidate])[0]
         db.persist_strategic_relations((decision,))

@@ -46,13 +46,47 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertEqual(decision.relation.evidence_refs[0].insight_id, "4798")
         self.assertEqual(decision.relation.data_version, "strategic-relations-v0")
         self.assertGreater(decision.relation.confidence, 0.6)
+        self.assertEqual(
+            {(item.field, item.source_text, item.canonical_value) for item in decision.relation.alignments},
+            {
+                ("subject", "Flay", "Thresh E"),
+                ("predicate", "denies", "denies"),
+                ("object", "continued contact", "continuity"),
+            },
+        )
+
+    def test_missing_fabricated_or_mismatched_source_grounding_is_rejected(self) -> None:
+        cases = [
+            ({"grounding": None}, "missing source grounding"),
+            ({"grounding": {
+                "subject": {"source_text": "Flay", "evidence_id": "4798"},
+                "predicate": {"source_text": "denies", "evidence_id": "4798"},
+                "object": {"source_text": "stays on target", "evidence_id": "4798"},
+            }}, "object source phrase is not present"),
+            ({"grounding": {
+                "subject": {"source_text": "Flay", "evidence_id": "4798"},
+                "predicate": {"source_text": "denies", "evidence_id": "4798"},
+                "object": {"source_text": "Flay", "evidence_id": "4798"},
+            }}, "object source phrase does not support"),
+        ]
+        for override, expected in cases:
+            with self.subTest(expected=expected):
+                decision = compile_candidates(self.packet, [_candidate(**override)])[0]
+                self.assertEqual(decision.status, "rejected")
+                self.assertIn(expected, decision.warnings[0])
 
     def test_parenthetical_ability_alias_resolves_and_unsupported_concepts_are_removed(self) -> None:
         packet = ExtractionPacket(
             evidence=(EvidenceItem("4798", "video-1", "Flay breaks continued contact.", confidence=0.8),),
             ability_aliases=self.packet.ability_aliases,
         )
-        candidate = _candidate(subject="Flay (E)", concepts=["tempo", "intermittent pressure"], condition=None)
+        candidate = _candidate(
+            subject="Flay (E)",
+            concepts=["tempo", "intermittent pressure"],
+            condition=None,
+            _source_predicate="breaks",
+            _source_subject="Flay",
+        )
         decision = compile_candidates(packet, [candidate])[0]
 
         self.assertEqual(decision.status, "accepted")
@@ -61,7 +95,9 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("removed unsupported strategic concepts", decision.warnings[0])
 
     def test_direct_concept_endpoint_must_be_supported_by_source_or_alias(self) -> None:
-        rejected = compile_candidates(self.packet, [_candidate(object="access", object_type="concept", concepts=["access"])])[0]
+        rejected = compile_candidates(self.packet, [_candidate(
+            object="access", object_type="concept", concepts=["access"], _source_predicate="denies"
+        )])[0]
         self.assertEqual(rejected.status, "rejected")
         self.assertIn("unsupported strategic concept", rejected.warnings[0])
 
@@ -69,16 +105,16 @@ class RelationExtractionTests(unittest.TestCase):
             evidence=(EvidenceItem("4798", "video-1", "Flay breaks continued contact.", confidence=0.8),),
             ability_aliases=self.packet.ability_aliases,
         )
-        accepted = compile_candidates(packet, [_candidate(condition=None)])[0]
+        accepted = compile_candidates(packet, [_candidate(condition=None, _source_predicate="breaks")])[0]
         self.assertEqual(accepted.status, "accepted")
         self.assertIn("continuity", accepted.relation.concepts)
 
     def test_semantic_evidence_cue_can_ground_existing_concept_without_literal_name(self) -> None:
         packet = ExtractionPacket(
-            evidence=(EvidenceItem("lux", "video", "Bait her E before you walk up to farm.", confidence=.8),),
+            evidence=(EvidenceItem("lux", "video", "Lux E denies forward access before you walk up to farm.", confidence=.8),),
             ability_aliases={"E": "Lux E"},
         )
-        candidate = _candidate(subject="E", object="access", object_type="concept", concepts=["access"], evidence_ids=["lux"], condition="before you walk up to farm")
+        candidate = _candidate(subject="E", object="access", object_type="concept", concepts=["access"], evidence_ids=["lux"], condition="before you walk up to farm", _source_predicate="denies", _source_object="forward access")
         decision = compile_candidates(packet, [candidate])[0]
         self.assertEqual(decision.status, "accepted")
 
@@ -90,7 +126,7 @@ class RelationExtractionTests(unittest.TestCase):
     def test_condition_support_preserves_negation_order_and_single_evidence_scope(self) -> None:
         packet = ExtractionPacket(
             evidence=(
-                EvidenceItem("one", "video", "Do not walk up to farm while Lux E is available.", confidence=.8),
+                EvidenceItem("one", "video", "Lux E denies access: do not walk up to farm while Lux E is available.", confidence=.8),
                 EvidenceItem("two", "video", "The target is isolated.", confidence=.8),
             ), ability_aliases={"E": "Lux E"},
         )
@@ -101,9 +137,25 @@ class RelationExtractionTests(unittest.TestCase):
                 decision = compile_candidates(packet, [_candidate(subject="E", object="access", object_type="concept", concepts=["access"], evidence_ids=ids, condition=condition)])[0]
                 self.assertEqual(decision.status, "rejected")
 
+    def test_condition_anchor_cannot_be_unrelated_nearby_evidence_text(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem(
+                "one", "video", "Flay denies continued contact while available. Lux was nearby.", confidence=.8
+            ),),
+            ability_aliases=self.packet.ability_aliases,
+        )
+        candidate = _candidate(
+            evidence_ids=["one"], condition="while available", _source_condition="Lux"
+        )
+        decision = compile_candidates(packet, [candidate])[0]
+        self.assertEqual(decision.status, "rejected")
+        self.assertIn("condition source phrase does not support", decision.warnings[0])
+
     def test_condition_changes_stable_identity_and_is_not_overmerged(self) -> None:
         packet = ExtractionPacket((EvidenceItem("4798", "video", "Flay denies continued contact while available, after Tristana lands W.", confidence=.8),), ability_aliases=self.packet.ability_aliases)
-        first = compile_candidates(packet, [_candidate(condition="while Flay is available")])[0].relation
+        first = compile_candidates(packet, [_candidate(
+            condition="while Flay is available", _source_condition="while available"
+        )])[0].relation
         second = compile_candidates(packet, [_candidate(condition="after Tristana lands W")])[0].relation
 
         self.assertNotEqual(first.id, second.id)
@@ -141,7 +193,12 @@ class RelationExtractionTests(unittest.TestCase):
             ability_aliases=self.packet.ability_aliases,
             entity_aliases={"state": {"after q misses": "after Q misses"}},
         )
-        candidate = _candidate(object_type="state", object="after Q misses", concepts=["access"], condition=None)
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("4798", "video", "Thresh Flay denies continued contact after Q misses.", confidence=.62),),
+            ability_aliases=self.packet.ability_aliases,
+            entity_aliases={"state": {"after q misses": "after Q misses"}},
+        )
+        candidate = _candidate(object_type="state", object="after Q misses", concepts=["access"], condition=None, _source_object="after Q misses")
         decision = compile_candidates(packet, [candidate])[0]
         self.assertEqual(decision.status, "accepted")
         self.assertEqual(decision.relation.object_key, "after Q misses")
@@ -183,17 +240,27 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIsNotNone(decision.relation)
 
     def test_same_condition_opposite_relations_are_quarantined_for_review(self) -> None:
-        creates = _candidate(relation_type="creates", condition=None)
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem("4798", "video", "Flay creates and denies continued contact.", confidence=.8),),
+            ability_aliases=self.packet.ability_aliases,
+        )
+        creates = _candidate(relation_type="creates", condition=None, _source_predicate="creates")
         denies = _candidate(relation_type="denies", condition=None)
-        decisions = compile_candidates(self.packet, [creates, denies])
+        decisions = compile_candidates(packet, [creates, denies])
 
         self.assertEqual([item.status for item in decisions], ["review", "review"])
         self.assertTrue(all("contradictory" in item.warnings[-1] for item in decisions))
 
     def test_distinct_conditions_do_not_trigger_contradiction_review(self) -> None:
         packet = ExtractionPacket((EvidenceItem("4798", "video", "Flay creates continued contact when unavailable and denies it while available.", confidence=.8),), ability_aliases=self.packet.ability_aliases)
-        creates = _candidate(relation_type="creates", condition="when Flay is unavailable")
-        denies = _candidate(relation_type="denies", condition="while Flay is available")
+        creates = _candidate(
+            relation_type="creates", condition="when Flay is unavailable",
+            _source_predicate="creates", _source_condition="when unavailable",
+        )
+        denies = _candidate(
+            relation_type="denies", condition="while Flay is available",
+            _source_condition="while available",
+        )
         decisions = compile_candidates(packet, [creates, denies])
 
         self.assertEqual([item.status for item in decisions], ["accepted", "accepted"])
@@ -209,6 +276,7 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertIn("Allowed relation types", captured["user"])
         self.assertIn("Do not use League knowledge", captured["system"])
         self.assertIn("Copy condition wording", captured["system"])
+        self.assertIn("exact source phrase", captured["user"])
         self.assertEqual(captured["max_tokens"], 4096)
         self.assertEqual(captured["thinking"], "disabled")
 
@@ -334,6 +402,10 @@ class RelationExtractionTests(unittest.TestCase):
 
 
 def _candidate(**overrides):
+    source_subject = overrides.pop("_source_subject", None)
+    source_predicate = overrides.pop("_source_predicate", "denies")
+    source_object = overrides.pop("_source_object", None)
+    source_condition = overrides.pop("_source_condition", None)
     value = {
         "subject": "Flay",
         "subject_type": "ability",
@@ -349,6 +421,17 @@ def _candidate(**overrides):
         "patch_sensitivity": "low",
     }
     value.update(overrides)
+    if "grounding" not in overrides:
+        value["grounding"] = {
+            "subject": {"source_text": source_subject or value["subject"], "evidence_id": value["evidence_ids"][0]},
+            "predicate": {"source_text": source_predicate, "evidence_id": value["evidence_ids"][0]},
+            "object": {"source_text": source_object or value["object"], "evidence_id": value["evidence_ids"][0]},
+            "condition": (
+                {"source_text": source_condition or value["condition"], "evidence_id": value["evidence_ids"][0]}
+                if isinstance(value["condition"], str)
+                else None
+            ),
+        }
     return value
 
 
