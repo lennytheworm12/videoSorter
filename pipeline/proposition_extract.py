@@ -1,24 +1,107 @@
-"""Phase 2D source-grounded proposition extraction before ontology mapping.
+"""Span-first source-grounded proposition extraction before candidate mapping.
 
-This module intentionally stops before canonical relation selection.  It
-preserves propositions that are grounded but unmappable, and validates every
-field against either the immutable insight summary, a verified bronze window,
-or both depending on the requested source mode.
+Phase 2E deliberately separates evidence localization, source-semantic slot
+recovery, causal-direction classification, and ontology normalization.  Every
+source slot is validated against a verified source before deterministic code
+may assemble a :class:`GroundedProposition`.  Selected evidence, recovered
+slots, and the causal direction survive any later stage failure so artifacts
+can diagnose the first loss boundary.  A normalization abstention or failure
+never discards a successfully recovered source-semantic frame; malformed or
+unsupported model output fails closed and never reaches candidate mapping or
+persistence.
+
+Failures carry a deterministic taxonomy.  An ``UnsupportedSourceSlot`` means
+model text could not be exactly grounded in the selected evidence, an
+``InventedOntologyContent`` means normalization returned an ID outside the
+closed ontology, and an ordinary ``ValueError`` means malformed or partial
+model output.  A provider exception raised by a model call fails closed at
+that stage and is recorded with the ``ProviderCallError`` marker and no raw
+output, so it is never conflated with malformed or unsupported model output.
+:class:`StageAExtraction` exposes explicit counts
+(``unsupported_slot_count`` and ``invented_ontology_count``), an
+``invented_ontology_taxonomy`` mapping each invented ID to its occurrence
+count, plus the exception class name in artifacts and frame markers, so
+evaluators never conflate unsupported source slots, invented closed-ontology
+IDs, and malformed output.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 import json
-from typing import Callable, Literal, Mapping
+from typing import Any, Callable, Literal, Mapping
 
+from core.ontology import RELATION_TYPES, STRATEGIC_CONCEPTS
 from pipeline.relation_extract import GroundedProposition
 from pipeline.source_windows import SourceWindow
 
 
 SourceMode = Literal["insight", "transcript", "combined"]
+CausalDirection = Literal[
+    "actor_event_causes_effect",
+    "effect_causes_actor_event",
+    "association_only",
+    "temporal_sequence_only",
+    "insufficient_causal_claim",
+]
 _VALID_MODES = frozenset(("insight", "transcript", "combined"))
+_VALID_DIRECTIONS = frozenset(
+    (
+        "actor_event_causes_effect",
+        "effect_causes_actor_event",
+        "association_only",
+        "temporal_sequence_only",
+        "insufficient_causal_claim",
+    )
+)
 
+SPAN_FIRST_PROMPT_VERSION = "phase2e-span-first-v1"
+
+EVIDENCE_LOCALIZATION_SYSTEM = """Return JSON only. Select the smallest one
+or two exact contiguous source spans that together state one coaching
+mechanism. A mechanism contains an action, resource, or state and a supported
+consequence or opportunity. Include its trigger or condition when present.
+Recommendations such as "do X to achieve Y" contain a mechanism. Do not
+interpret ontology concepts and do not paraphrase. Select spans from one
+source only and never return a span that contains another selected span.
+Return no selection when the source states advice but no consequence, cause,
+or strategic result."""
+
+SLOT_SYSTEMS = {
+    "actor": """Return JSON only. From the selected exact evidence, copy the
+source phrase naming the causal actor, resource, state, or player action. It is
+the thing or action whose event produces the consequence, not the affected
+result. Do not paraphrase or normalize.""",
+    "event": """Return JSON only. From the selected exact evidence, copy the
+smallest source phrase naming what the causal actor does or what happens to it.
+This is the causal action, event, or state change linking the actor to the
+consequence. Do not copy the consequence and do not paraphrase or normalize.""",
+    "effect": """Return JSON only. From the selected exact evidence, copy the
+source phrase naming the supported consequence, result, or opportunity. Do
+not copy the causal actor as the effect and do not paraphrase or normalize.""",
+    "condition": """Return JSON only. Decide whether the selected mechanism
+has a source-stated trigger, qualifier, timing, or prerequisite. If present,
+copy its exact source phrase. If absent, return null or the string "NONE".
+Never invent a condition and do not turn the consequence into a condition
+merely to fill the field.""",
+}
+
+DIRECTION_SYSTEM = """Return JSON only. Classify the causal direction of the
+supplied source-selected actor, event, effect, and optional condition. Choose
+exactly one allowed label. actor_event_causes_effect means the actor/event
+produces or enables the effect. effect_causes_actor_event means the proposed
+roles are reversed. Association and temporal sequence are not causation.
+Choose insufficient_causal_claim when the evidence does not support a causal
+claim. Do not rewrite any source field."""
+
+NORMALIZATION_SYSTEM = """Return JSON only. Classify the already recovered
+source-semantic fields against the supplied closed ontology. This is a
+separate normalization step: do not change source text and do not add facts.
+Choose a canonical ID only when the source phrase directly supports it;
+otherwise return null. Null is preferred to an uncertain mapping."""
+
+# Retained legacy one-pass contract for parse_grounded_propositions callers
+# and older Phase 2D artifacts. Live Stage A uses the decomposed systems.
 PROPOSITION_SYSTEM = """Return JSON only. Extract source-grounded causal
 propositions from supplied source text. Do not select ontology concepts,
 canonical relation types, or canonical entities. Return zero propositions for
@@ -70,14 +153,25 @@ class PropositionPacket:
         return tuple(values)
 
     def prompt(self) -> str:
+        """Render the source-only packet used by evidence localization."""
         rendered = "\n\n".join(f"[{source.kind}]\n{source.text}" for source in self.sources())
         source_kinds = [source.kind for source in self.sources()]
         return (
             "EVIDENCE ID: " + self.evidence_id + "\nSOURCE TEXT:\n" + rendered
-            + "\n\nAllowed grounding source values: " + json.dumps(source_kinds)
-            + ". Return exactly: {\"propositions\":[{\"subject_source\":\"...\",\"predicate_source\":\"...\",\"effect_source\":\"...\",\"condition_source\":null,\"grounding\":{\"subject\":{\"source\":\"<allowed source value>\"},\"predicate\":{\"source\":\"<allowed source value>\"},\"effect\":{\"source\":\"<allowed source value>\"},\"condition\":null}}]}."
-            + " Copy every non-null field exactly from the supplied source. Do not invent text or use text outside the supplied sources."
+            + "\n\nAllowed source values: " + json.dumps(source_kinds)
+            + '. Return exactly {"source":"<allowed source value>","evidence_spans":["exact source span"]}'
+            + ' or {"source":null,"evidence_spans":[]}.'
         )
+
+
+@dataclass(frozen=True)
+class SourceAlignment:
+    source_kind: Literal["insight", "transcript"]
+    start: int
+    end: int
+    source_text: str
+    absolute_start: int | None = None
+    absolute_end: int | None = None
 
 
 @dataclass(frozen=True)
@@ -92,33 +186,394 @@ class PropositionAlignment:
 
 
 @dataclass(frozen=True)
+class SemanticSlot:
+    role: Literal["actor", "event", "effect", "condition"]
+    alignment: SourceAlignment
+
+    @property
+    def text(self) -> str:
+        return self.alignment.source_text
+
+
+@dataclass(frozen=True)
+class OntologyNormalization:
+    actor_concept: str | None
+    event_relation: str | None
+    effect_concept: str | None
+
+
+@dataclass(frozen=True)
+class SourceSemanticFrame:
+    evidence_spans: tuple[SourceAlignment, ...]
+    actor: SemanticSlot
+    event: SemanticSlot
+    effect: SemanticSlot
+    condition: SemanticSlot | None
+    causal_direction: CausalDirection
+    normalization: OntologyNormalization | None
+    normalization_failure: str | None = None
+
+
+@dataclass(frozen=True)
 class ExtractedProposition:
     proposition: GroundedProposition
     alignments: tuple[PropositionAlignment, ...]
 
 
-def extract_grounded_propositions(
-    packet: PropositionPacket, chat: Callable[..., str], *, model: str | None = None,
-    max_tokens: int = 512, thinking: str | None = None,
-) -> tuple[ExtractedProposition, ...]:
-    """Extract propositions without canonical mapping or persistence."""
+@dataclass(frozen=True)
+class StageArtifact:
+    stage: str
+    raw_output: str | None
+    parsed_output: Mapping[str, Any] | None
+    failure: str | None = None
+
+
+@dataclass(frozen=True)
+class StageAExtraction:
+    propositions: tuple[ExtractedProposition, ...]
+    frames: tuple[SourceSemanticFrame, ...]
+    artifacts: tuple[StageArtifact, ...]
+    failure_stage: str | None = None
+    unsupported_slot_count: int = 0
+    invented_ontology_count: int = 0
+    evidence_spans: tuple[SourceAlignment, ...] = ()
+    slots: Mapping[str, SemanticSlot | None] = field(default_factory=dict)
+    causal_direction: CausalDirection | None = None
+    invented_ontology_taxonomy: Mapping[str, int] = field(default_factory=dict)
+
+    def to_artifact_dict(self) -> dict[str, Any]:
+        return {
+            "prompt_version": SPAN_FIRST_PROMPT_VERSION,
+            "failure_stage": self.failure_stage,
+            "unsupported_slot_count": self.unsupported_slot_count,
+            "invented_ontology_count": self.invented_ontology_count,
+            "invented_ontology_taxonomy": dict(self.invented_ontology_taxonomy),
+            "raw_stage_outputs": [asdict(item) for item in self.artifacts],
+            "selected_evidence_spans": [asdict(span) for span in self.evidence_spans],
+            "recovered_slots": [
+                {"role": role, "slot": asdict(slot) if slot is not None else None}
+                for role, slot in self.slots.items()
+            ],
+            "causal_direction": self.causal_direction,
+            "semantic_frames": [asdict(frame) for frame in self.frames],
+            "assembled_propositions": [
+                {"proposition": asdict(item.proposition), "alignments": [asdict(value) for value in item.alignments]}
+                for item in self.propositions
+            ],
+        }
+
+
+class UnsupportedSourceSlot(ValueError):
+    """A model-selected slot was not uniquely grounded in selected evidence."""
+
+
+class InventedOntologyContent(ValueError):
+    """Normalization returned one or more IDs outside the closed ontology."""
+
+    def __init__(self, message: str, invented: Mapping[str, int]) -> None:
+        super().__init__(message)
+        self.invented = dict(invented)
+
+    @property
+    def count(self) -> int:
+        return sum(self.invented.values())
+
+
+class ProviderCallError(Exception):
+    """A model provider call failed before producing raw output.
+
+    This is distinct from parse failures (``ValueError`` and its subclasses):
+    the failing :class:`StageArtifact` records no raw output and carries the
+    ``ProviderCallError`` marker so evaluators never conflate a provider
+    outage with malformed, unsupported, or invented model output.
+    """
+
+
+def extract_span_first_propositions(
+    packet: PropositionPacket,
+    chat: Callable[..., str],
+    *,
+    model: str | None = None,
+    max_tokens: int = 512,
+    thinking: str | None = None,
+) -> StageAExtraction:
+    """Run Phase 2E's observable, fail-closed Stage A pipeline.
+
+    Selected evidence and every successfully parsed slot are retained even
+    when a later stage fails.  A normalization failure retains the recovered
+    semantic frame with ``normalization=None`` and a failure marker instead of
+    discarding the frame; the stage name in ``failure_stage`` keeps extraction
+    failures distinguishable from normalization failures.  A provider
+    exception raised by a model call fails closed at the current stage,
+    retaining every already completed artifact, selected evidence span,
+    recovered slot, and the causal direction when already classified; the
+    failing artifact records no raw output with a ``ProviderCallError`` marker.
+    """
     if max_tokens <= 0:
         raise ValueError("max_tokens must be positive")
-    raw = chat(
-        system=PROPOSITION_SYSTEM, user=packet.prompt(), temperature=0.0,
-        max_tokens=max_tokens, model=model, thinking=thinking,
+    packet.validate()
+    artifacts: list[StageArtifact] = []
+
+    try:
+        raw = _provider_call(chat, EVIDENCE_LOCALIZATION_SYSTEM, packet.prompt(), model, max_tokens, thinking)
+        spans, parsed = parse_evidence_selection(raw, packet)
+    except ProviderCallError as exc:
+        artifacts.append(StageArtifact("evidence_localization", None, None, type(exc).__name__))
+        return StageAExtraction(
+            (), (), tuple(artifacts), failure_stage="evidence_localization",
+        )
+    except Exception as exc:
+        artifacts.append(StageArtifact("evidence_localization", raw, None, type(exc).__name__))
+        return StageAExtraction(
+            (), (), tuple(artifacts), failure_stage="evidence_localization",
+            unsupported_slot_count=_unsupported_count(exc),
+        )
+    artifacts.append(StageArtifact("evidence_localization", raw, parsed))
+    if not spans:
+        return StageAExtraction((), (), tuple(artifacts))
+
+    slots: dict[str, SemanticSlot | None] = {}
+    for role in ("actor", "event", "effect", "condition"):
+        user = _slot_prompt(role, spans, slots)
+        try:
+            raw = _provider_call(chat, SLOT_SYSTEMS[role], user, model, max_tokens, thinking)
+            slot, parsed = parse_semantic_slot(raw, role, spans, packet)
+        except ProviderCallError as exc:
+            artifacts.append(StageArtifact(role + "_extraction", None, None, type(exc).__name__))
+            return StageAExtraction(
+                (), (), tuple(artifacts), failure_stage=role + "_extraction",
+                evidence_spans=spans, slots=dict(slots),
+            )
+        except Exception as exc:
+            artifacts.append(StageArtifact(role + "_extraction", raw, None, type(exc).__name__))
+            return StageAExtraction(
+                (), (), tuple(artifacts), failure_stage=role + "_extraction",
+                unsupported_slot_count=_unsupported_count(exc),
+                evidence_spans=spans, slots=dict(slots),
+            )
+        artifacts.append(StageArtifact(role + "_extraction", raw, parsed))
+        slots[role] = slot
+        if role != "condition" and slot is None:
+            return StageAExtraction(
+                (), (), tuple(artifacts), failure_stage=role + "_extraction",
+                evidence_spans=spans, slots=dict(slots),
+            )
+
+    actor = slots["actor"]
+    event = slots["event"]
+    effect = slots["effect"]
+    condition = slots["condition"]
+    assert actor is not None and event is not None and effect is not None
+
+    try:
+        raw = _provider_call(chat, DIRECTION_SYSTEM, _direction_prompt(spans, actor, event, effect, condition), model, max_tokens, thinking)
+        direction, parsed = parse_causal_direction(raw)
+    except ProviderCallError as exc:
+        artifacts.append(StageArtifact("causal_direction", None, None, type(exc).__name__))
+        return StageAExtraction(
+            (), (), tuple(artifacts), failure_stage="causal_direction",
+            evidence_spans=spans, slots=dict(slots),
+        )
+    except Exception as exc:
+        artifacts.append(StageArtifact("causal_direction", raw, None, type(exc).__name__))
+        return StageAExtraction(
+            (), (), tuple(artifacts), failure_stage="causal_direction",
+            evidence_spans=spans, slots=dict(slots),
+        )
+    artifacts.append(StageArtifact("causal_direction", raw, parsed))
+
+    try:
+        raw = _provider_call(chat, NORMALIZATION_SYSTEM, _normalization_prompt(actor, event, effect), model, max_tokens, thinking)
+        normalization, parsed = parse_ontology_normalization(raw)
+    except ProviderCallError as exc:
+        artifacts.append(StageArtifact("ontology_normalization", None, None, type(exc).__name__))
+        frame = SourceSemanticFrame(
+            spans, actor, event, effect, condition, direction,
+            normalization=None, normalization_failure=type(exc).__name__,
+        )
+        return StageAExtraction(
+            (), (frame,), tuple(artifacts), failure_stage="ontology_normalization",
+            evidence_spans=spans, slots=dict(slots), causal_direction=direction,
+        )
+    except Exception as exc:
+        artifacts.append(StageArtifact("ontology_normalization", raw, None, type(exc).__name__))
+        frame = SourceSemanticFrame(
+            spans, actor, event, effect, condition, direction,
+            normalization=None, normalization_failure=type(exc).__name__,
+        )
+        return StageAExtraction(
+            (), (frame,), tuple(artifacts), failure_stage="ontology_normalization",
+            evidence_spans=spans, slots=dict(slots), causal_direction=direction,
+            invented_ontology_count=_invented_count(exc),
+            invented_ontology_taxonomy=_invented_taxonomy(exc),
+        )
+    artifacts.append(StageArtifact("ontology_normalization", raw, parsed))
+
+    frame = SourceSemanticFrame(spans, actor, event, effect, condition, direction, normalization)
+    proposition = assemble_grounded_proposition(frame, packet.evidence_id)
+    propositions = (proposition,) if proposition is not None else ()
+    return StageAExtraction(
+        propositions, (frame,), tuple(artifacts),
+        evidence_spans=spans, slots=dict(slots), causal_direction=direction,
     )
-    return parse_grounded_propositions(raw, packet)
+
+
+def extract_grounded_propositions(
+    packet: PropositionPacket,
+    chat: Callable[..., str],
+    *,
+    model: str | None = None,
+    max_tokens: int = 512,
+    thinking: str | None = None,
+) -> tuple[ExtractedProposition, ...]:
+    """Compatibility wrapper returning only deterministically assembled output.
+
+    Call :func:`extract_span_first_propositions` directly when stage artifacts
+    or the intermediate semantic frame are required.
+    """
+    return extract_span_first_propositions(
+        packet, chat, model=model, max_tokens=max_tokens, thinking=thinking,
+    ).propositions
+
+
+def parse_evidence_selection(
+    raw: str, packet: PropositionPacket,
+) -> tuple[tuple[SourceAlignment, ...], Mapping[str, Any]]:
+    body = _json_object(raw, "evidence localizer")
+    if set(body) != {"source", "evidence_spans"} or not isinstance(body.get("evidence_spans"), list):
+        raise ValueError("evidence localizer requires source and evidence_spans")
+    kind = body.get("source")
+    phrases = body["evidence_spans"]
+    if kind is None and phrases == []:
+        return (), body
+    sources = {item.kind: item.text for item in packet.sources()}
+    if kind not in sources or not 1 <= len(phrases) <= 2:
+        raise ValueError("evidence selection has invalid source or span count")
+    if not all(isinstance(phrase, str) and phrase.strip() for phrase in phrases):
+        raise ValueError("evidence selection spans must be nonempty strings")
+    spans = tuple(_source_alignment(kind, phrase, sources[kind], packet.source_window) for phrase in phrases)
+    if len({(item.start, item.end) for item in spans}) != len(spans):
+        raise ValueError("evidence selection contains duplicate spans")
+    if _has_nested_spans(spans):
+        raise ValueError("evidence selection contains nested non-minimal spans")
+    return spans, body
+
+
+def parse_semantic_slot(
+    raw: str,
+    role: str,
+    evidence_spans: tuple[SourceAlignment, ...],
+    packet: PropositionPacket,
+) -> tuple[SemanticSlot | None, Mapping[str, Any]]:
+    if role not in SLOT_SYSTEMS:
+        raise ValueError(f"unknown semantic slot: {role}")
+    if not evidence_spans:
+        raise ValueError(f"{role} extractor requires selected evidence spans")
+    body = _json_object(raw, role + " extractor")
+    if set(body) != {role}:
+        raise ValueError(f"{role} extractor must return only {role}")
+    phrase = body.get(role)
+    if role == "condition" and (phrase is None or phrase == "NONE"):
+        return None, body
+    if not isinstance(phrase, str) or not phrase.strip():
+        raise ValueError(f"{role} extractor requires an exact source phrase")
+    source_kind = evidence_spans[0].source_kind
+    if any(span.source_kind != source_kind for span in evidence_spans):
+        raise ValueError("selected evidence must use one coherent source")
+    sources = {item.kind: item.text for item in packet.sources()}
+    if source_kind not in sources:
+        raise ValueError("selected evidence uses a source unavailable to the packet")
+    alignment = _source_alignment_within_spans(
+        source_kind, phrase, evidence_spans, sources[source_kind], packet.source_window,
+    )
+    return SemanticSlot(role, alignment), body  # type: ignore[arg-type]
+
+
+def parse_causal_direction(raw: str) -> tuple[CausalDirection, Mapping[str, Any]]:
+    body = _json_object(raw, "causal direction classifier")
+    if set(body) != {"causal_direction"} or body.get("causal_direction") not in _VALID_DIRECTIONS:
+        raise ValueError("causal direction classifier returned an invalid label")
+    return body["causal_direction"], body  # type: ignore[return-value]
+
+
+def parse_ontology_normalization(raw: str) -> tuple[OntologyNormalization, Mapping[str, Any]]:
+    body = _json_object(raw, "ontology normalizer")
+    required = {"actor_concept", "event_relation", "effect_concept"}
+    if set(body) != required:
+        raise ValueError("ontology normalizer returned an invalid shape")
+    actor = body.get("actor_concept")
+    event = body.get("event_relation")
+    effect = body.get("effect_concept")
+    for field, value in (("actor_concept", actor), ("event_relation", event), ("effect_concept", effect)):
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"ontology normalizer {field} must be a string or null")
+    checks = (
+        ("actor_concept", "actor concept", actor, STRATEGIC_CONCEPTS),
+        ("event_relation", "event relation", event, RELATION_TYPES),
+        ("effect_concept", "effect concept", effect, STRATEGIC_CONCEPTS),
+    )
+    invented_values = [
+        (label, value)
+        for field, label, value, allowed in checks
+        if value is not None and value not in allowed
+    ]
+    if invented_values:
+        invented: dict[str, int] = {}
+        for _, value in invented_values:
+            invented[str(value)] = invented.get(str(value), 0) + 1
+        raise InventedOntologyContent(
+            "ontology normalizer invented " + ", ".join(f"{label} {value!r}" for label, value in invented_values),
+            invented,
+        )
+    return OntologyNormalization(actor, event, effect), body
+
+
+def assemble_grounded_proposition(
+    frame: SourceSemanticFrame, evidence_id: str,
+) -> ExtractedProposition | None:
+    """Assemble source output without allowing a final generative rewrite.
+
+    Only supported forward causality becomes a :class:`GroundedProposition`;
+    reversed and non-causal directions abstain.  A malformed frame fails
+    closed with a ``ValueError`` rather than emitting ungrounded output.
+    """
+    if frame.causal_direction != "actor_event_causes_effect":
+        return None
+    slots = (frame.actor, frame.event, frame.effect) + ((frame.condition,) if frame.condition else ())
+    if len({item.alignment.source_kind for item in slots}) != 1:
+        raise ValueError("semantic frame slots must use one coherent source")
+    if len({span.source_kind for span in frame.evidence_spans}) != 1:
+        raise ValueError("semantic frame evidence spans must use one coherent source")
+    source_kind = slots[0].alignment.source_kind
+    for slot in slots:
+        if not any(
+            span.source_kind == source_kind
+            and span.start <= slot.alignment.start
+            and slot.alignment.end <= span.end
+            for span in frame.evidence_spans
+        ):
+            raise ValueError("semantic frame slot lies outside selected evidence spans")
+    proposition = GroundedProposition(
+        frame.actor.text,
+        frame.event.text,
+        frame.effect.text,
+        frame.condition.text if frame.condition else None,
+        (evidence_id,),
+    )
+    names = ("subject", "predicate", "effect", "condition")
+    alignments = tuple(
+        PropositionAlignment(name, slot.alignment.source_kind, slot.alignment.start, slot.alignment.end,
+                             slot.text, slot.alignment.absolute_start, slot.alignment.absolute_end)
+        for name, slot in zip(names, slots)
+    )
+    return ExtractedProposition(proposition, alignments)
 
 
 def parse_grounded_propositions(raw: str, packet: PropositionPacket) -> tuple[ExtractedProposition, ...]:
-    """Parse and verify source fields and their claimed source offsets."""
+    """Parse legacy one-pass artifacts while retaining strict source checks."""
     packet.validate()
-    try:
-        body = json.loads(raw)
-    except (TypeError, json.JSONDecodeError) as exc:
-        raise ValueError("proposition extractor returned malformed JSON") from exc
-    if not isinstance(body, Mapping) or not isinstance(body.get("propositions"), list):
+    body = _json_object(raw, "proposition extractor")
+    if not isinstance(body.get("propositions"), list):
         raise ValueError("proposition extractor response requires propositions list")
     sources = {item.kind: item.text for item in packet.sources()}
     extracted = []
@@ -136,49 +591,172 @@ def parse_grounded_propositions(raw: str, packet: PropositionPacket) -> tuple[Ex
         if not isinstance(grounding, Mapping):
             raise ValueError("grounded proposition requires field grounding")
         alignments = []
-        for field, phrase in (
-            ("subject", proposition.subject_source),
-            ("predicate", proposition.predicate_source),
-            ("effect", proposition.effect_source),
-            ("condition", proposition.condition_source),
-        ):
+        for field, phrase in (("subject", proposition.subject_source), ("predicate", proposition.predicate_source),
+                              ("effect", proposition.effect_source), ("condition", proposition.condition_source)):
             raw_alignment = grounding.get(field)
             if phrase is None:
                 if raw_alignment is not None:
                     raise ValueError("null condition cannot have grounding")
                 continue
-            alignment = _parse_alignment(field, phrase, raw_alignment, sources, packet.source_window)
-            alignments.append(alignment)
-        proposition_sources = {item.source_kind for item in alignments}
-        if len(proposition_sources) != 1:
+            if not isinstance(raw_alignment, Mapping):
+                raise ValueError(f"grounded proposition {field} requires grounding")
+            kind = raw_alignment.get("source")
+            if set(raw_alignment) != {"source"} or kind not in sources:
+                raise ValueError(f"grounded proposition {field} has invalid source grounding")
+            aligned = _source_alignment(kind, phrase, sources[kind], packet.source_window)
+            alignments.append(PropositionAlignment(field, aligned.source_kind, aligned.start, aligned.end,
+                                                   aligned.source_text, aligned.absolute_start, aligned.absolute_end))
+        if len({item.source_kind for item in alignments}) != 1:
             raise ValueError("grounded proposition fields must use one coherent source")
         extracted.append(ExtractedProposition(proposition, tuple(alignments)))
     return tuple(extracted)
 
 
-def _parse_alignment(
-    field: str, phrase: str, raw: object, sources: Mapping[str, str], source_window: SourceWindow | None,
-) -> PropositionAlignment:
-    if not isinstance(raw, Mapping):
-        raise ValueError(f"grounded proposition {field} requires grounding")
-    kind = raw.get("source")
-    if set(raw) != {"source"} or kind not in sources:
-        raise ValueError(f"grounded proposition {field} has invalid source grounding")
-    source = sources[kind]
+def _chat(
+    chat: Callable[..., str], system: str, user: str, model: str | None,
+    max_tokens: int, thinking: str | None,
+) -> str:
+    return chat(system=system, user=user, temperature=0.0, max_tokens=max_tokens, model=model, thinking=thinking)
+
+
+def _provider_call(
+    chat: Callable[..., str], system: str, user: str, model: str | None,
+    max_tokens: int, thinking: str | None,
+) -> str:
+    try:
+        return _chat(chat, system, user, model, max_tokens, thinking)
+    except Exception as exc:
+        raise ProviderCallError("provider call failed before producing raw output") from exc
+
+
+def _slot_prompt(
+    role: str, evidence_spans: tuple[SourceAlignment, ...], slots: Mapping[str, SemanticSlot | None],
+) -> str:
+    selected = "\n".join(f"[span {index + 1}] {span.source_text}" for index, span in enumerate(evidence_spans))
+    prior = "\n".join(f"{name}: {slot.text if slot else 'NONE'}" for name, slot in slots.items()) or "(none)"
+    value = 'null or "NONE"' if role == "condition" else '"exact source phrase"'
+    return f"SELECTED EVIDENCE:\n{selected}\n\nPREVIOUSLY SELECTED SLOTS:\n{prior}\n\nReturn exactly: {{\"{role}\":{value}}}."
+
+
+def _direction_prompt(
+    spans: tuple[SourceAlignment, ...], actor: SemanticSlot, event: SemanticSlot,
+    effect: SemanticSlot, condition: SemanticSlot | None,
+) -> str:
+    return (
+        "SELECTED EVIDENCE:\n" + "\n".join(item.source_text for item in spans)
+        + f"\n\nactor: {actor.text}\nevent: {event.text}\neffect: {effect.text}\ncondition: "
+        + (condition.text if condition else "NONE")
+        + "\nAllowed labels: " + json.dumps(sorted(_VALID_DIRECTIONS))
+        + '. Return exactly: {"causal_direction":"<allowed label>"}.'
+    )
+
+
+def _normalization_prompt(actor: SemanticSlot, event: SemanticSlot, effect: SemanticSlot) -> str:
+    concepts = {key: value.description for key, value in sorted(STRATEGIC_CONCEPTS.items())}
+    return (
+        f"SOURCE FRAME:\nactor: {actor.text}\nevent: {event.text}\neffect: {effect.text}\n\n"
+        + "Allowed strategic concepts: " + json.dumps(concepts, sort_keys=True)
+        + "\nAllowed event relations: " + json.dumps(sorted(RELATION_TYPES))
+        + '\nReturn exactly: {"actor_concept":null,"event_relation":null,"effect_concept":null}, replacing null only with a directly supported allowed ID.'
+    )
+
+
+def _json_object(raw: str, stage: str) -> Mapping[str, Any]:
+    try:
+        body = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{stage} returned malformed JSON") from exc
+    if not isinstance(body, Mapping):
+        raise ValueError(f"{stage} must return a JSON object")
+    return body
+
+
+def _source_alignment(
+    kind: str,
+    phrase: str,
+    source: str,
+    source_window: SourceWindow | None,
+    *,
+    unsupported: bool = False,
+) -> SourceAlignment:
+    error = UnsupportedSourceSlot if unsupported else ValueError
+    phrase = phrase.strip()
+    if not phrase:
+        raise error("source phrase must not be empty")
     locations = _exact_locations(source, phrase)
     if len(locations) != 1:
-        raise ValueError(f"grounded proposition {field} must quote one unambiguous exact source phrase")
+        raise error("source phrase must quote one unambiguous exact source phrase")
     start, end = locations[0]
     absolute_start = absolute_end = None
     if kind == "transcript":
         assert source_window is not None and source_window.window_start is not None
         absolute_start = source_window.window_start + start
         absolute_end = source_window.window_start + end
-    return PropositionAlignment(field, kind, start, end, phrase, absolute_start, absolute_end)
+    return SourceAlignment(kind, start, end, phrase, absolute_start, absolute_end)  # type: ignore[arg-type]
+
+
+def _source_alignment_within_spans(
+    kind: str,
+    phrase: str,
+    evidence_spans: tuple[SourceAlignment, ...],
+    source: str,
+    source_window: SourceWindow | None,
+) -> SourceAlignment:
+    """Ground a phrase to its single occurrence inside the selected evidence.
+
+    Uniqueness is evaluated within the selected spans only, so common text that
+    also appears elsewhere in the packet source resolves when exactly one
+    selected occurrence exists.  Zero or multiple contained occurrences fail
+    closed with the unsupported-slot taxonomy, and overlapping or duplicated
+    selected contexts never double-count a single source occurrence.
+    """
+    phrase = phrase.strip()
+    if not phrase:
+        raise UnsupportedSourceSlot("source phrase must not be empty")
+    contained = [
+        (start, end)
+        for start, end in _exact_locations(source, phrase)
+        if any(span.start <= start and end <= span.end for span in evidence_spans)
+    ]
+    if not contained:
+        raise UnsupportedSourceSlot("source phrase is outside selected evidence spans")
+    if len(contained) > 1:
+        raise UnsupportedSourceSlot(
+            "source phrase must quote one unambiguous exact source phrase within selected evidence spans"
+        )
+    start, end = contained[0]
+    absolute_start = absolute_end = None
+    if kind == "transcript":
+        assert source_window is not None and source_window.window_start is not None
+        absolute_start = source_window.window_start + start
+        absolute_end = source_window.window_start + end
+    return SourceAlignment(kind, start, end, phrase, absolute_start, absolute_end)  # type: ignore[arg-type]
+
+
+def _has_nested_spans(spans: tuple[SourceAlignment, ...]) -> bool:
+    for index, outer in enumerate(spans):
+        for inner in spans[index + 1:]:
+            if outer.start <= inner.start and inner.end <= outer.end:
+                return True
+            if inner.start <= outer.start and outer.end <= inner.end:
+                return True
+    return False
+
+
+def _unsupported_count(exc: Exception) -> int:
+    return 1 if isinstance(exc, UnsupportedSourceSlot) else 0
+
+
+def _invented_count(exc: Exception) -> int:
+    return exc.count if isinstance(exc, InventedOntologyContent) else 0
+
+
+def _invented_taxonomy(exc: Exception) -> Mapping[str, int]:
+    return exc.invented if isinstance(exc, InventedOntologyContent) else {}
 
 
 def _exact_locations(source: str, phrase: str) -> tuple[tuple[int, int], ...]:
-    """Find byte-identical source phrases; ambiguity cannot become provenance."""
+    """Find byte-identical token-bounded source phrases."""
     positions = []
     start = 0
     while True:
@@ -186,10 +764,8 @@ def _exact_locations(source: str, phrase: str) -> tuple[tuple[int, int], ...]:
         if index < 0:
             return tuple(positions)
         end = index + len(phrase)
-        if (
-            (index == 0 or not _token_character(source[index - 1]))
-            and (end == len(source) or not _token_character(source[end]))
-        ):
+        if ((index == 0 or not _token_character(source[index - 1]))
+                and (end == len(source) or not _token_character(source[end]))):
             positions.append((index, end))
         start = index + 1
 
