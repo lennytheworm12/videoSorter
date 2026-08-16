@@ -35,6 +35,12 @@ class PropositionExtractionTests(unittest.TestCase):
                 if absent:
                     self.assertNotIn(absent, prompt)
 
+    def test_prompt_exposes_concrete_grounding_source_enums(self) -> None:
+        self.assertIn('Allowed grounding source values: ["insight"]', _packet("insight").prompt())
+        self.assertIn('Allowed grounding source values: ["transcript"]', _packet("transcript").prompt())
+        self.assertIn('Allowed grounding source values: ["insight", "transcript"]', _packet("combined").prompt())
+        self.assertNotIn('"source":"insight|transcript"', _packet("combined").prompt())
+
     def test_validates_transcript_field_spans(self) -> None:
         text = _window().transcript_window
         result = parse_grounded_propositions(_response("transcript", text), _packet("transcript"))

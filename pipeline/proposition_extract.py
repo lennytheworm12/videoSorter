@@ -63,9 +63,11 @@ class PropositionPacket:
 
     def prompt(self) -> str:
         rendered = "\n\n".join(f"[{source.kind}]\n{source.text}" for source in self.sources())
+        source_kinds = [source.kind for source in self.sources()]
         return (
             "EVIDENCE ID: " + self.evidence_id + "\nSOURCE TEXT:\n" + rendered
-            + "\n\nReturn exactly: {\"propositions\":[{\"subject_source\":\"...\",\"predicate_source\":\"...\",\"effect_source\":\"...\",\"condition_source\":null,\"grounding\":{\"subject\":{\"source\":\"insight|transcript\",\"start\":0,\"end\":1},\"predicate\":{\"source\":\"insight|transcript\",\"start\":0,\"end\":1},\"effect\":{\"source\":\"insight|transcript\",\"start\":0,\"end\":1},\"condition\":null}}]}."
+            + "\n\nAllowed grounding source values: " + json.dumps(source_kinds)
+            + ". Return exactly: {\"propositions\":[{\"subject_source\":\"...\",\"predicate_source\":\"...\",\"effect_source\":\"...\",\"condition_source\":null,\"grounding\":{\"subject\":{\"source\":\"<allowed source value>\",\"start\":0,\"end\":1},\"predicate\":{\"source\":\"<allowed source value>\",\"start\":0,\"end\":1},\"effect\":{\"source\":\"<allowed source value>\",\"start\":0,\"end\":1},\"condition\":null}}]}."
             + " Do not invent text or use text outside the supplied sources."
         )
 

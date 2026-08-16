@@ -576,6 +576,15 @@ validation, source text, persistence path, or confidence threshold; the
 pre-repair artifact remains retained as an invalid provider-configuration
 baseline rather than a quality score.
 
+**Prompt-contract repair (commit pending):** A raw Flash trace then showed
+that Stage A echoed `insight|transcript`, a literal placeholder inadvertently
+shown as a grounding source value in the response shape. The packet now lists
+the concrete valid source enum for its mode (`["insight"]`, `["transcript"]`,
+or both in combined mode). Parsing still rejects any source not present in the
+packet and still requires all fields in a proposition to use one source. This
+is an unambiguous structured-output contract correction, not an alias,
+candidate, validation, ontology, or benchmark-label change.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
