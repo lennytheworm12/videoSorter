@@ -554,6 +554,18 @@ safe-zero labels, fabricated offsets/evidence, and boolean offsets. This is
 only the Stage A/source-ablation measurement harness; canonical candidate
 coverage and mapper evaluation remain next.
 
+Operator command (dry-run; no relation or ledger persistence):
+
+```bash
+LLM_PROVIDER=deepseek uv run python -m scripts.eval_phase2d_propositions \
+  --live --variant flash --db videos.db \
+  --json-output /tmp/phase2d-dev-flash-source-modes.json
+```
+
+The CLI rejects blank explicit models, duplicate source modes, and use of a
+default relation variant with a non-DeepSeek backend. Its artifact labels an
+explicit `--model` as `custom` rather than misreporting it as Flash or Pro.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
