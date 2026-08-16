@@ -452,6 +452,29 @@ negation handling, and condition-event alias poisoning. All were fixed with
 adversarial regressions and the final review approved. The next milestone is
 an ID-only mapper; it must select only these candidates or `UNMAPPED`.
 
+#### M15: Schema-Constrained ID-Only Mapper
+
+**Complete. Commit pending.** Added an ID-only mapper that receives a grounded
+proposition and M14 candidate sets, then returns exactly one of `mapped`,
+`unmapped`, or `no_relation`. A mapped response must select subject, relation,
+and object IDs from their own candidate lists; any free-form, cross-slot,
+unknown, duplicate, missing, or extra field rejects. Conditions use an index
+into the generated condition candidates. `unmapped` and `no_relation` must
+make no selection and carry `null` confidence.
+
+The mapper does not import or create `StrategicRelation`, and does not persist
+anything. This preserves the Phase 2D distinction between a high-recall
+proposition/candidate layer and trusted compiled knowledge.
+
+Tests: `uv run python -m unittest tests.test_constrained_mapper
+tests.test_candidate_generation tests.test_proposition_extract
+tests.test_relation_extract tests.test_source_windows` (74 passing).
+Independent review found non-closed/duplicate JSON fields, ambiguous
+non-selection confidence, missing wrong-slot and empty-set coverage, and a
+prompt/parser confidence contradiction. All were fixed with regressions; the
+final review approved. Next: add the candidate relation ledger and aggregation
+states without promoting provisional output into existing strategic relations.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
