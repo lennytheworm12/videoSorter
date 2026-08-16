@@ -710,14 +710,14 @@ available alongside recall.
 #### Tests
 
 Broader current evidence: `.venv/bin/python -m pytest tests
---ignore=tests/test_auth.py -q` passes **404 tests with 115 subtests**
-(`404 passed, 115 subtests passed in 25.44s`). Focused Phase 2 evidence
+--ignore=tests/test_auth.py -q` passes **419 tests with 128 subtests**
+(`419 passed, 128 subtests passed in 20.10s`). Focused Phase 2 evidence
 retained: `unittest` across the Phase 2 evaluation modules
 (`test_phase2d_evaluation`, `test_proposition_extract`,
 `test_eval_phase2d_propositions_cli`, `test_phase2d_metrics`,
 `test_candidate_ledger`, `test_constrained_mapper`,
 `test_candidate_generation`, `test_relation_extract`,
-`test_source_windows`): **222 tests passing** (`Ran 222 tests ... OK`). New
+`test_source_windows`): **237 tests passing** (`Ran 237 tests ... OK`). New
 coverage includes evidence-span provenance, condition vs no-condition, causal
 direction, actor/effect reversal, multiple-digit/source-span offsets,
 malformed/partial model output, safe `NONE`, deterministic proposition
@@ -780,17 +780,59 @@ then extract actor/event/effect/condition within that selected boundary. Keep
 the same five development cases, metrics, exact-span provenance, and frozen
 held-out isolation.
 
+#### Clause-First v2 Implementation and Deterministic Boundary
+
+That lower-level architecture is now implemented under prompt version
+`phase2e-clause-first-v2`. Deterministic code enumerates stable source-local
+candidate IDs from sentence/discourse boundaries and overlapping 32-token
+windows for punctuation-poor regions, bounded to 20 candidates per source.
+Flash may select only one or two IDs from one source; code derives all offsets,
+coalesces only overlap or whitespace adjacency, and preserves real gaps. The
+later source-slot, direction, normalization, and deterministic-assembly stages
+remain unchanged. Candidate catalogs survive success, abstention, malformed
+output, and provider failure in both core and evaluator artifacts.
+
+The evaluator now reports candidate-catalog coverage independently of model
+selection. It applies the exact production one/two-ID and same-source contract,
+rejects duplicate IDs or ungrounded alignments, runs production coalescing, and
+checks that all reviewed exact source fields fit within the resulting spans.
+On the unchanged five eligible transcript cases this deterministic boundary is
+**5/5 complete**: wave reset and push/poke each need one candidate; sweeper,
+mid-push, and hook-risk are coverable by two candidates. This establishes that
+v2 candidate generation itself has not discarded any reviewed mechanism. It
+does not grant semantic model credit.
+
+The retained v2 retry artifact
+`/tmp/phase2e-clause-first-v2-catalog-network-retry.json` has inner
+`content_sha256`
+`ecfce104b38fe57e3f8db767057254177a150b93a377b05ab1f12781fe61f0b2`
+and file SHA-256
+`7e1a4cbb62bf638ff3d83b2106ab7a8682837f2f2ef00bbab1afa89ff1b7b957`.
+It records complete 5/5 catalog coverage, but all five model calls failed at
+evidence localization with `ProviderCallError` before raw output because the
+execution environment had no outbound network path. It is therefore an
+infrastructure-failure artifact, **not** a valid v2 0/5 model-quality result.
+The v2 quality gate and clean reproduction remain pending a network-capable
+Flash run. No Pro, frozen held-out quality run, downstream mapping, ledger
+promotion, persistence, or Phase 3 work was performed.
+
 #### Publication Status
 
-The code boundary and deterministic tests are complete. The implementation was
-published directly to GitHub `main` through `b63d5e1`. The focused boundary is:
+The v1 code boundary and valid failure record were published directly to
+GitHub `main` through `2f47f8f`. The focused v1 boundary is:
 (a) core extraction + tests,
 `5bcffcf` ("Add span-first semantic proposition extraction"); (b) evaluator,
 CLI, tests, and handoff, `da1ad9f` ("Add Phase 2E semantic evaluation and
 handoff"); and (c) reviewed normalization labels, scoring, tests, and final
-documentation, `b63d5e1` ("Add reviewed Phase 2E normalization scoring"). This
-valid-run record is the final closeout documentation boundary for the failed
-Phase 2E experiment.
+documentation, `b63d5e1` ("Add reviewed Phase 2E normalization scoring"); and
+(d) the valid v1 gate record, `2f47f8f` ("Record Phase 2E Flash gate result").
+
+Clause-first v2 is committed locally on `publish-main` as `f1f38c4` (candidate
+enumeration/selection), `6624221` (artifact retention), and `fc80ade`
+(candidate-catalog coverage diagnostics). They await a network-capable push to
+GitHub `main` together with this documentation update. The Phase 2E experiment
+is not closed until a valid v2 Flash run and clean reproduction establish the
+preregistered gate outcome.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
