@@ -98,7 +98,7 @@ class SourceModeEvaluationTests(unittest.TestCase):
         self.resolver = SourceWindowResolver(self.temp.name)
         self.cases = (
             {"id": "positive", "insight_id": "1", "source_video_id": "v1", "eligible": True,
-             "expected_propositions": [{"subject_source": "Flay", "predicate_source": "prevents", "effect_source": "staying on target", "condition_source": "after entry", "condition_operator": "after", "semantic_field_token_groups": {"subject": [["Flay"]], "predicate": [["prevent", "prevents"]], "effect": [["staying"]], "condition": [["after"], ["entry"]]}}]},
+             "expected_propositions": [{"subject_source": "Flay", "predicate_source": "prevents", "effect_source": "staying on target", "condition_source": "after entry", "condition_operator": "after", "semantic_field_token_groups": {"subject": [["Flay"]], "predicate": [["prevent", "prevents"]], "effect": [["staying"]], "condition": [["after"], ["entry"]]}, "expected_normalization": {"actor_concept": None, "event_relation": None, "effect_concept": None}, "normalization_rationale": "No reviewed closed-ontology mapping for this synthetic source frame."}]},
             {"id": "safe-zero", "insight_id": "2", "source_video_id": "v1", "eligible": False, "expected_propositions": []},
         )
 
@@ -410,6 +410,36 @@ class SourceModeEvaluationTests(unittest.TestCase):
         finally:
             Path(fixture.name).unlink()
 
+    def test_requires_reviewed_closed_normalization_labels(self) -> None:
+        base = {
+            "subject_source": "x", "predicate_source": "y", "effect_source": "z",
+            "condition_source": None,
+            "semantic_field_token_groups": {
+                "subject": [["x"]], "predicate": [["y"]], "effect": [["z"]],
+            },
+            "normalization_rationale": "Reviewed synthetic label.",
+        }
+        invalid = (
+            ({**base}, "expected_normalization"),
+            ({**base, "expected_normalization": {"actor_concept": "invented", "event_relation": None, "effect_concept": None}}, "actor concept"),
+            ({**base, "expected_normalization": {"actor_concept": None, "event_relation": "invented", "effect_concept": None}}, "event relation"),
+            ({**base, "expected_normalization": {"actor_concept": None, "event_relation": None, "effect_concept": "invented"}}, "effect concept"),
+            ({**base, "expected_normalization": {"actor_concept": None, "event_relation": None, "effect_concept": None}, "normalization_rationale": ""}, "normalization rationale"),
+        )
+        for expected, message in invalid:
+            with self.subTest(message=message):
+                fixture = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+                json.dump({"cases": [{
+                    "id": "bad", "insight_id": "1", "source_video_id": "v1",
+                    "eligible": True, "expected_propositions": [expected],
+                }]}, fixture)
+                fixture.close()
+                try:
+                    with self.assertRaisesRegex(ValueError, message):
+                        load_development_cases(fixture.name)
+                finally:
+                    Path(fixture.name).unlink()
+
     def test_stage_a_result_scores_all_slots_and_retains_artifacts(self) -> None:
         source = "Flay prevents Tristana from staying on target after entry."
         extraction = _stage_extraction(
@@ -430,21 +460,69 @@ class SourceModeEvaluationTests(unittest.TestCase):
         self.assertEqual(entry["propositions"][0]["proposition"]["subject_source"], "Flay")
         self.assertEqual(entry["comparisons"][0]["actor_hit"], True)
         self.assertEqual(entry["comparisons"][0]["condition_operator_hit"], True)
+        self.assertEqual(entry["comparisons"][0]["normalization_hit"], True)
+        self.assertEqual(entry["comparisons"][0]["produced_normalization"], {"actor_concept": None, "event_relation": None, "effect_concept": None})
         self.assertEqual(entry["comparisons"][0]["semantic_proposition_hit"], True)
         self.assertIsNone(entry["comparisons"][0]["first_failed_transformation"])
-        for slot in ("evidence_span", "actor", "event", "effect", "condition", "causal_direction", "semantic_proposition", "exact_decomposition"):
+        for slot in ("evidence_span", "actor", "event", "effect", "condition", "causal_direction", "normalization", "semantic_proposition", "exact_decomposition"):
             self.assertEqual(entry["slot_scores"][slot], {"hit_count": 1, "expected_count": 1})
         self.assertEqual(entry["slot_scores"]["unsupported_slots"], {"count": 0})
         metrics = result["metrics"]["insight"]
         self.assertEqual(metrics["proposition_recall"], 1.0)
         self.assertEqual(metrics["slot_recall"]["actor"], {"hit_count": 1, "denominator": 1, "recall": 1.0})
-        self.assertEqual(metrics["slot_recall"]["normalization"]["available"], False)
-        self.assertIsNone(metrics["slot_recall"]["normalization"]["recall"])
-        self.assertEqual(metrics["slot_recall"]["normalization"]["denominator"], 1)
+        self.assertEqual(metrics["slot_recall"]["normalization"], {"hit_count": 1, "denominator": 1, "recall": 1.0})
         self.assertEqual(metrics["normalization_stage"], {"completed_count": 1, "abstained_count": 1, "mapped_count": 0, "failed_count": 0, "denominator": 1, "reached_count": 1})
         self.assertEqual(metrics["slot_reached"]["actor"], {"reached_count": 1, "hit_count": 1, "denominator": 1, "accuracy_when_reached": 1.0})
+        self.assertEqual(metrics["slot_reached"]["normalization"], {"reached_count": 1, "hit_count": 1, "denominator": 1, "accuracy_when_reached": 1.0})
         self.assertEqual(metrics["slot_reached"]["exact_decomposition"], {"reached_count": 1, "hit_count": 1, "denominator": 1, "accuracy_when_reached": 1.0})
         self.assertEqual(metrics["unsupported_slot_total"], 0)
+
+    def test_normalization_recall_scores_exact_reviewed_mapping(self) -> None:
+        source = "Flay prevents Tristana from staying on target after entry."
+        expected = dict(self.cases[0]["expected_propositions"][0])
+        expected["expected_normalization"] = {
+            "actor_concept": "access", "event_relation": "denies",
+            "effect_concept": "continuity",
+        }
+        expected["normalization_rationale"] = "Synthetic closed-ontology scoring fixture."
+        case = ({**self.cases[0], "expected_propositions": [expected]},)
+
+        correct = _stage_extraction(
+            source, actor="Flay", event="prevents", effect="staying on target",
+            condition="after entry",
+            normalization=OntologyNormalization("access", "denies", "continuity"),
+        )
+        correct_result = evaluate_source_modes(
+            case, resolver=self.resolver, extractor=lambda packet: correct,
+            modes=("insight",),
+        )
+        correct_entry = correct_result["cases"][0]["modes"][0]
+        self.assertTrue(correct_entry["comparisons"][0]["normalization_hit"])
+        self.assertEqual(
+            correct_result["metrics"]["insight"]["slot_recall"]["normalization"],
+            {"hit_count": 1, "denominator": 1, "recall": 1.0},
+        )
+
+        wrong = _stage_extraction(
+            source, actor="Flay", event="prevents", effect="staying on target",
+            condition="after entry",
+            normalization=OntologyNormalization("access", "enables", "continuity"),
+        )
+        wrong_result = evaluate_source_modes(
+            case, resolver=self.resolver, extractor=lambda packet: wrong,
+            modes=("insight",),
+        )
+        wrong_entry = wrong_result["cases"][0]["modes"][0]
+        self.assertFalse(wrong_entry["comparisons"][0]["normalization_hit"])
+        self.assertEqual(
+            wrong_entry["comparisons"][0]["first_failed_transformation"],
+            "ontology_normalization",
+        )
+        self.assertTrue(wrong_entry["comparisons"][0]["semantic_proposition_hit"])
+        self.assertEqual(
+            wrong_result["metrics"]["insight"]["slot_recall"]["normalization"],
+            {"hit_count": 0, "denominator": 1, "recall": 0.0},
+        )
 
     def test_stage_a_reversed_roles_are_not_a_semantic_match(self) -> None:
         source = "Flay prevents Tristana from staying on target after entry."
@@ -1009,8 +1087,7 @@ class SourceModeEvaluationTests(unittest.TestCase):
         for slot in ("actor", "event", "effect", "condition", "semantic_proposition", "exact_decomposition"):
             self.assertEqual(metrics["slot_recall"][slot], {"hit_count": 1, "denominator": 1, "recall": 1.0})
         self.assertEqual(metrics["slot_recall"]["evidence_span"], {"hit_count": 0, "denominator": 0, "recall": None})
-        self.assertIsNone(metrics["slot_recall"]["normalization"]["recall"])
-        self.assertEqual(metrics["slot_recall"]["normalization"]["denominator"], 0)
+        self.assertEqual(metrics["slot_recall"]["normalization"], {"hit_count": 0, "denominator": 1, "recall": 0.0})
         self.assertEqual(metrics["normalization_stage"]["denominator"], 0)
 
     def test_stage_a_contradictory_direction_zeroes_direction_and_semantic(self) -> None:
@@ -1291,6 +1368,8 @@ class SourceModeEvaluationTests(unittest.TestCase):
         label = {
             "subject_source": "Flay", "predicate_source": "prevents", "effect_source": "staying on target",
             "semantic_field_token_groups": {"subject": [["Flay"]], "predicate": [["prevent", "prevents"]], "effect": [["staying"]]},
+            "expected_normalization": {"actor_concept": None, "event_relation": None, "effect_concept": None},
+            "normalization_rationale": "Synthetic contract label.",
         }
         fixture = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         fixture.close()

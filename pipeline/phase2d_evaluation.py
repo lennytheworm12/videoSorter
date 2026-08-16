@@ -49,13 +49,14 @@ remain available.  The per-mode ``coherence`` block exposes the overall
 deterministic assembly consistent) alongside the component flags so callers
 can gate final credit on the entire Stage A result without re-deriving it.
 
-The development fixture has no reviewed canonical ontology normalization
-labels, so normalization recall is explicitly unavailable.  The
-normalization-stage diagnostic separately exposes the total eligible
-source-available denominator plus reached, completed, abstained, mapped, and
-failed counts.  Causal direction expectations for eligible cases are derived
-from the reviewed subject/predicate/effect role labels (the reviewed causal
-actor produces the reviewed effect), not from separate direction labels.
+The development fixture carries reviewed closed-ontology normalization labels,
+including explicit nulls where no canonical concept or relation is directly
+supported.  Normalization recall therefore uses the same source-available X/5
+denominator as the semantic slots.  The normalization-stage diagnostic also
+exposes reached, completed, abstained, mapped, and failed counts.  Causal
+direction expectations for eligible cases are derived from the reviewed
+subject/predicate/effect role labels (the reviewed causal actor produces the
+reviewed effect), not from separate direction labels.
 """
 
 from __future__ import annotations
@@ -65,6 +66,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
+from core.ontology import RELATION_TYPES, STRATEGIC_CONCEPTS
 from pipeline.proposition_extract import (
     ExtractedProposition,
     PropositionPacket,
@@ -83,7 +85,7 @@ _SLOT_FIELDS = ("subject", "predicate", "effect", "condition")
 _SLOT_SCORE_FIELDS = (("actor", "subject"), ("event", "predicate"), ("effect", "effect"), ("condition", "condition"))
 _SLOT_RECALL_NAMES = (
     "evidence_span", "actor", "event", "effect", "condition", "causal_direction",
-    "semantic_proposition", "assembled_proposition", "exact_decomposition",
+    "normalization", "semantic_proposition", "assembled_proposition", "exact_decomposition",
 )
 _TRANSFORMATION_STAGES = (
     "evidence_localization", "actor_extraction", "event_extraction",
@@ -97,7 +99,7 @@ _STAGE_FLAG_KEYS = {
     "effect_extraction": "effect_hit",
     "condition_extraction": "condition_hit",
     "causal_direction": "causal_direction_hit",
-    "ontology_normalization": "normalization_failed",
+    "ontology_normalization": "normalization_hit",
     "proposition_assembly": "matched",
     "exact_decomposition": "exact",
 }
@@ -158,6 +160,25 @@ def load_development_cases(
             condition = expected.get("condition_source")
             if isinstance(condition, str) and _tokenize(condition) and _tokenize(condition)[0] in _CONDITION_OPERATORS and operator != _tokenize(condition)[0]:
                 raise ValueError(f"Phase 2D fixture case {case['id']} must preserve its condition operator")
+            normalization = expected.get("expected_normalization")
+            if not isinstance(normalization, Mapping) or set(normalization) != {
+                "actor_concept", "event_relation", "effect_concept",
+            }:
+                raise ValueError(
+                    f"Phase 2D fixture case {case['id']} requires reviewed expected_normalization labels"
+                )
+            actor_concept = normalization.get("actor_concept")
+            event_relation = normalization.get("event_relation")
+            effect_concept = normalization.get("effect_concept")
+            if actor_concept is not None and actor_concept not in STRATEGIC_CONCEPTS:
+                raise ValueError(f"Phase 2D fixture case {case['id']} has invalid normalized actor concept")
+            if event_relation is not None and event_relation not in RELATION_TYPES:
+                raise ValueError(f"Phase 2D fixture case {case['id']} has invalid normalized event relation")
+            if effect_concept is not None and effect_concept not in STRATEGIC_CONCEPTS:
+                raise ValueError(f"Phase 2D fixture case {case['id']} has invalid normalized effect concept")
+            rationale = expected.get("normalization_rationale")
+            if not isinstance(rationale, str) or not rationale.strip():
+                raise ValueError(f"Phase 2D fixture case {case['id']} requires a normalization rationale")
         result.append(dict(case))
     _validate_held_out_separation(
         result, Path(held_out_path) if held_out_path is not None else DEFAULT_HELD_OUT_FIXTURE,
@@ -477,6 +498,11 @@ def _comparisons(
             comparison["normalization_completed"] = frame is not None and frame.normalization is not None
             comparison["normalization_abstained"] = frame is not None and _normalization_abstained(frame)
             comparison["normalization_failed"] = frame is not None and frame.normalization_failure is not None
+            comparison["normalization_hit"] = _normalization_hit(frame, expected[index])
+            comparison["produced_normalization"] = (
+                asdict(frame.normalization)
+                if frame is not None and frame.normalization is not None else None
+            )
             reached = _stage_reached_flags(
                 frame=frame, recovered=recovered, direction=direction,
                 span_texts=span_texts, produced=produced,
@@ -489,6 +515,8 @@ def _comparisons(
                 comparison[slot + "_hit"] = item is not None and _field_semantic_hit(item, expected[index], field)
                 comparison[slot + "_exact"] = item is not None and _field_exact_hit(item, expected[index], field)
             comparison["condition_operator_hit"] = item is not None and _condition_operator_hit(item, expected[index])
+            comparison["normalization_hit"] = False
+            comparison["produced_normalization"] = None
             reached = {
                 "evidence_localization": False,
                 "actor_extraction": item is not None,
@@ -543,6 +571,10 @@ def _slot_scores(
         ),
         "expected_count": len(expected),
     }
+    scores["normalization"] = {
+        "hit_count": sum(1 for label in expected if _normalization_hit(frame, label)),
+        "expected_count": len(expected),
+    }
     if recovered is not None:
         scores["evidence_span"] = {
             "hit_count": sum(1 for index in range(len(expected)) if _evidence_span_hit(expected[index], span_texts)),
@@ -567,6 +599,7 @@ def _slot_scores(
             "effect": "effect" in recovered,
             "condition": "condition" in recovered,
             "causal_direction": direction is not None,
+            "normalization": frame is not None,
             "semantic_proposition": (
                 all(role in recovered for role, _ in _SLOT_SCORE_FIELDS)
                 and direction is not None
@@ -647,8 +680,6 @@ def _stage_failed(comparison: Mapping[str, Any], stage: str) -> bool | None:
     flag = comparison.get(_STAGE_FLAG_KEYS[stage])
     if flag is None:
         return None
-    if stage == "ontology_normalization":
-        return bool(flag)  # normalization_failed is True on failure
     return not bool(flag)  # *_hit / matched / exact are True on success
 
 
@@ -716,6 +747,7 @@ def _provider_failure_slots(expected_count: int) -> dict[str, Any]:
         "effect": {"hit_count": 0, "expected_count": expected_count},
         "condition": {"hit_count": 0, "expected_count": expected_count},
         "causal_direction": {"hit_count": 0, "expected_count": expected_count},
+        "normalization": {"hit_count": 0, "expected_count": expected_count},
         "semantic_proposition": {"hit_count": 0, "expected_count": expected_count},
         "assembled_proposition": {"hit_count": 0, "expected_count": expected_count},
         "exact_decomposition": {"hit_count": 0, "expected_count": expected_count},
@@ -898,6 +930,19 @@ def _normalization_abstained(frame: SourceSemanticFrame) -> bool:
         normalization.actor_concept is None
         and normalization.event_relation is None
         and normalization.effect_concept is None
+    )
+
+
+def _normalization_hit(
+    frame: SourceSemanticFrame | None, expected: Mapping[str, Any],
+) -> bool:
+    """Exact reviewed closed-ontology match, including intentional nulls."""
+    reviewed = expected.get("expected_normalization")
+    return (
+        frame is not None
+        and frame.normalization is not None
+        and isinstance(reviewed, Mapping)
+        and asdict(frame.normalization) == dict(reviewed)
     )
 
 
@@ -1200,11 +1245,6 @@ def _summarize_source_modes(cases: list[dict[str, Any]], modes: tuple[SourceMode
             }
         normalization_scored = [entry for entry in eligible_entries if "normalization_stage" in entry.get("slot_scores", {})]
         normalization_denominator = sum(entry["slot_scores"]["normalization_stage"]["denominator"] for entry in normalization_scored)
-        slot_recall["normalization"] = {
-            "hit_count": None, "denominator": normalization_denominator, "recall": None,
-            "available": False,
-            "reason": "development fixture has no reviewed canonical normalization labels",
-        }
         normalization_stage = {
             "denominator": normalization_denominator,
             "reached_count": sum(entry["slot_scores"]["normalization_stage"]["reached_count"] for entry in normalization_scored),

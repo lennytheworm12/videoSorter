@@ -657,9 +657,9 @@ the current Stage A output were useful.
 ### Phase 2E: Span-First Stage A Restructure
 
 **Code boundary implemented and deterministic validation complete; live
-model-quality gate pending a network-enabled run.** Normalization recall
-remains explicitly unavailable because the development fixture has no reviewed
-normalization labels; see the evaluator section below.
+model-quality gate pending a network-enabled run.** The five eligible
+development cases now carry conservative, reviewed closed-ontology labels, so
+normalization recall is available on the same X/5 basis as the other slots.
 
 #### Architecture: Span-First 7-Call Stage A
 
@@ -693,34 +693,38 @@ stage returns no proposition for that case rather than inventing one.
 #### Slot-Level Evaluator and Mandatory Held-Out Separation
 
 `pipeline.phase2d_evaluation` measures slot-level recall (actor, event, effect,
-condition, causal direction, evidence span, semantic proposition, assembled
-proposition, exact decomposition) with X/5 denominators that count every
-source-available eligible case: an unreached stage is a miss, never a
-denominator exclusion. Causal direction expectations are derived from the
-reviewed subject/predicate/effect role labels. Held-out separation is
-mandatory: every development fixture, including arbitrary or metadata-less
-files, is compared against the frozen Phase 2B fixture resolved from a trusted
-explicit path, and an unavailable frozen fixture is an error. The development
-fixture has no reviewed normalization labels, so normalization recall is
-reported unavailable while normalization-stage reached/completed/abstained/
-mapped/failed counts are exposed separately.
+condition, causal direction, normalization, evidence span, semantic
+proposition, assembled proposition, exact decomposition) with X/5 denominators
+that count every source-available eligible case: an unreached stage is a miss,
+never a denominator exclusion. Causal direction expectations are derived from
+the reviewed subject/predicate/effect role labels. The five development
+normalization labels are evaluation-only, require an exact closed-ontology
+triple match, preserve explicit nulls where the source does not directly
+support a canonical mapping, and include a review rationale. Held-out
+separation is mandatory: every development fixture, including arbitrary or
+metadata-less files, is compared against the frozen Phase 2B fixture resolved
+from a trusted explicit path, and an unavailable frozen fixture is an error.
+Normalization-stage reached/completed/abstained/mapped/failed counts remain
+available alongside recall.
 
 #### Tests
 
 Broader current evidence: `.venv/bin/python -m pytest tests
---ignore=tests/test_auth.py -q` passes **402 tests with 110 subtests**
-(`402 passed, 110 subtests passed in 23.42s`). Focused Phase 2 evidence
+--ignore=tests/test_auth.py -q` passes **404 tests with 115 subtests**
+(`404 passed, 115 subtests passed in 25.44s`). Focused Phase 2 evidence
 retained: `unittest` across the Phase 2 evaluation modules
 (`test_phase2d_evaluation`, `test_proposition_extract`,
 `test_eval_phase2d_propositions_cli`, `test_phase2d_metrics`,
 `test_candidate_ledger`, `test_constrained_mapper`,
 `test_candidate_generation`, `test_relation_extract`,
-`test_source_windows`): **220 tests passing** (`Ran 220 tests ... OK`). New
+`test_source_windows`): **222 tests passing** (`Ran 222 tests ... OK`). New
 coverage includes evidence-span provenance, condition vs no-condition, causal
 direction, actor/effect reversal, multiple-digit/source-span offsets,
 malformed/partial model output, safe `NONE`, deterministic proposition
 assembly, source spans containing multiple possible actors/events, and refusal
-to construct a proposition when required evidence is absent.
+to construct a proposition when required evidence is absent. It also covers
+fail-closed normalization-label validation, exact reviewed normalization
+scoring, and first-loss attribution at ontology normalization.
 
 #### Independent Review Closure
 
@@ -744,36 +748,34 @@ LLM_PROVIDER=deepseek .venv/bin/python -m scripts.eval_phase2d_propositions \
   --json-output /tmp/phase2e-dev-flash-transcript-span-first.json
 ```
 
-Artifact SHA-256
-`95c17f6c29d59c7b042b447af33c0c3a4f8fcbf21a3cfe900a22ea32e7228eee` is
+Latest artifact SHA-256
+`c9ee4745622fcd47587617ce440b7ecedd89c6e6215c88163779ccb6e5c8f1df` is
 **INVALID AS A MODEL QUALITY RESULT**: of 7 cases (5 eligible, 2
 unavailable/ambiguous), all five eligible cases failed at the first provider
 call (`evidence_localization`, `ProviderCallError`) before any raw output was
-produced, because this managed sandbox blocks network/DNS. No semantic recall,
-exact recall, or slot-level model-quality claim is made from this artifact; it
-is neither a Phase 2E PASS nor a FAIL. No Pro, held-out, candidate-mapping,
-ledger-promotion, or downstream work was run. Rerun the exact command above in
-a network-enabled environment to obtain the first valid Phase 2E quality
-result. This invalidity applies only to this Phase 2E artifact: the earlier
-retained Phase 2D artifacts (`/tmp/phase2d-dev-flash-source-modes-scored.json`
-and `/tmp/phase2d-dev-flash-transcript-coaching-repair.json`) remain valid
-Phase 2D model-quality results documenting 0/5 semantic and 0/5 exact
-proposition recall after repairs.
+produced, because this managed sandbox blocks network/DNS. Its deterministic
+schema correctly records normalization at a 5-case denominator, but no
+semantic, exact, normalization, or other slot-level model-quality claim is made
+from provider failures; it is neither a Phase 2E PASS nor a FAIL. No Pro,
+held-out, candidate-mapping, ledger-promotion, or downstream work was run.
+Rerun the exact command above in a network-enabled environment to obtain the
+first valid Phase 2E quality result. This invalidity applies only to this Phase
+2E artifact: the earlier retained Phase 2D artifacts
+(`/tmp/phase2d-dev-flash-source-modes-scored.json` and
+`/tmp/phase2d-dev-flash-transcript-coaching-repair.json`) remain valid Phase 2D
+model-quality results documenting 0/5 semantic and 0/5 exact proposition
+recall after repairs.
 
 #### Publication Status
 
 The code boundary and deterministic tests are complete. The writable
 publication clone `/tmp/videoSorter-phase2e-publish` is based on `91dc157` and
-carries the work as two focused commits: the first is `5bcffcf` ("Add
-span-first semantic proposition extraction"; `pipeline/proposition_extract.py`,
-`tests/test_proposition_extract.py`), followed by evaluator/CLI/tests + docs.
-GitHub publication remains pending: DNS is still blocked in this environment,
-so nothing has been pushed. The two-commit boundary is: (a) core extraction
-+ test (`pipeline/proposition_extract.py`, `tests/test_proposition_extract.py`),
-then (b) evaluator/CLI/tests + docs (`pipeline/phase2d_evaluation.py`,
-`scripts/eval_phase2d_propositions.py`, `tests/test_phase2d_evaluation.py`,
-`tests/test_eval_phase2d_propositions_cli.py`, `handoff.md`,
-`docs/compiled-reasoning-implementation-plan.md`).
+carries the work as three focused commits: (a) core extraction + tests,
+`5bcffcf` ("Add span-first semantic proposition extraction"); (b) evaluator,
+CLI, tests, and handoff, `da1ad9f` ("Add Phase 2E semantic evaluation and
+handoff"); and (c) reviewed normalization labels, scoring, tests, and final
+documentation. GitHub publication remains pending: DNS is still blocked in
+this environment, so nothing has been pushed.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
