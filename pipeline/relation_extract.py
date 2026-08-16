@@ -501,6 +501,8 @@ def _compile_source_alignments(
         source_text = source_text.strip()
         if not _source_phrase_is_present(source_text, evidence.text):
             return (), f"{field} source phrase is not present in evidence"
+        if field == "predicate" and _source_predicate_is_negated(source_text, evidence.text):
+            return (), "negated predicate source phrase"
         if field == "condition":
             if not _condition_source_supports(source_text, target):
                 return (), "condition source phrase does not support canonical condition"
@@ -530,6 +532,19 @@ def _compile_source_alignments(
 
 def _source_phrase_is_present(source_text: str, evidence_text: str) -> bool:
     return bool(re.search(r"(?<![a-z0-9])" + re.escape(source_text) + r"(?![a-z0-9])", evidence_text, re.IGNORECASE))
+
+
+def _source_predicate_is_negated(source_text: str, evidence_text: str) -> bool:
+    """Reject local negation rather than reversing a relation from a bare verb."""
+    pattern = re.compile(r"(?<![a-z0-9])" + re.escape(source_text) + r"(?![a-z0-9])", re.IGNORECASE)
+    for match in pattern.finditer(evidence_text):
+        before = re.findall(r"[a-z0-9]+", evidence_text[max(0, match.start() - 48):match.start()].lower())
+        after = re.findall(r"[a-z0-9]+", evidence_text[match.end():match.end() + 24].lower())
+        if any(term in _NEGATION_TERMS for term in before[-4:]):
+            return True
+        if any(term in {"no", "nothing", "nobody", "none"} for term in after[:2]):
+            return True
+    return False
 
 
 def _canonical_from_source(
@@ -591,7 +606,7 @@ def _concept_is_supported_by_evidence(
 
 
 _CONDITION_STOPWORDS = frozenset({"a", "an", "and", "are", "as", "at", "before", "after", "during", "for", "if", "in", "is", "of", "on", "or", "the", "then", "to", "when", "while", "with", "you", "your"})
-_NEGATION_TERMS = frozenset({"not", "never", "cannot", "cant", "without"})
+_NEGATION_TERMS = frozenset({"not", "never", "nothing", "cannot", "cant", "without"})
 
 
 def _condition_is_supported(

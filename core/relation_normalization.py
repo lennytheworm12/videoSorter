@@ -14,12 +14,26 @@ from core.champions import canonical_champion_name
 from core.ontology import ENTITY_TYPES, RELATION_TYPES, STRATEGIC_CONCEPTS
 
 
-_CONCEPT_ALIASES = {
+# Curated Phase 2C source-language aliases. These map evidence wording to an
+# existing ontology-v0 term; they do not add concepts to the ontology.
+SEMANTIC_CONCEPT_ALIASES = {
     "continued contact": "continuity",
     "staying attached": "continuity",
     "continued attachment": "continuity",
+    "stay attached": "continuity",
+    "stay on target": "continuity",
+    "stay on your adc": "continuity",
+    "staying on your adc": "continuity",
+    "remain on target": "continuity",
+    "remain on the target": "continuity",
+    "keep contact": "continuity",
+    "continue fighting after entry": "continuity",
     "forward access": "access",
     "enemy access": "access",
+    "reach target": "access",
+    "get onto target": "access",
+    "get into range": "access",
+    "enter meaningful interaction range": "access",
     "space": "territory",
     "forward space": "territory",
     "cooldown pressure": "intermittent_pressure",
@@ -34,12 +48,20 @@ _CONCEPT_EVIDENCE_CUES = {
     "isolation": ("isolation opportunity", "isolation opportunities"),
 }
 
-_RELATION_ALIASES = {
+RELATION_SOURCE_ALIASES = {
     "create": "creates",
     "provide": "creates",
     "provides": "creates",
     "break": "denies",
     "breaks": "denies",
+    "prevent": "denies",
+    "prevents": "denies",
+    "stop": "denies",
+    "stops": "denies",
+    "keep from": "denies",
+    "keeps from": "denies",
+    "allow": "enables",
+    "allows": "enables",
     "increase cost of": "increases_cost_of",
     "increases cost of": "increases_cost_of",
     "reduce cost of": "reduces_cost_of",
@@ -59,14 +81,14 @@ def canonical_concept(value: str) -> str | None:
     raw = value.strip().lower().replace("-", "_").replace(" ", "_")
     if raw in STRATEGIC_CONCEPTS:
         return raw
-    alias = _CONCEPT_ALIASES.get(normalized_key(value))
+    alias = SEMANTIC_CONCEPT_ALIASES.get(normalized_key(value))
     return alias if alias in STRATEGIC_CONCEPTS else None
 
 
 def concept_is_mentioned(text: str, concept: str) -> bool:
     """Check literal aliases and a small audited set of semantic evidence cues."""
     phrases = [concept.replace("_", " ")]
-    phrases.extend(alias for alias, canonical in _CONCEPT_ALIASES.items() if canonical == concept)
+    phrases.extend(alias for alias, canonical in SEMANTIC_CONCEPT_ALIASES.items() if canonical == concept)
     literal = any(
         re.search(r"\b" + re.escape(phrase) + r"\w*\b", text, re.IGNORECASE)
         for phrase in phrases
@@ -86,7 +108,7 @@ def canonical_relation_type(value: str) -> str | None:
     raw = value.strip().lower().replace("-", "_").replace(" ", "_")
     if raw in RELATION_TYPES:
         return raw
-    alias = _RELATION_ALIASES.get(normalized_key(value))
+    alias = RELATION_SOURCE_ALIASES.get(normalized_key(value))
     return alias if alias in RELATION_TYPES else None
 
 

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 from core.champions import canonical_champion_name
+from core.relation_normalization import canonical_relation_type
 from pipeline.relation_extract import (
     EvidenceItem,
     ExtractionPacket,
@@ -54,6 +55,73 @@ class RelationExtractionTests(unittest.TestCase):
                 ("object", "continued contact", "continuity"),
             },
         )
+
+    def test_curated_semantic_aliases_canonicalize_source_wording_without_literal_ontology_terms(self) -> None:
+        packet = ExtractionPacket(
+            evidence=(EvidenceItem(
+                "thresh", "video", "Hold Flay when Tristana jumps so it prevents her from staying on your ADC.", confidence=.9
+            ),),
+            ability_aliases={"Flay": "Thresh E", "Thresh E": "Thresh E"},
+        )
+        candidate = _candidate(
+            subject="Thresh E",
+            relation_type="denies",
+            object="continuity",
+            concepts=["continuity"],
+            evidence_ids=["thresh"],
+            condition="when Tristana jumps",
+            _source_subject="Flay",
+            _source_predicate="prevents",
+            _source_object="staying on your ADC",
+        )
+        decision = compile_candidates(packet, [candidate])[0]
+
+        self.assertEqual(decision.status, "accepted")
+        self.assertEqual(decision.relation.object_key, "continuity")
+        self.assertEqual(
+            next(item.mapping_type for item in decision.relation.alignments if item.field == "object"),
+            "ontology_abstraction",
+        )
+
+    def test_unknown_semantic_concept_still_routes_to_rejection(self) -> None:
+        candidate = _candidate(
+            object="unbeatable lane pressure", object_type="concept",
+            concepts=["unbeatable lane pressure"], _source_object="continued contact",
+        )
+        decision = compile_candidates(self.packet, [candidate])[0]
+        self.assertEqual(decision.status, "rejected")
+        self.assertIn("unknown entity, concept, or relation type", decision.warnings[0])
+
+    def test_ambiguous_capability_and_generic_coaching_verbs_are_not_relation_aliases(self) -> None:
+        for predicate in ("cannot", "can't", "let", "open"):
+            with self.subTest(predicate=predicate):
+                self.assertIsNone(canonical_relation_type(predicate))
+                candidate = _candidate(relation_type=predicate, _source_predicate=predicate)
+                decision = compile_candidates(self.packet, [candidate])[0]
+                self.assertEqual(decision.status, "rejected")
+                self.assertIn("unknown entity, concept, or relation type", decision.warnings[0])
+
+    def test_negated_predicate_aliases_cannot_reverse_relation_direction(self) -> None:
+        cases = (
+            ("Flay does not allow continued contact.", "allow", "enables"),
+            ("Nothing prevents Flay from continued contact.", "prevents", "denies"),
+            ("Flay never stops continued contact.", "stops", "denies"),
+            ("Flay allows no continued contact.", "allows", "enables"),
+            ("Flay stops no one from maintaining continued contact.", "stops", "denies"),
+        )
+        for text, source_predicate, relation_type in cases:
+            with self.subTest(text=text):
+                packet = ExtractionPacket(
+                    evidence=(EvidenceItem("one", "video", text, confidence=.8),),
+                    ability_aliases=self.packet.ability_aliases,
+                )
+                candidate = _candidate(
+                    evidence_ids=["one"], relation_type=relation_type,
+                    _source_predicate=source_predicate,
+                )
+                decision = compile_candidates(packet, [candidate])[0]
+                self.assertEqual(decision.status, "rejected")
+                self.assertIn("negated predicate source phrase", decision.warnings[0])
 
     def test_missing_fabricated_or_mismatched_source_grounding_is_rejected(self) -> None:
         cases = [

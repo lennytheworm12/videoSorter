@@ -244,6 +244,25 @@ and approved. This remains intentionally strict: nonliteral semantic concept
 and condition aliases are still rejected until the next alias/entailment
 milestone.
 
+#### M4–M5: Deterministic Entity and Semantic Alias Mapping
+
+**Complete. Commit pending.** Reused the existing champion/ability registry and
+relation-normalization boundary. Curated source aliases now map selected
+evidence phrases such as `staying on your ADC` to the existing `continuity`
+concept, and explicit causal verbs such as `prevents` to `denies`. All aliases
+are inspectable constants in `core/relation_normalization.py`, resolve only to
+ontology-v0 values, and retain the literal source anchor in the stored
+alignment.
+
+Safety decisions: ambiguous capability and generic coaching verbs (`cannot`,
+`can't`, `let`, `open`) are deliberately not deterministic relation aliases.
+Predicate aliases reject local prefix negation (`do not allow`, `nothing
+prevents`) and an immediate negated complement (`allows no`, `stops no one`),
+so no reverse edge is fabricated from a bare verb. The exact positive
+`Thresh E --denies--> continuity` source-alias case and these adversarial
+negation cases are covered. 97 focused tests pass; independent review required
+and approved both alias-safety repairs.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
