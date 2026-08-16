@@ -461,7 +461,9 @@ def _ontology_abstraction_prompt(packet: ExtractionPacket, propositions: tuple[G
         + "\nRecognized ability aliases: " + aliases
         + "\n\nGROUNDED PROPOSITIONS (the only permitted abstraction inputs):\n"
         + json.dumps([asdict(item) for item in propositions], separators=(",", ":"))
-        + "\n\nReturn the standard relations JSON. Grounding source_text and evidence_id must come from these propositions; do not use any unstated source evidence."
+        + "\n\nReturn exactly this JSON schema and no alternate source/target/type structure:\n"
+        + '{"relations":[{"subject":"canonical key","subject_type":"one allowed entity type","relation_type":"allowed verb","object":"canonical key","object_type":"one allowed entity type","condition":null,"condition_event":null,"effect":null,"concepts":[],"provenance_type":"source_claim|coach_supported_inference","evidence_ids":["evidence ID"],"extraction_confidence":0.0,"patch_sensitivity":"low","grounding":{"subject":{"source_text":"proposition phrase","evidence_id":"evidence ID"},"predicate":{"source_text":"proposition phrase","evidence_id":"evidence ID"},"object":{"source_text":"proposition phrase","evidence_id":"evidence ID"},"condition":null}}]}'
+        + "\nEvery relation needs evidence_ids and all three grounding fields. Grounding source_text and evidence_id must come from these propositions; do not use any unstated source evidence."
     )
 
 

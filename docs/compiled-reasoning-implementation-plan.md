@@ -313,6 +313,18 @@ successful source-preserving path, fabricated source rejection, threshold
 short-circuiting, and Stage B raw-evidence isolation. Independent review
 approved the boundary.
 
+#### M10: Fallback Schema Repair
+
+**Complete. Commit pending.** Stage B now supplies the exact accepted-relation
+JSON contract, requires `evidence_ids` and separate subject/predicate/object
+grounding, and forbids alternate `source`/`target` structures. It remains
+isolated from raw evidence and supports every allowed entity type. Independent
+review approved it. A live Flash fallback rerun removed the missing-evidence-ID
+failure mode, but still accepted 0/18 references: 15 unknown
+entity/concept/relation rejections, two subject-alignment mismatches, one
+unsupported concept, and two Stage A source-phrase failures. The fallback is
+safe but has not demonstrated useful recall.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,

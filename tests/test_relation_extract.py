@@ -464,6 +464,10 @@ class RelationExtractionTests(unittest.TestCase):
         self.assertNotIn("SOURCE EVIDENCE", calls[1]["user"])
         self.assertIn("GROUNDED PROPOSITIONS", calls[1]["user"])
         self.assertIn("continued contact", calls[1]["user"])
+        self.assertIn('"evidence_ids"', calls[1]["user"])
+        self.assertIn("no alternate source/target/type structure", calls[1]["user"])
+        self.assertIn("state", calls[1]["user"])
+        self.assertIn("one allowed entity type", calls[1]["user"])
 
     def test_output_budget_config_rejects_malformed_or_non_positive_values(self) -> None:
         import os
