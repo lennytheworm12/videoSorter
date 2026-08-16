@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import inspect
 import unittest
 
 from pipeline.proposition_extract import (
+    ClauseCandidate,
     DIRECTION_SYSTEM,
     EVIDENCE_LOCALIZATION_SYSTEM,
     InventedOntologyContent,
@@ -20,9 +22,13 @@ from pipeline.proposition_extract import (
     SourceSemanticFrame,
     UnsupportedSourceSlot,
     assemble_grounded_proposition,
+    clause_evidence_prompt,
+    coalesce_selected_evidence,
+    enumerate_clause_candidates,
     extract_grounded_propositions,
     extract_span_first_propositions,
     parse_causal_direction,
+    parse_candidate_evidence_selection,
     parse_evidence_selection,
     parse_grounded_propositions,
     parse_ontology_normalization,
@@ -59,12 +65,18 @@ def _selection_raw(source: str = "transcript", spans=("After Lux misses Q she ca
     return json.dumps({"source": source, "evidence_spans": list(spans)})
 
 
+def _candidate_selection_raw(
+    source: str = "transcript", candidate_ids=("transcript:c001",),
+) -> str:
+    return json.dumps({"source": source, "candidate_ids": list(candidate_ids)})
+
+
 def _live_responses(*, condition="NONE", direction="actor_event_causes_effect",
                     normalization=None) -> list[str]:
     if normalization is None:
         normalization = {"actor_concept": None, "event_relation": None, "effect_concept": None}
     return [
-        _selection_raw(),
+        _candidate_selection_raw(),
         json.dumps({"actor": "Lux"}),
         json.dumps({"event": "cannot stop"}),
         json.dumps({"effect": "you walking forward"}),
@@ -280,6 +292,144 @@ class EvidenceLocalizationTests(unittest.TestCase):
         raw = json.dumps({"source": "transcript", "evidence_spans": ["After Lux misses Q"], "extra": 1})
         with self.assertRaisesRegex(ValueError, "requires source and evidence_spans"):
             parse_evidence_selection(raw, _packet("transcript"))
+
+
+class ClauseCandidateLocalizationTests(unittest.TestCase):
+    def test_catalog_is_deterministic_ordered_and_stably_identified(self) -> None:
+        text = "Pressure first. When Q misses walk up because they cannot answer."
+        packet = _packet("transcript", window=_window(text, start=900))
+        first = enumerate_clause_candidates(packet)
+        second = enumerate_clause_candidates(packet)
+        self.assertEqual(first, second)
+        self.assertEqual(
+            [item.candidate_id for item in first],
+            [f"transcript:c{index:03d}" for index in range(1, len(first) + 1)],
+        )
+        self.assertEqual(
+            [item.alignment.start for item in first],
+            sorted(item.alignment.start for item in first),
+        )
+
+    def test_punctuation_poor_text_uses_bounded_overlapping_windows(self) -> None:
+        text = " ".join(f"word{index}" for index in range(80))
+        packet = _packet("transcript", window=_window(text))
+        catalog = enumerate_clause_candidates(packet)
+        self.assertGreater(len(catalog), 1)
+        self.assertLessEqual(len(catalog), 20)
+        self.assertTrue(all(len(item.alignment.source_text.split()) <= 32 for item in catalog))
+        self.assertTrue(any(
+            later.alignment.start < earlier.alignment.end
+            for earlier, later in zip(catalog, catalog[1:])
+        ))
+
+    def test_catalog_preserves_exact_local_and_absolute_offsets(self) -> None:
+        text = "First clause. When Q misses walk forward."
+        packet = _packet("transcript", window=_window(text, start=1234))
+        for candidate in enumerate_clause_candidates(packet):
+            span = candidate.alignment
+            self.assertEqual(span.source_text, text[span.start:span.end])
+            self.assertEqual(span.absolute_start, 1234 + span.start)
+            self.assertEqual(span.absolute_end, 1234 + span.end)
+
+    def test_trigger_words_stay_with_the_following_candidate(self) -> None:
+        text = "Hold space when Q misses walk forward because they cannot answer"
+        packet = _packet("transcript", window=_window(text))
+        values = [item.alignment.source_text.lower() for item in enumerate_clause_candidates(packet)]
+        self.assertTrue(any(value.startswith("when ") for value in values))
+        self.assertTrue(any(value.startswith("because ") for value in values))
+        self.assertFalse(any(value.endswith(" when") or value.endswith(" because") for value in values))
+
+    def test_combined_catalog_keeps_sources_and_id_namespaces_separate(self) -> None:
+        packet = _packet("combined")
+        catalog = enumerate_clause_candidates(packet)
+        insight = [item for item in catalog if item.alignment.source_kind == "insight"]
+        transcript = [item for item in catalog if item.alignment.source_kind == "transcript"]
+        self.assertTrue(insight)
+        self.assertTrue(transcript)
+        self.assertTrue(all(item.candidate_id.startswith("insight:c") for item in insight))
+        self.assertTrue(all(item.candidate_id.startswith("transcript:c") for item in transcript))
+        self.assertEqual(insight[0].candidate_id, "insight:c001")
+        self.assertEqual(transcript[0].candidate_id, "transcript:c001")
+
+    def test_prompt_requires_ids_and_never_requests_quoted_spans_or_offsets(self) -> None:
+        packet = _packet("transcript")
+        catalog = enumerate_clause_candidates(packet)
+        prompt = clause_evidence_prompt(packet, catalog)
+        self.assertIn("transcript:c001", prompt)
+        self.assertIn("candidate_ids", prompt)
+        self.assertNotIn("evidence_spans", prompt)
+        self.assertIn("Never quote", EVIDENCE_LOCALIZATION_SYSTEM)
+        self.assertIn("character\noffsets", EVIDENCE_LOCALIZATION_SYSTEM)
+
+    def test_id_selection_derives_evidence_and_supports_safe_null(self) -> None:
+        packet = _packet("transcript")
+        catalog = enumerate_clause_candidates(packet)
+        spans, parsed = parse_candidate_evidence_selection(
+            _candidate_selection_raw(), catalog, packet,
+        )
+        self.assertEqual(spans, (catalog[0].alignment,))
+        self.assertEqual(parsed, {"source": "transcript", "candidate_ids": ["transcript:c001"]})
+        empty, parsed = parse_candidate_evidence_selection(
+            json.dumps({"source": None, "candidate_ids": []}), catalog, packet,
+        )
+        self.assertEqual(empty, ())
+        self.assertEqual(parsed, {"source": None, "candidate_ids": []})
+
+    def test_id_selection_rejects_malformed_unknown_duplicate_and_wrong_counts(self) -> None:
+        text = "First useful clause. Second useful clause. Third useful clause."
+        packet = _packet("transcript", window=_window(text))
+        catalog = enumerate_clause_candidates(packet)
+        invalid = (
+            "not json",
+            json.dumps({"source": "transcript", "candidate_ids": []}),
+            json.dumps({"source": None, "candidate_ids": ["transcript:c001"]}),
+            json.dumps({"source": "transcript", "candidate_ids": ["transcript:c999"]}),
+            json.dumps({"source": "transcript", "candidate_ids": ["transcript:c001", "transcript:c001"]}),
+            json.dumps({"source": "transcript", "candidate_ids": ["transcript:c001", "transcript:c002", "transcript:c003"]}),
+            json.dumps({"source": "transcript", "candidate_ids": [1]}),
+            json.dumps({"source": "transcript", "candidate_ids": ["transcript:c001"], "extra": True}),
+        )
+        for raw in invalid:
+            with self.subTest(raw=raw):
+                with self.assertRaises(ValueError):
+                    parse_candidate_evidence_selection(raw, catalog, packet)
+
+    def test_id_selection_rejects_mixed_or_misdeclared_sources(self) -> None:
+        packet = _packet("combined")
+        catalog = enumerate_clause_candidates(packet)
+        insight_id = next(item.candidate_id for item in catalog if item.alignment.source_kind == "insight")
+        transcript_id = next(item.candidate_id for item in catalog if item.alignment.source_kind == "transcript")
+        for raw in (
+            json.dumps({"source": "transcript", "candidate_ids": [insight_id]}),
+            json.dumps({"source": "transcript", "candidate_ids": [insight_id, transcript_id]}),
+        ):
+            with self.subTest(raw=raw):
+                with self.assertRaisesRegex(ValueError, "sources"):
+                    parse_candidate_evidence_selection(raw, catalog, packet)
+
+    def test_coalesces_overlap_and_whitespace_touch_but_never_semantic_gaps(self) -> None:
+        source = "abcd efgh GAP ijkl"
+        packet = PropositionPacket("1", "video", source, "insight")
+        overlap = coalesce_selected_evidence((
+            SourceAlignment("insight", 0, 9, source[0:9]),
+            SourceAlignment("insight", 5, 13, source[5:13]),
+        ), packet)
+        self.assertEqual([(item.start, item.end, item.source_text) for item in overlap], [(0, 13, source[0:13])])
+        touching = coalesce_selected_evidence((
+            SourceAlignment("insight", 0, 4, source[0:4]),
+            SourceAlignment("insight", 5, 9, source[5:9]),
+        ), packet)
+        self.assertEqual([(item.start, item.end, item.source_text) for item in touching], [(0, 9, source[0:9])])
+        gapped = coalesce_selected_evidence((
+            SourceAlignment("insight", 0, 4, source[0:4]),
+            SourceAlignment("insight", 14, 18, source[14:18]),
+        ), packet)
+        self.assertEqual(len(gapped), 2)
+
+    def test_catalog_has_no_fixture_or_ontology_specific_rules(self) -> None:
+        implementation = inspect.getsource(enumerate_clause_candidates).lower()
+        for forbidden in ("sweeper", "gwen", "caitlyn", "hook", "continuity", "wave_obligation"):
+            self.assertNotIn(forbidden, implementation)
 
 
 class SemanticSlotTests(unittest.TestCase):
@@ -589,7 +739,7 @@ class SpanFirstPipelineTests(unittest.TestCase):
         self.assertEqual(len(calls), 7)
 
     def test_pipeline_refuses_when_required_evidence_absent(self) -> None:
-        chat, calls = _scripted_chat([json.dumps({"source": None, "evidence_spans": []})])
+        chat, calls = _scripted_chat([json.dumps({"source": None, "candidate_ids": []})])
         result = extract_span_first_propositions(_packet("transcript"), chat)
         self.assertEqual(result.propositions, ())
         self.assertEqual(result.frames, ())
@@ -597,7 +747,7 @@ class SpanFirstPipelineTests(unittest.TestCase):
         self.assertIsNone(result.failure_stage)
         self.assertEqual(len(calls), 1)
         self.assertEqual(result.artifacts[0].stage, "evidence_localization")
-        self.assertEqual(result.artifacts[0].parsed_output, {"source": None, "evidence_spans": []})
+        self.assertEqual(result.artifacts[0].parsed_output, {"source": None, "candidate_ids": []})
 
     def test_pipeline_condition_null_or_none_assembles_without_condition(self) -> None:
         for condition in (None, "NONE"):
@@ -627,9 +777,30 @@ class SpanFirstPipelineTests(unittest.TestCase):
         self.assertEqual(result.artifacts[0].failure, "ValueError")
         self.assertEqual(len(calls), 1)
 
+    def test_pipeline_retains_candidate_catalog_on_every_localization_outcome(self) -> None:
+        expected = enumerate_clause_candidates(_packet("transcript"))
+        abstain, _ = _scripted_chat([json.dumps({"source": None, "candidate_ids": []})])
+        malformed, _ = _scripted_chat(["not json"])
+        provider, _ = _scripted_chat_with_provider_failure([], fail_at=0)
+        for name, chat in (("abstain", abstain), ("malformed", malformed), ("provider", provider)):
+            with self.subTest(name=name):
+                result = extract_span_first_propositions(_packet("transcript"), chat)
+                self.assertEqual(result.candidate_catalog, expected)
+                self.assertEqual(
+                    result.to_artifact_dict()["candidate_catalog"],
+                    [{"candidate_id": item.candidate_id, "alignment": {
+                        "source_kind": item.alignment.source_kind,
+                        "start": item.alignment.start,
+                        "end": item.alignment.end,
+                        "source_text": item.alignment.source_text,
+                        "absolute_start": item.alignment.absolute_start,
+                        "absolute_end": item.alignment.absolute_end,
+                    }} for item in expected],
+                )
+
     def test_pipeline_slot_failure_retains_spans_and_prior_slots(self) -> None:
         chat, calls = _scripted_chat([
-            _selection_raw(),
+            _candidate_selection_raw(),
             json.dumps({"actor": "Lux"}),
             json.dumps({"event": "not in evidence"}),
         ])
@@ -639,7 +810,7 @@ class SpanFirstPipelineTests(unittest.TestCase):
         self.assertEqual(result.propositions, ())
         self.assertEqual(result.frames, ())
         self.assertEqual(len(result.evidence_spans), 1)
-        self.assertEqual(result.evidence_spans[0].source_text, "After Lux misses Q she cannot stop you walking forward")
+        self.assertEqual(result.evidence_spans[0].source_text, TRANSCRIPT)
         self.assertEqual(set(result.slots), {"actor"})
         assert result.slots["actor"] is not None
         self.assertEqual(result.slots["actor"].text, "Lux")
@@ -655,7 +826,7 @@ class SpanFirstPipelineTests(unittest.TestCase):
 
     def test_pipeline_malformed_slot_output_is_not_unsupported_source_slot(self) -> None:
         chat, calls = _scripted_chat([
-            _selection_raw(),
+            _candidate_selection_raw(),
             json.dumps({"actor": "Lux"}),
             "not json",
         ])
@@ -669,13 +840,15 @@ class SpanFirstPipelineTests(unittest.TestCase):
         self.assertEqual(len(calls), 3)
 
     def test_pipeline_slot_outside_span_is_unsupported_source_slot(self) -> None:
+        transcript = "After Lux misses Q she cannot stop. you walking forward."
+        packet = _packet("transcript", window=_window(transcript))
         chat, calls = _scripted_chat([
-            _selection_raw(spans=("After Lux misses Q she cannot stop",)),
+            _candidate_selection_raw(),
             json.dumps({"actor": "Lux"}),
             json.dumps({"event": "cannot stop"}),
             json.dumps({"effect": "you walking forward"}),
         ])
-        result = extract_span_first_propositions(_packet("transcript"), chat)
+        result = extract_span_first_propositions(packet, chat)
         self.assertEqual(result.failure_stage, "effect_extraction")
         self.assertEqual(result.unsupported_slot_count, 1)
         self.assertEqual(result.invented_ontology_count, 0)
@@ -793,6 +966,8 @@ class SpanFirstPipelineTests(unittest.TestCase):
             self.assertIsNone(item.failure)
         payload = result.to_artifact_dict()
         self.assertIsNone(payload["failure_stage"])
+        self.assertEqual(len(payload["candidate_catalog"]), 1)
+        self.assertEqual(payload["candidate_catalog"][0]["candidate_id"], "transcript:c001")
         self.assertEqual(payload["unsupported_slot_count"], 0)
         self.assertEqual(payload["causal_direction"], "actor_event_causes_effect")
         self.assertEqual(len(payload["raw_stage_outputs"]), 7)
@@ -914,14 +1089,14 @@ class ProviderFailureTests(unittest.TestCase):
 
     def test_provider_failure_after_actor_retains_spans_and_actor_slot(self) -> None:
         chat, calls = _scripted_chat_with_provider_failure(
-            [_selection_raw(), json.dumps({"actor": "Lux"})], fail_at=2,
+            [_candidate_selection_raw(), json.dumps({"actor": "Lux"})], fail_at=2,
         )
         result = extract_span_first_propositions(_packet("transcript"), chat)
         self.assertEqual(result.failure_stage, "event_extraction")
         self.assertEqual(result.propositions, ())
         self.assertEqual(result.frames, ())
         self.assertEqual(len(result.evidence_spans), 1)
-        self.assertEqual(result.evidence_spans[0].source_text, "After Lux misses Q she cannot stop you walking forward")
+        self.assertEqual(result.evidence_spans[0].source_text, TRANSCRIPT)
         self.assertEqual(set(result.slots), {"actor"})
         assert result.slots["actor"] is not None
         self.assertEqual(result.slots["actor"].text, "Lux")
@@ -930,7 +1105,7 @@ class ProviderFailureTests(unittest.TestCase):
         self.assertEqual(result.invented_ontology_count, 0)
         self.assertEqual(result.invented_ontology_taxonomy, {})
         self.assertEqual([item.stage for item in result.artifacts], ["evidence_localization", "actor_extraction", "event_extraction"])
-        self.assertEqual(result.artifacts[0].raw_output, _selection_raw())
+        self.assertEqual(result.artifacts[0].raw_output, _candidate_selection_raw())
         self.assertEqual(result.artifacts[0].failure, None)
         self.assertEqual(result.artifacts[1].raw_output, json.dumps({"actor": "Lux"}))
         self.assertEqual(result.artifacts[1].failure, None)

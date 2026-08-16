@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 import json
+import re
 from typing import Any, Callable, Literal, Mapping
 
 from core.ontology import RELATION_TYPES, STRATEGIC_CONCEPTS
@@ -55,17 +56,26 @@ _VALID_DIRECTIONS = frozenset(
     )
 )
 
-SPAN_FIRST_PROMPT_VERSION = "phase2e-span-first-v1"
+SPAN_FIRST_PROMPT_VERSION = "phase2e-clause-first-v2"
+
+_CLAUSE_MAX_TOKENS = 32
+_CLAUSE_WINDOW_STRIDE = 16
+_CLAUSE_CATALOG_LIMIT = 20
+_NONSPACE_RE = re.compile(r"\S+")
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?;])\s+")
+_DISCOURSE_BOUNDARY_RE = re.compile(
+    r"(?i)(?<![\w'’])(?:when|if|because|unless|while|after|before|once|until|"
+    r"whenever|although|though|whereas|however|therefore|but|so|then)(?=\s)"
+)
 
 EVIDENCE_LOCALIZATION_SYSTEM = """Return JSON only. Select the smallest one
-or two exact contiguous source spans that together state one coaching
-mechanism. A mechanism contains an action, resource, or state and a supported
-consequence or opportunity. Include its trigger or condition when present.
-Recommendations such as "do X to achieve Y" contain a mechanism. Do not
-interpret ontology concepts and do not paraphrase. Select spans from one
-source only and never return a span that contains another selected span.
-Return no selection when the source states advice but no consequence, cause,
-or strategic result."""
+or two supplied candidate IDs that together state one coaching mechanism. A
+mechanism contains an action, resource, or state and a supported consequence
+or opportunity. Include its trigger or condition when present. Recommendations
+such as "do X to achieve Y" contain a mechanism. Select IDs from one source
+only. Never quote, paraphrase, generate source text, or provide character
+offsets. Do not interpret ontology concepts. Return no selection when no
+candidate or linked candidate pair states a causal mechanism."""
 
 SLOT_SYSTEMS = {
     "actor": """Return JSON only. From the selected exact evidence, copy the
@@ -175,6 +185,14 @@ class SourceAlignment:
 
 
 @dataclass(frozen=True)
+class ClauseCandidate:
+    """A deterministic source-local semantic unit offered by stable ID."""
+
+    candidate_id: str
+    alignment: SourceAlignment
+
+
+@dataclass(frozen=True)
 class PropositionAlignment:
     field: Literal["subject", "predicate", "effect", "condition"]
     source_kind: Literal["insight", "transcript"]
@@ -240,10 +258,12 @@ class StageAExtraction:
     slots: Mapping[str, SemanticSlot | None] = field(default_factory=dict)
     causal_direction: CausalDirection | None = None
     invented_ontology_taxonomy: Mapping[str, int] = field(default_factory=dict)
+    candidate_catalog: tuple[ClauseCandidate, ...] = ()
 
     def to_artifact_dict(self) -> dict[str, Any]:
         return {
             "prompt_version": SPAN_FIRST_PROMPT_VERSION,
+            "candidate_catalog": [asdict(candidate) for candidate in self.candidate_catalog],
             "failure_stage": self.failure_stage,
             "unsupported_slot_count": self.unsupported_slot_count,
             "invented_ontology_count": self.invented_ontology_count,
@@ -313,24 +333,30 @@ def extract_span_first_propositions(
         raise ValueError("max_tokens must be positive")
     packet.validate()
     artifacts: list[StageArtifact] = []
+    candidates = enumerate_clause_candidates(packet)
 
     try:
-        raw = _provider_call(chat, EVIDENCE_LOCALIZATION_SYSTEM, packet.prompt(), model, max_tokens, thinking)
-        spans, parsed = parse_evidence_selection(raw, packet)
+        raw = _provider_call(
+            chat, EVIDENCE_LOCALIZATION_SYSTEM,
+            clause_evidence_prompt(packet, candidates), model, max_tokens, thinking,
+        )
+        spans, parsed = parse_candidate_evidence_selection(raw, candidates, packet)
     except ProviderCallError as exc:
         artifacts.append(StageArtifact("evidence_localization", None, None, type(exc).__name__))
         return StageAExtraction(
             (), (), tuple(artifacts), failure_stage="evidence_localization",
+            candidate_catalog=candidates,
         )
     except Exception as exc:
         artifacts.append(StageArtifact("evidence_localization", raw, None, type(exc).__name__))
         return StageAExtraction(
             (), (), tuple(artifacts), failure_stage="evidence_localization",
             unsupported_slot_count=_unsupported_count(exc),
+            candidate_catalog=candidates,
         )
     artifacts.append(StageArtifact("evidence_localization", raw, parsed))
     if not spans:
-        return StageAExtraction((), (), tuple(artifacts))
+        return StageAExtraction((), (), tuple(artifacts), candidate_catalog=candidates)
 
     slots: dict[str, SemanticSlot | None] = {}
     for role in ("actor", "event", "effect", "condition"):
@@ -343,6 +369,7 @@ def extract_span_first_propositions(
             return StageAExtraction(
                 (), (), tuple(artifacts), failure_stage=role + "_extraction",
                 evidence_spans=spans, slots=dict(slots),
+                candidate_catalog=candidates,
             )
         except Exception as exc:
             artifacts.append(StageArtifact(role + "_extraction", raw, None, type(exc).__name__))
@@ -350,6 +377,7 @@ def extract_span_first_propositions(
                 (), (), tuple(artifacts), failure_stage=role + "_extraction",
                 unsupported_slot_count=_unsupported_count(exc),
                 evidence_spans=spans, slots=dict(slots),
+                candidate_catalog=candidates,
             )
         artifacts.append(StageArtifact(role + "_extraction", raw, parsed))
         slots[role] = slot
@@ -357,6 +385,7 @@ def extract_span_first_propositions(
             return StageAExtraction(
                 (), (), tuple(artifacts), failure_stage=role + "_extraction",
                 evidence_spans=spans, slots=dict(slots),
+                candidate_catalog=candidates,
             )
 
     actor = slots["actor"]
@@ -373,12 +402,14 @@ def extract_span_first_propositions(
         return StageAExtraction(
             (), (), tuple(artifacts), failure_stage="causal_direction",
             evidence_spans=spans, slots=dict(slots),
+            candidate_catalog=candidates,
         )
     except Exception as exc:
         artifacts.append(StageArtifact("causal_direction", raw, None, type(exc).__name__))
         return StageAExtraction(
             (), (), tuple(artifacts), failure_stage="causal_direction",
             evidence_spans=spans, slots=dict(slots),
+            candidate_catalog=candidates,
         )
     artifacts.append(StageArtifact("causal_direction", raw, parsed))
 
@@ -394,6 +425,7 @@ def extract_span_first_propositions(
         return StageAExtraction(
             (), (frame,), tuple(artifacts), failure_stage="ontology_normalization",
             evidence_spans=spans, slots=dict(slots), causal_direction=direction,
+            candidate_catalog=candidates,
         )
     except Exception as exc:
         artifacts.append(StageArtifact("ontology_normalization", raw, None, type(exc).__name__))
@@ -406,6 +438,7 @@ def extract_span_first_propositions(
             evidence_spans=spans, slots=dict(slots), causal_direction=direction,
             invented_ontology_count=_invented_count(exc),
             invented_ontology_taxonomy=_invented_taxonomy(exc),
+            candidate_catalog=candidates,
         )
     artifacts.append(StageArtifact("ontology_normalization", raw, parsed))
 
@@ -415,6 +448,7 @@ def extract_span_first_propositions(
     return StageAExtraction(
         propositions, (frame,), tuple(artifacts),
         evidence_spans=spans, slots=dict(slots), causal_direction=direction,
+        candidate_catalog=candidates,
     )
 
 
@@ -434,6 +468,139 @@ def extract_grounded_propositions(
     return extract_span_first_propositions(
         packet, chat, model=model, max_tokens=max_tokens, thinking=thinking,
     ).propositions
+
+
+def enumerate_clause_candidates(packet: PropositionPacket) -> tuple[ClauseCandidate, ...]:
+    """Build a bounded, deterministic catalog of exact source-local units.
+
+    Sentence and discourse boundaries provide the primary units.  Long
+    punctuation-poor transcript regions are covered by overlapping token
+    windows, so every offered value remains an exact span without asking the
+    model to generate text or offsets.  Candidate IDs are stable for identical
+    packets and restart for each source kind.
+    """
+    packet.validate()
+    catalog: list[ClauseCandidate] = []
+    for source in packet.sources():
+        bounds = {0, len(source.text)}
+        bounds.update(match.end() for match in _SENTENCE_BOUNDARY_RE.finditer(source.text))
+        bounds.update(match.start() for match in _DISCOURSE_BOUNDARY_RE.finditer(source.text))
+        ordered = sorted(bounds)
+        spans: list[tuple[int, int]] = []
+        for start, end in zip(ordered, ordered[1:]):
+            start, end = _trim_bounds(source.text, start, end)
+            if start >= end:
+                continue
+            tokens = list(_NONSPACE_RE.finditer(source.text, start, end))
+            if len(tokens) <= _CLAUSE_MAX_TOKENS:
+                spans.append((start, end))
+                continue
+            window_starts = list(range(0, len(tokens) - _CLAUSE_MAX_TOKENS + 1, _CLAUSE_WINDOW_STRIDE))
+            final_start = len(tokens) - _CLAUSE_MAX_TOKENS
+            if not window_starts or window_starts[-1] != final_start:
+                window_starts.append(final_start)
+            spans.extend(
+                (tokens[index].start(), tokens[index + _CLAUSE_MAX_TOKENS - 1].end())
+                for index in window_starts
+            )
+
+        if not spans and source.text.strip():
+            start, end = _trim_bounds(source.text, 0, len(source.text))
+            spans.append((start, end))
+        spans = _deduplicate_bounds(spans)
+        if len(spans) > _CLAUSE_CATALOG_LIMIT:
+            spans = _evenly_bounded(spans, _CLAUSE_CATALOG_LIMIT)
+        for index, (start, end) in enumerate(spans, 1):
+            alignment = _alignment_from_bounds(
+                source.kind, source.text, start, end, packet.source_window,
+            )
+            catalog.append(ClauseCandidate(f"{source.kind}:c{index:03d}", alignment))
+    return tuple(catalog)
+
+
+def clause_evidence_prompt(
+    packet: PropositionPacket, candidates: tuple[ClauseCandidate, ...],
+) -> str:
+    """Render only deterministic candidate IDs and their exact source text."""
+    packet.validate()
+    allowed = [source.kind for source in packet.sources()]
+    lines = [
+        f"[{candidate.candidate_id}] {candidate.alignment.source_text}"
+        for candidate in candidates
+    ]
+    return (
+        "EVIDENCE ID: " + packet.evidence_id
+        + "\nSOURCE CANDIDATES:\n" + ("\n".join(lines) or "(none)")
+        + "\n\nAllowed source values: " + json.dumps(allowed)
+        + '. Return exactly {"source":"<allowed source value>","candidate_ids":["<candidate id>"]}'
+        + ' using one or two listed IDs, or {"source":null,"candidate_ids":[]}.'
+    )
+
+
+def parse_candidate_evidence_selection(
+    raw: str,
+    candidates: tuple[ClauseCandidate, ...],
+    packet: PropositionPacket,
+) -> tuple[tuple[SourceAlignment, ...], Mapping[str, Any]]:
+    """Validate ID-only localization and derive all character offsets."""
+    body = _json_object(raw, "candidate evidence localizer")
+    if set(body) != {"source", "candidate_ids"} or not isinstance(body.get("candidate_ids"), list):
+        raise ValueError("candidate evidence localizer requires source and candidate_ids")
+    kind = body.get("source")
+    candidate_ids = body["candidate_ids"]
+    if kind is None and candidate_ids == []:
+        return (), body
+    if not isinstance(kind, str) or kind not in {source.kind for source in packet.sources()}:
+        raise ValueError("candidate evidence selection has an invalid source")
+    if not 1 <= len(candidate_ids) <= 2:
+        raise ValueError("candidate evidence selection requires one or two IDs")
+    if not all(isinstance(value, str) and value for value in candidate_ids):
+        raise ValueError("candidate evidence selection IDs must be nonempty strings")
+    if len(set(candidate_ids)) != len(candidate_ids):
+        raise ValueError("candidate evidence selection contains duplicate IDs")
+    by_id = {candidate.candidate_id: candidate for candidate in candidates}
+    if len(by_id) != len(candidates):
+        raise ValueError("candidate catalog contains duplicate IDs")
+    try:
+        selected = [by_id[value] for value in candidate_ids]
+    except KeyError as exc:
+        raise ValueError("candidate evidence selection contains an unknown ID") from exc
+    if any(candidate.alignment.source_kind != kind for candidate in selected):
+        raise ValueError("candidate evidence selection mixes or misdeclares sources")
+    spans = tuple(candidate.alignment for candidate in selected)
+    return coalesce_selected_evidence(spans, packet), body
+
+
+def coalesce_selected_evidence(
+    spans: tuple[SourceAlignment, ...], packet: PropositionPacket,
+) -> tuple[SourceAlignment, ...]:
+    """Merge overlapping/touching selected units but preserve real gaps."""
+    if not spans:
+        return ()
+    source_kind = spans[0].source_kind
+    if any(span.source_kind != source_kind for span in spans):
+        raise ValueError("selected evidence must use one coherent source")
+    source_by_kind = {source.kind: source.text for source in packet.sources()}
+    if source_kind not in source_by_kind:
+        raise ValueError("selected evidence uses a source unavailable to the packet")
+    source_text = source_by_kind[source_kind]
+    merged: list[SourceAlignment] = []
+    for span in sorted(spans, key=lambda item: (item.start, item.end)):
+        if (
+            not merged
+            or (
+                span.start > merged[-1].end
+                and source_text[merged[-1].end:span.start].strip()
+            )
+        ):
+            merged.append(span)
+            continue
+        previous = merged.pop()
+        merged.append(_alignment_from_bounds(
+            source_kind, source_text, previous.start, max(previous.end, span.end),
+            packet.source_window,
+        ))
+    return tuple(merged)
 
 
 def parse_evidence_selection(
@@ -669,6 +836,54 @@ def _json_object(raw: str, stage: str) -> Mapping[str, Any]:
     if not isinstance(body, Mapping):
         raise ValueError(f"{stage} must return a JSON object")
     return body
+
+
+def _trim_bounds(source: str, start: int, end: int) -> tuple[int, int]:
+    while start < end and source[start].isspace():
+        start += 1
+    while end > start and source[end - 1].isspace():
+        end -= 1
+    return start, end
+
+
+def _deduplicate_bounds(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    seen: set[tuple[int, int]] = set()
+    result = []
+    for span in sorted(spans):
+        if span not in seen:
+            seen.add(span)
+            result.append(span)
+    return result
+
+
+def _evenly_bounded(
+    spans: list[tuple[int, int]], limit: int,
+) -> list[tuple[int, int]]:
+    """Keep deterministic coverage across an unexpectedly dense source."""
+    if len(spans) <= limit:
+        return spans
+    indexes = [round(index * (len(spans) - 1) / (limit - 1)) for index in range(limit)]
+    return [spans[index] for index in dict.fromkeys(indexes)]
+
+
+def _alignment_from_bounds(
+    kind: str,
+    source: str,
+    start: int,
+    end: int,
+    source_window: SourceWindow | None,
+) -> SourceAlignment:
+    if kind not in {"insight", "transcript"} or not 0 <= start < end <= len(source):
+        raise ValueError("candidate source alignment has invalid bounds")
+    absolute_start = absolute_end = None
+    if kind == "transcript":
+        if source_window is None or source_window.window_start is None:
+            raise ValueError("transcript candidate requires a verified source window")
+        absolute_start = source_window.window_start + start
+        absolute_end = source_window.window_start + end
+    return SourceAlignment(
+        kind, start, end, source[start:end], absolute_start, absolute_end,
+    )  # type: ignore[arg-type]
 
 
 def _source_alignment(
