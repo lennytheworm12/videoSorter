@@ -89,12 +89,15 @@ class ExtractedProposition:
 
 def extract_grounded_propositions(
     packet: PropositionPacket, chat: Callable[..., str], *, model: str | None = None,
-    max_tokens: int = 512,
+    max_tokens: int = 512, thinking: str | None = None,
 ) -> tuple[ExtractedProposition, ...]:
     """Extract propositions without canonical mapping or persistence."""
     if max_tokens <= 0:
         raise ValueError("max_tokens must be positive")
-    raw = chat(system=PROPOSITION_SYSTEM, user=packet.prompt(), temperature=0.0, max_tokens=max_tokens, model=model)
+    raw = chat(
+        system=PROPOSITION_SYSTEM, user=packet.prompt(), temperature=0.0,
+        max_tokens=max_tokens, model=model, thinking=thinking,
+    )
     return parse_grounded_propositions(raw, packet)
 
 

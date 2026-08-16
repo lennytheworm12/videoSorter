@@ -91,10 +91,14 @@ class PropositionExtractionTests(unittest.TestCase):
     def test_model_call_has_no_ontology_contract(self) -> None:
         text = _window().transcript_window
         calls = []
-        result = extract_grounded_propositions(_packet("transcript"), lambda **kwargs: calls.append(kwargs) or _response("transcript", text))
+        result = extract_grounded_propositions(
+            _packet("transcript"), lambda **kwargs: calls.append(kwargs) or _response("transcript", text),
+            thinking="disabled",
+        )
         self.assertEqual(len(result), 1)
         self.assertNotIn("continuity", calls[0]["system"].lower())
         self.assertNotIn("denies", calls[0]["system"].lower())
+        self.assertEqual(calls[0]["thinking"], "disabled")
 
 
 if __name__ == "__main__":

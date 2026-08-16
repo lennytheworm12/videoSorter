@@ -14,7 +14,7 @@ from pathlib import Path
 from core.llm import BACKEND, MODEL, chat
 from pipeline.phase2d_evaluation import evaluate_source_modes, load_development_cases
 from pipeline.proposition_extract import extract_grounded_propositions
-from pipeline.relation_extract import RELATION_FLASH_MODEL, RELATION_PRO_MODEL
+from pipeline.relation_extract import DEEPSEEK_THINKING_MODE, RELATION_FLASH_MODEL, RELATION_PRO_MODEL
 from pipeline.source_windows import SourceWindowResolver
 
 
@@ -49,6 +49,7 @@ def main(argv: list[str] | None = None) -> None:
         resolver=SourceWindowResolver(str(args.db)),
         extractor=lambda packet: extract_grounded_propositions(
             packet, chat, model=selected, max_tokens=args.max_tokens,
+            thinking=DEEPSEEK_THINKING_MODE if BACKEND == "deepseek" else None,
         ),
         modes=modes,  # type: ignore[arg-type]
     )

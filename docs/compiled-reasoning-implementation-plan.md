@@ -566,6 +566,16 @@ The CLI rejects blank explicit models, duplicate source modes, and use of a
 default relation variant with a non-DeepSeek backend. Its artifact labels an
 explicit `--model` as `custom` rather than misreporting it as Flash or Pro.
 
+**Live configuration repair (commit pending):** The first Stage A Flash
+dry-run exposed six `DeepSeek returned empty chat content` failures. This was a
+provider-mode wiring issue: the Phase 2D proposition extractor had not passed
+the existing `RELATION_EXTRACTION_DEEPSEEK_THINKING=disabled` configuration
+used by the Phase 2 relation path. Stage A now forwards that same mode only
+when the selected backend is DeepSeek. This changes no prompt, ontology,
+validation, source text, persistence path, or confidence threshold; the
+pre-repair artifact remains retained as an invalid provider-configuration
+baseline rather than a quality score.
+
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
 **Deferred.** Expand from vector/lexical seeds with bounded confidence,
