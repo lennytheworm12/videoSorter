@@ -361,7 +361,7 @@ bucket metrics. Do not build automated fingerprints on this output.
 
 ### Phase 2D: High-Recall Candidate Mapping + Bronze Transcript Recompilation
 
-**Status: In progress. Do not start Phase 3.** The 18-positive-reference
+**Status: Stopped at M13 gate. NOT READY — CONTINUE PHASE 2 REPAIR. Do not start Phase 3.** The 18-positive-reference
 Phase 2B fixture is frozen as held-out evaluation. Phase 2D uses a separate
 development set and does not tune prompts, aliases, candidate ranking, or
 thresholds on the held-out IDs.
@@ -616,6 +616,43 @@ proposition only when the supplied text itself contains both the action or
 resource and the stated strategic effect. It still requires exact source
 quotes, retains zero output for advice without a mechanism, and introduces no
 ontology term, champion fact, or benchmark-specific example.
+
+#### Phase 2D M13 Stop Gate: Stage A Did Not Reach Useful Recall
+
+**Stopped after development-only validation.** The source resolver itself is
+working for the five positive development cases: all resolve to their own
+bronze transcript window, and manual inspection confirms that those windows
+contain the labeled mechanisms. The configured Flash model nevertheless
+achieved **0/5 semantic proposition recall** and **0 exact decomposition
+recall** in transcript-only evaluation after all source-contract repairs.
+It returned four safe zeros and one source-grounded but causally misstructured
+proposition. The combined and insight modes also scored 0 recall; their
+nonzero outputs were source-grounded spans but did not retain the reviewed
+actor/predicate/effect/condition structure. This is a Stage A failure, not
+evidence that conditions, provenance, or the trusted relation validator should
+be weakened.
+
+Retained local dry-run artifacts:
+
+- `/tmp/phase2d-dev-flash-source-modes-scored.json`
+  (`sha256:515a151d15fbba3c3122695f0258ce9dc40c12a373c4149749eeaafd0f0f7f82`)
+- `/tmp/phase2d-dev-flash-transcript-coaching-repair.json`
+  (`sha256:a11c8590b6a1dcd6f6544974a40c609c1ec0c40bdfc7eaf42c42e63ec989e740`)
+
+The first provider run before non-thinking forwarding is retained as an invalid
+configuration baseline: V4 Flash returned empty final content. It must not be
+treated as a quality result. V4 Pro was intentionally not tested: Phase 2D's
+controlled-comparison rule defers Pro until Stage A works well enough to make
+candidate and mapper measurements meaningful. The frozen Phase 2B held-out
+fixture was not used for prompt, alias, threshold, or candidate tuning, and no
+candidate mapping, ledger promotion, persistence, or Phase 3 fingerprint work
+was performed from this failed Stage A output.
+
+Next justified Phase 2 work: redesign or decompose grounded proposition
+extraction so that it can reliably recover actor, causal direction, effect,
+and condition from the same verified window before evaluating candidate sets,
+mapper selection, or any stronger model. Do not progress to M14-M17 as though
+the current Stage A output were useful.
 
 ### Phase 4: Hybrid Vector + Graph Retrieval
 
