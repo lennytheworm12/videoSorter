@@ -1,4 +1,4 @@
-# Handoff: Phase 2E Closed as Architecture Failure; Phase 2F Authorized
+# Handoff: Phase 2E and Phase 2F Closed at Their Architecture Gates
 
 ## 1. Architectural decision
 
@@ -7,12 +7,13 @@ proposition-first and clause-first architectures are closed; do not repair their
 parser, add fixture-specific aliases, tune their prompts further, or run V4 Pro
 through the same proposition boundary to rescue the result.
 
-The next authorized work is Phase 2F: a clean-room, source-preserving compiler
-from bronze transcript windows to source-anchored semantic mentions and general
-semantic edges. Stop after proving Pass 0 and Pass 1 source-semantic IR. Do not
+Phase 2F then implemented a clean-room, source-preserving compiler from bronze
+transcript windows to source-anchored semantic mentions and general semantic
+edges. Its valid strong-model legacy gate failed at mention selection, after
+complete deterministic candidate coverage. Phase 2F is also closed. Do not
 begin canonical claims, League ontology normalization, strategic relations,
 fingerprints, production persistence, corpus backfill, Phase 3, or Flash
-optimization.
+optimization. Further work requires a new explicit goal to redesign Pass 1.
 
 Architectural source of truth: Notion page **Ground-Up Semantic Compiler
 Architecture — Source-Preserving Bronze → Strategic Knowledge**
@@ -166,7 +167,7 @@ SEMANTIC IR VIABLE WITH SPECIFIC LIMITATIONS — REPAIR BEFORE PASS 2
 SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
 ```
 
-## 8. Current Phase 2F checkpoint (legacy development gate failed; reviewed Pass 1A repair ready)
+## 8. Phase 2F closed at the source-semantic representation gate
 
 The clean-room Pass 0/Pass 1 implementation now lives in separate
 `pipeline/semantic_*` modules and covers typed nodes/edges, deterministic
@@ -237,5 +238,18 @@ coverage oracle, but group all
 end alternatives by exact source-start anchor, expose exactly one anchor per
 request with compact aliases and exact offsets, ask only for atomic mentions
 beginning at those anchors, hide heuristic type hints, and safely accept only a
-single complete JSON fence. The locked five-case rerun is now justified; final
-Phase 2F viability remains undetermined until that repair is evaluated.
+single complete JSON fence. No completed repaired-run artifact exists. A full
+rerun process was stopped during its first case and the atomic runner published
+nothing; that process note is not representation evidence. Structural review
+of the unevaluated repair cannot overturn the valid 0/33 and 0/75 strong-model
+result.
+
+Phase 2F is now closed at the source-semantic representation gate. The final
+report is [docs/phase2f-semantic-ir-stop-gate.md](docs/phase2f-semantic-ir-stop-gate.md).
+Formal DEV/FROZEN gold was not created, frozen labels were not inspected, and
+the frozen run was not consumed because the preregistered legacy gate failed.
+Do not begin Pass 2 or any later compiler pass without a new explicit goal.
+
+```text
+SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
+```

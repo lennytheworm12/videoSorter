@@ -1193,10 +1193,13 @@ onto coreference `MULTIPLE_CANDIDATES`; legacy compiler versions were not bound
 to legacy prompt versions; and a multi-focus response could not attribute a
 mixed abstention. The final one-focus design closes all three. Reviewer suites
 passed 56 focused and 148 semantic tests plus a 100-window randomized partition
-audit. The next legacy-development rerun is justified; broader DEV/FROZEN work
-is still not justified unless it passes.
+audit. Although structural review justified a staged legacy-development probe,
+no completed repaired-run artifact exists. A subsequently started process was
+interrupted during its first case and the atomic runner published nothing; that
+process note is not representation evidence. The repair therefore remains
+semantically unproved and broader DEV/FROZEN work is stopped.
 
-**Milestone 12 — representative pool complete; reviewed subsets pending.** A
+**Milestone 12 — representative pool complete; reviewed subsets stopped.** A
 deterministic, source-exact pool of 300 windows from 300 distinct coaching
 videos covers all 25 declared routing phenomena at least eight times, with zero
 Phase 2B/2D source overlap. Its content hash is
@@ -1205,6 +1208,21 @@ Independent external verification rebuilt exact equality from `videos.db` and
 the exclusion fixtures and rejected source, policy, phenomenon, hash, and
 exclusion tampering. Phenomenon tags are deterministic routing aids, not gold.
 Manual 30–50-window DEV/FROZEN annotation begins only after the five-case gate.
+
+**Milestones 13–17 — stopped by the legacy gate.** The valid strong-model
+legacy-development result did not pass Milestone 11, so the representative pool
+was not manually annotated into formal DEV/FROZEN gold, frozen labels were not
+inspected, and the once-only frozen evaluation was not run. The reviewed focal
+repair remains structurally valid but semantically unevaluated and therefore
+cannot count as representation evidence. See
+`docs/phase2f-semantic-ir-stop-gate.md` for the complete evidence, first-loss
+analysis, milestone report, and answers to all final questions.
+
+Final Phase 2F recommendation:
+
+```text
+SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
+```
 
 The final Phase 2F recommendation must be exactly one of:
 
