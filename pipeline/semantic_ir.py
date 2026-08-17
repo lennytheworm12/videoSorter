@@ -20,8 +20,8 @@ from typing import Any, Mapping
 from pipeline.semantic_source import PASS0_VERSION
 
 
-SCHEMA_VERSION = "semantic-ir-v2"
-COMPILER_VERSION = "phase2f-source-semantic-ir-compiler-v1"
+SCHEMA_VERSION = "semantic-ir-v4"
+COMPILER_VERSION = "phase2f-source-semantic-ir-compiler-v2"
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _NON_DOMAIN_UNITS = frozenset({
     "count", "percent", "milliseconds", "seconds", "minutes", "hours",
@@ -124,6 +124,12 @@ class Uncertainty(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class Restriction(str, Enum):
+    EXCLUSIVE = "EXCLUSIVE"
+    ADDITIVE = "ADDITIVE"
+    UNKNOWN = "UNKNOWN"
+
+
 class QualifierKind(str, Enum):
     POLARITY = "POLARITY"
     MODALITY = "MODALITY"
@@ -131,6 +137,13 @@ class QualifierKind(str, Enum):
     CONDITIONALITY = "CONDITIONALITY"
     COMPARATIVE_DEGREE = "COMPARATIVE_DEGREE"
     UNCERTAINTY = "UNCERTAINTY"
+    RESTRICTION = "RESTRICTION"
+
+
+class QualifierAmbiguityState(str, Enum):
+    UNKNOWN = "UNKNOWN"
+    AMBIGUOUS = "AMBIGUOUS"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
 def _require_nonempty(value: object, label: str) -> str:
@@ -322,6 +335,92 @@ class QualifierCue:
 
 
 @dataclass(frozen=True)
+class QualifierAmbiguity:
+    """A source-grounded unresolved qualifier decision for one field."""
+
+    kind: QualifierKind
+    state: QualifierAmbiguityState
+    cues: tuple[QualifierCue, ...] = ()
+    candidate_values: tuple[str, ...] = ()
+    confidence: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.kind, QualifierKind) or not isinstance(
+            self.state, QualifierAmbiguityState,
+        ):
+            raise ValueError("qualifier ambiguity requires typed kind/state")
+        if not isinstance(self.cues, tuple) or any(
+            not isinstance(item, QualifierCue) or item.kind is not self.kind for item in self.cues
+        ):
+            raise ValueError("qualifier ambiguity cues must be immutable and match its kind")
+        if not isinstance(self.candidate_values, tuple) or any(
+            not isinstance(item, str) or not item for item in self.candidate_values
+        ):
+            raise ValueError("qualifier ambiguity candidate values must be an immutable string tuple")
+        if len(set(self.candidate_values)) != len(self.candidate_values):
+            raise ValueError("qualifier ambiguity candidate values must be unique")
+        enum_type = {
+            QualifierKind.POLARITY: Polarity,
+            QualifierKind.MODALITY: Modality,
+            QualifierKind.TEMPORAL_SCOPE: TemporalScope,
+            QualifierKind.CONDITIONALITY: Conditionality,
+            QualifierKind.COMPARATIVE_DEGREE: ComparativeDegree,
+            QualifierKind.UNCERTAINTY: Uncertainty,
+            QualifierKind.RESTRICTION: Restriction,
+        }[self.kind]
+        try:
+            parsed = tuple(enum_type(item) for item in self.candidate_values)
+        except ValueError as exc:
+            raise ValueError("qualifier ambiguity contains a value outside its closed vocabulary") from exc
+        if any(item.value == "UNKNOWN" for item in parsed):
+            raise ValueError("UNKNOWN is an ambiguity state, not a candidate qualifier value")
+        if self.state is QualifierAmbiguityState.AMBIGUOUS and (
+            len(self.candidate_values) < 2 or not self.cues
+        ):
+            raise ValueError("ambiguous qualifier requires evidence and at least two candidate values")
+        if self.state is not QualifierAmbiguityState.AMBIGUOUS and self.candidate_values:
+            raise ValueError("only ambiguous qualifiers may retain candidate values")
+        if isinstance(self.confidence, bool) or not isinstance(self.confidence, (int, float)) \
+                or not math.isfinite(float(self.confidence)) or not 0 <= self.confidence <= 1:
+            raise ValueError("qualifier ambiguity confidence must be between zero and one")
+        ordered_cues = tuple(sorted(
+            self.cues,
+            key=lambda item: (item.span.local_start, item.span.local_end, item.span.text),
+        ))
+        if len({json.dumps(item.to_dict(), sort_keys=True) for item in ordered_cues}) != len(ordered_cues):
+            raise ValueError("qualifier ambiguity cues must be unique")
+        object.__setattr__(self, "cues", ordered_cues)
+        object.__setattr__(self, "candidate_values", tuple(sorted(self.candidate_values)))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind.value,
+            "state": self.state.value,
+            "cues": [item.to_dict() for item in self.cues],
+            "candidate_values": list(self.candidate_values),
+            "confidence": self.confidence,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "QualifierAmbiguity":
+        _expect_keys(
+            value, {"kind", "state", "cues", "candidate_values", "confidence"},
+            "qualifier ambiguity",
+        )
+        cues, candidates = value["cues"], value["candidate_values"]
+        if not isinstance(cues, list) or not isinstance(candidates, list):
+            raise ValueError("serialized qualifier ambiguity collections must be lists")
+        try:
+            return cls(
+                QualifierKind(value["kind"]), QualifierAmbiguityState(value["state"]),
+                tuple(QualifierCue.from_dict(_mapping(item, "qualifier ambiguity cue")) for item in cues),
+                tuple(candidates), value["confidence"],
+            )
+        except (TypeError, KeyError) as exc:
+            raise ValueError("invalid qualifier ambiguity") from exc
+
+
+@dataclass(frozen=True)
 class SemanticQualifiers:
     polarity: Polarity = Polarity.UNKNOWN
     negated: bool = False
@@ -332,7 +431,9 @@ class SemanticQualifiers:
     duration: GroundedValue | None = None
     quantity: GroundedValue | None = None
     uncertainty: Uncertainty = Uncertainty.UNKNOWN
+    restriction: Restriction = Restriction.UNKNOWN
     cues: tuple[QualifierCue, ...] = ()
+    ambiguities: tuple[QualifierAmbiguity, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.polarity, Polarity) or not isinstance(self.negated, bool):
@@ -342,6 +443,7 @@ class SemanticQualifiers:
             (self.conditionality, Conditionality, "conditionality"),
             (self.comparative_degree, ComparativeDegree, "comparative_degree"),
             (self.uncertainty, Uncertainty, "uncertainty"),
+            (self.restriction, Restriction, "restriction"),
         ):
             if not isinstance(value, enum_type):
                 raise ValueError(f"{label} must use its declared enum")
@@ -353,6 +455,10 @@ class SemanticQualifiers:
             raise ValueError("quantity must be a GroundedValue")
         if not isinstance(self.cues, tuple) or any(not isinstance(item, QualifierCue) for item in self.cues):
             raise ValueError("qualifier cues must be an immutable tuple of QualifierCue values")
+        if not isinstance(self.ambiguities, tuple) or any(
+            not isinstance(item, QualifierAmbiguity) for item in self.ambiguities
+        ):
+            raise ValueError("qualifier ambiguities must be an immutable typed tuple")
         if len({json.dumps(item.to_dict(), sort_keys=True) for item in self.cues}) != len(self.cues):
             raise ValueError("qualifier cues must be unique")
         asserted = {
@@ -362,18 +468,29 @@ class SemanticQualifiers:
             QualifierKind.CONDITIONALITY: self.conditionality is not Conditionality.UNKNOWN,
             QualifierKind.COMPARATIVE_DEGREE: self.comparative_degree is not ComparativeDegree.UNKNOWN,
             QualifierKind.UNCERTAINTY: self.uncertainty is not Uncertainty.UNKNOWN,
+            QualifierKind.RESTRICTION: self.restriction is not Restriction.UNKNOWN,
         }
         cue_kinds = {cue.kind for cue in self.cues}
         missing = [kind.value for kind, required in asserted.items() if required and kind not in cue_kinds]
         unsupported = [kind.value for kind in cue_kinds if not asserted[kind]]
         if missing or unsupported:
             raise ValueError(f"qualifier cues do not match asserted fields; missing={missing}, unsupported={unsupported}")
+        ambiguity_kinds = [item.kind for item in self.ambiguities]
+        if len(set(ambiguity_kinds)) != len(ambiguity_kinds):
+            raise ValueError("each qualifier kind may have at most one ambiguity record")
+        if any(asserted[item.kind] for item in self.ambiguities):
+            raise ValueError("an asserted qualifier cannot also be unresolved")
         object.__setattr__(self, "cues", tuple(sorted(
             self.cues, key=lambda item: (item.kind.value, item.span.local_start, item.span.local_end, item.span.text),
+        )))
+        object.__setattr__(self, "ambiguities", tuple(sorted(
+            self.ambiguities, key=lambda item: item.kind.value,
         )))
 
     def spans(self) -> tuple[SourceSpan, ...]:
         return tuple(item.span for item in self.cues) + tuple(
+            cue.span for ambiguity in self.ambiguities for cue in ambiguity.cues
+        ) + tuple(
             item.span for item in (self.duration, self.quantity) if item is not None
         )
 
@@ -386,18 +503,22 @@ class SemanticQualifiers:
             "duration": self.duration.to_dict() if self.duration else None,
             "quantity": self.quantity.to_dict() if self.quantity else None,
             "uncertainty": self.uncertainty.value,
+            "restriction": self.restriction.value,
             "cues": [item.to_dict() for item in self.cues],
+            "ambiguities": [item.to_dict() for item in self.ambiguities],
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "SemanticQualifiers":
         keys = {"polarity", "negated", "modality", "temporal_scope", "conditionality",
-                "comparative_degree", "duration", "quantity", "uncertainty", "cues"}
+                "comparative_degree", "duration", "quantity", "uncertainty", "restriction",
+                "cues", "ambiguities"}
         _expect_keys(value, keys, "semantic qualifiers")
         try:
             cues = value["cues"]
-            if not isinstance(cues, list):
-                raise ValueError("serialized qualifier cues must be a list")
+            ambiguities = value["ambiguities"]
+            if not isinstance(cues, list) or not isinstance(ambiguities, list):
+                raise ValueError("serialized qualifier collections must be lists")
             return cls(
                 polarity=Polarity(value["polarity"]), negated=value["negated"],
                 modality=Modality(value["modality"]), temporal_scope=TemporalScope(value["temporal_scope"]),
@@ -405,7 +526,11 @@ class SemanticQualifiers:
                 comparative_degree=ComparativeDegree(value["comparative_degree"]),
                 duration=_grounded_or_none(value["duration"]), quantity=_grounded_or_none(value["quantity"]),
                 uncertainty=Uncertainty(value["uncertainty"]),
+                restriction=Restriction(value["restriction"]),
                 cues=tuple(QualifierCue.from_dict(_mapping(item, "qualifier cue")) for item in cues),
+                ambiguities=tuple(QualifierAmbiguity.from_dict(
+                    _mapping(item, "qualifier ambiguity")
+                ) for item in ambiguities),
             )
         except (TypeError, KeyError) as exc:
             raise ValueError("invalid semantic qualifiers") from exc
@@ -477,6 +602,8 @@ class SemanticNode:
     referent_candidates: tuple[SourceSpan, ...] = ()
     confidence: float = 0.0
     compiler_version: str = COMPILER_VERSION
+    additional_provenance: tuple[ModelDecisionProvenance, ...] = ()
+    referent_candidate_node_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.node_type, NodeType):
@@ -489,24 +616,47 @@ class SemanticNode:
             not isinstance(item, SourceSpan) for item in self.referent_candidates
         ):
             raise ValueError("referent candidates must be immutable exact SourceSpan values")
-        ordered_referents = tuple(sorted(
-            self.referent_candidates, key=lambda item: (item.local_start, item.local_end, item.text),
+        if not isinstance(self.referent_candidate_node_ids, tuple) or any(
+            not isinstance(item, str) or not item for item in self.referent_candidate_node_ids
+        ):
+            raise ValueError("referent candidate node IDs must be an immutable non-empty string tuple")
+        if len(self.referent_candidate_node_ids) != len(self.referent_candidates):
+            raise ValueError("referent candidate node IDs must align with exact candidate spans")
+        ordered_pairs = tuple(sorted(
+            zip(self.referent_candidate_node_ids, self.referent_candidates),
+            key=lambda item: (item[1].local_start, item[1].local_end, item[1].text, item[0]),
         ))
+        ordered_referents = tuple(item[1] for item in ordered_pairs)
+        ordered_referent_ids = tuple(item[0] for item in ordered_pairs)
         if len({json.dumps(item.to_dict(), sort_keys=True) for item in ordered_referents}) != len(ordered_referents):
             raise ValueError("referent candidates must be unique")
+        if len(set(ordered_referent_ids)) != len(ordered_referent_ids):
+            raise ValueError("referent candidate node IDs must be unique")
         object.__setattr__(self, "referent_candidates", ordered_referents)
+        object.__setattr__(self, "referent_candidate_node_ids", ordered_referent_ids)
         if self.ambiguity is AmbiguityState.MULTIPLE_CANDIDATES and len(self.referent_candidates) < 2:
             raise ValueError("MULTIPLE_CANDIDATES requires at least two referent candidates")
         if self.referent_candidates and self.ambiguity not in {
-            AmbiguityState.AMBIGUOUS, AmbiguityState.MULTIPLE_CANDIDATES,
+            AmbiguityState.NONE, AmbiguityState.AMBIGUOUS, AmbiguityState.MULTIPLE_CANDIDATES,
         }:
-            raise ValueError("referent candidates require an ambiguous state")
+            raise ValueError("referent candidates require a resolved or ambiguous state")
+        if self.ambiguity is AmbiguityState.NONE and len(self.referent_candidates) > 1:
+            raise ValueError("a resolved reference may retain exactly one referent")
         if any(item == self.source_span for item in self.referent_candidates):
             raise ValueError("a semantic node cannot refer to its own exact source mention")
         if isinstance(self.confidence, bool) or not isinstance(self.confidence, (int, float)) or not math.isfinite(float(self.confidence)) or not 0 <= self.confidence <= 1:
             raise ValueError("semantic node confidence must be between zero and one")
         if self.compiler_version != COMPILER_VERSION:
             raise ValueError("semantic node compiler_version is unsupported")
+        if not isinstance(self.additional_provenance, tuple) or any(
+            not isinstance(item, ModelDecisionProvenance) for item in self.additional_provenance
+        ):
+            raise ValueError("semantic node additional provenance must be an immutable decision tuple")
+        if len({item.decision_id for item in self.additional_provenance}) != len(self.additional_provenance):
+            raise ValueError("semantic node additional decision IDs must be unique")
+        object.__setattr__(self, "additional_provenance", tuple(sorted(
+            self.additional_provenance, key=lambda item: item.decision_id,
+        )))
 
     @property
     def node_id(self) -> str:
@@ -517,7 +667,7 @@ class SemanticNode:
     def _identity_dict(self) -> dict[str, Any]:
         return {
             "node_type": self.node_type.value, "source_span": self.source_span.to_dict(),
-            "qualifiers": self.qualifiers.to_dict(), "ambiguity": self.ambiguity.value,
+            "compiler_version": self.compiler_version,
         }
 
     def _content_dict(self) -> dict[str, Any]:
@@ -527,6 +677,8 @@ class SemanticNode:
             "ambiguity": self.ambiguity.value,
             "referent_candidates": [item.to_dict() for item in self.referent_candidates],
             "confidence": self.confidence, "compiler_version": self.compiler_version,
+            "additional_provenance": [item.to_dict() for item in self.additional_provenance],
+            "referent_candidate_node_ids": list(self.referent_candidate_node_ids),
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -535,12 +687,17 @@ class SemanticNode:
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "SemanticNode":
         keys = {"node_id", "node_type", "source_span", "provenance", "qualifiers",
-                "ambiguity", "referent_candidates", "confidence", "compiler_version"}
+                "ambiguity", "referent_candidates", "confidence", "compiler_version",
+                "additional_provenance", "referent_candidate_node_ids"}
         _expect_keys(value, keys, "semantic node")
         candidates = value["referent_candidates"]
-        if not isinstance(candidates, list):
-            raise ValueError("serialized referent candidates must be a list")
+        candidate_node_ids = value["referent_candidate_node_ids"]
+        if not isinstance(candidates, list) or not isinstance(candidate_node_ids, list):
+            raise ValueError("serialized referent candidate collections must be lists")
         try:
+            additional = value["additional_provenance"]
+            if not isinstance(additional, list):
+                raise ValueError("serialized additional provenance must be a list")
             node = cls(
                 NodeType(value["node_type"]), SourceSpan.from_dict(_mapping(value["source_span"], "node span")),
                 ModelDecisionProvenance.from_dict(_mapping(value["provenance"], "node provenance")),
@@ -548,6 +705,10 @@ class SemanticNode:
                 AmbiguityState(value["ambiguity"]),
                 tuple(SourceSpan.from_dict(_mapping(item, "referent candidate span")) for item in candidates),
                 value["confidence"], value["compiler_version"],
+                tuple(ModelDecisionProvenance.from_dict(
+                    _mapping(item, "additional node provenance")
+                ) for item in additional),
+                tuple(candidate_node_ids),
             )
         except (TypeError, KeyError) as exc:
             raise ValueError("invalid semantic node") from exc
@@ -653,16 +814,25 @@ def edge_type_supports(edge_type: EdgeType, source: NodeType, target: NodeType) 
             edge_type is EdgeType.OBJECT and source is NodeType.ABILITY_OR_RESOURCE and target in occurrences
         )
     if edge_type in {
-        EdgeType.CAUSES, EdgeType.ENABLES, EdgeType.PREVENTS, EdgeType.REQUIRES,
-        EdgeType.PURPOSE, EdgeType.RESULT, EdgeType.TERMINATES,
+        EdgeType.CAUSES, EdgeType.ENABLES, EdgeType.PREVENTS,
+        EdgeType.PURPOSE, EdgeType.RESULT,
     }:
         return source in occurrences and target in occurrences
+    if edge_type is EdgeType.TERMINATES:
+        return source in occurrences | {NodeType.TIME} and target in occurrences
+    if edge_type is EdgeType.REQUIRES:
+        return source in occurrences and target in occurrences | {NodeType.ABILITY_OR_RESOURCE}
     if edge_type in {EdgeType.TEMPORAL_BEFORE, EdgeType.TEMPORAL_AFTER, EdgeType.TEMPORAL_UNTIL}:
         return source in occurrences | {NodeType.TIME} and target in occurrences | {NodeType.TIME}
     if edge_type is EdgeType.CONDITION:
-        return source in occurrences | {NodeType.TIME} and target in occurrences
-    if edge_type in {EdgeType.NEGATES, EdgeType.MODIFIES}:
-        return source in {NodeType.TIME, NodeType.QUANTITY, NodeType.STATE, NodeType.OUTCOME}
+        return source in set(NodeType) - {NodeType.ENTITY} and target in occurrences
+    if edge_type is EdgeType.NEGATES:
+        return source in {NodeType.STATE, NodeType.OUTCOME} and target in occurrences
+    if edge_type is EdgeType.MODIFIES:
+        return source in {
+            NodeType.TIME, NodeType.QUANTITY, NodeType.STATE, NodeType.OUTCOME,
+            NodeType.LOCATION_OR_SPACE, NodeType.ABILITY_OR_RESOURCE,
+        } and target in occurrences
     if edge_type is EdgeType.REFERS_TO:
         return True
     if edge_type is EdgeType.CONTRASTS_WITH:
@@ -740,8 +910,13 @@ class SemanticGraph:
                 raise ValueError(f"duplicate semantic node ID: {node.node_id}")
             node_by_id[node.node_id] = node
         for node in self.nodes:
-            for candidate in node.referent_candidates:
+            for candidate_id, candidate in zip(
+                node.referent_candidate_node_ids, node.referent_candidates,
+            ):
                 self._validate_span(candidate)
+                target = node_by_id.get(candidate_id)
+                if target is None or target.source_span != candidate:
+                    raise ValueError("referent candidate must identify an exact selected target node")
         edge_ids: set[str] = set()
         for edge in self.edges:
             source = node_by_id.get(edge.source_node_id)
@@ -762,11 +937,63 @@ class SemanticGraph:
             ):
                 raise ValueError("semantic edge evidence must jointly cover both directed endpoints")
             if edge.edge_type is EdgeType.REFERS_TO:
-                if source.ambiguity is not AmbiguityState.NONE:
-                    raise ValueError("an accepted REFERS_TO edge cannot remain unresolved")
+                if (
+                    source.ambiguity is not AmbiguityState.NONE
+                    or target.node_id not in source.referent_candidate_node_ids
+                    or target.source_span not in source.referent_candidates
+                    or (
+                        source.source_span.local_start < target.source_span.local_end
+                        and target.source_span.local_start < source.source_span.local_end
+                    )
+                    or edge.provenance not in source.additional_provenance
+                    or target.node_id not in edge.provenance.candidate_ids
+                ):
+                    raise ValueError("REFERS_TO target is outside the source node's retained candidates")
             if edge.edge_id in edge_ids:
                 raise ValueError(f"duplicate semantic edge ID: {edge.edge_id}")
             edge_ids.add(edge.edge_id)
+        relational_temporal_cues = {
+            "after", "before", "by", "during", "first", "once", "since", "then",
+            "until", "when", "whenever", "while",
+        }
+        temporal_edge_types = {
+            EdgeType.TEMPORAL_BEFORE, EdgeType.TEMPORAL_AFTER,
+            EdgeType.TEMPORAL_UNTIL, EdgeType.TERMINATES,
+        }
+        for node in self.nodes:
+            touching = tuple(
+                edge for edge in self.edges
+                if node.node_id in {edge.source_node_id, edge.target_node_id}
+            )
+            if node.ambiguity is AmbiguityState.NONE and len(node.referent_candidates) == 1:
+                matching_references = tuple(
+                    edge for edge in touching
+                    if edge.edge_type is EdgeType.REFERS_TO
+                    and edge.source_node_id == node.node_id
+                    and edge.target_node_id == node.referent_candidate_node_ids[0]
+                )
+                if len(matching_references) != 1:
+                    raise ValueError(
+                        "resolved referent binding requires exactly one proof-carrying REFERS_TO edge"
+                    )
+            if node.qualifiers.conditionality in {
+                Conditionality.CONDITIONAL,
+                Conditionality.HYPOTHETICAL,
+                Conditionality.COUNTERFACTUAL,
+            } and not any(edge.edge_type is EdgeType.CONDITION for edge in touching):
+                raise ValueError(
+                    "conditional qualifier cannot replace an explicit CONDITION graph edge"
+                )
+            temporal_cues = {
+                cue.span.text.casefold() for cue in node.qualifiers.cues
+                if cue.kind is QualifierKind.TEMPORAL_SCOPE
+            }
+            if temporal_cues & relational_temporal_cues and not any(
+                edge.edge_type in temporal_edge_types for edge in touching
+            ):
+                raise ValueError(
+                    "relational temporal qualifier cannot replace an explicit temporal graph edge"
+                )
 
     def _validate_span(self, span: SourceSpan) -> None:
         span.validate_against(
@@ -917,7 +1144,8 @@ DecisionProvenance = ModelDecisionProvenance
 __all__ = [
     "SCHEMA_VERSION", "COMPILER_VERSION", "NodeType", "EdgeType", "GeneralEdgeType", "AmbiguityState",
     "Polarity", "Modality", "TemporalScope", "Conditionality", "ComparativeDegree",
-    "Uncertainty", "QualifierKind", "QualifierCue", "SourceSpan", "GroundedValue", "SemanticQualifiers",
+    "Uncertainty", "Restriction", "QualifierKind", "QualifierAmbiguityState", "QualifierCue",
+    "QualifierAmbiguity", "SourceSpan", "GroundedValue", "SemanticQualifiers",
     "ModelDecisionProvenance", "DecisionProvenance", "SemanticNode", "SemanticEdge",
     "SemanticGraph", "IRNode", "IREdge", "IRGraph", "content_sha256", "edge_type_supports",
 ]

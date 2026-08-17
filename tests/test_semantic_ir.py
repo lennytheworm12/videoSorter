@@ -16,6 +16,8 @@ from pipeline.semantic_ir import (
     ModelDecisionProvenance,
     NodeType,
     Polarity,
+    QualifierAmbiguity,
+    QualifierAmbiguityState,
     QualifierCue,
     QualifierKind,
     SemanticEdge,
@@ -117,8 +119,16 @@ class SemanticGraphTests(unittest.TestCase):
             )),
         )
         action = _node(NodeType.ACTION, "not open", qualifiers=qualifiers)
-        graph = _graph((action,))
-        encoded = graph.to_artifact()["nodes"][0]["qualifiers"]
+        condition = _node(NodeType.STATE, "If Mira might not")
+        condition_edge = SemanticEdge(
+            EdgeType.CONDITION, condition.node_id, action.node_id,
+            (_span("If Mira might not open"),), _provenance("condition-edge"),
+        )
+        graph = _graph((action, condition), (condition_edge,))
+        encoded = next(
+            item["qualifiers"] for item in graph.to_artifact()["nodes"]
+            if item["node_id"] == action.node_id
+        )
         self.assertEqual(encoded["polarity"], "NEGATIVE")
         self.assertTrue(encoded["negated"])
         self.assertEqual(encoded["modality"], "POSSIBLE")
@@ -130,6 +140,61 @@ class SemanticGraphTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(ValueError, "qualifier cues"):
             SemanticQualifiers(modality=Modality.POSSIBLE)
+
+        with self.assertRaisesRegex(ValueError, "cannot replace"):
+            _graph((action,))
+
+    def test_relational_temporal_qualifier_requires_graph_structure(self) -> None:
+        text = "Move before noon."
+        source_id = "transcript:temporal"
+        provenance_hash = "2" * 64
+        suffix = hashlib.sha256(
+            f"{provenance_hash}:0:{len(text)}:{PASS0_VERSION}".encode()
+        ).hexdigest()[:12]
+        window_id = f"{source_id}:w0001-{suffix}"
+
+        def span(value: str) -> SourceSpan:
+            start = text.index(value)
+            return SourceSpan(source_id, window_id, start, start + len(value), value,
+                              start, start + len(value))
+
+        action = SemanticNode(
+            NodeType.ACTION, span("Move"), _provenance("temporal-action"),
+            qualifiers=SemanticQualifiers(
+                temporal_scope=TemporalScope.BOUNDED,
+                cues=(QualifierCue(QualifierKind.TEMPORAL_SCOPE, span("before")),),
+            ),
+        )
+        time = SemanticNode(NodeType.TIME, span("noon"), _provenance("temporal-time"))
+
+        def graph(edges=()):
+            return SemanticGraph(
+                source_id, window_id, "transcript", 0, len(text), text,
+                hashlib.sha256(text.encode()).hexdigest(), provenance_hash, PASS0_VERSION,
+                None, None, None, (action, time), tuple(edges),
+            )
+
+        with self.assertRaisesRegex(ValueError, "cannot replace"):
+            graph()
+        edge = SemanticEdge(
+            EdgeType.TEMPORAL_BEFORE, action.node_id, time.node_id, (span(text),),
+            _provenance("temporal-edge"),
+        )
+        graph((edge,))
+
+    def test_unresolved_qualifier_is_grounded_and_round_trips(self) -> None:
+        cue = QualifierCue(QualifierKind.MODALITY, _span("might"))
+        ambiguity = QualifierAmbiguity(
+            QualifierKind.MODALITY, QualifierAmbiguityState.AMBIGUOUS,
+            (cue,), ("COUNTERFACTUAL", "POSSIBLE"), 0.4,
+        )
+        qualifiers = SemanticQualifiers(ambiguities=(ambiguity,))
+        self.assertEqual(SemanticQualifiers.from_dict(qualifiers.to_dict()), qualifiers)
+        self.assertIn(cue.span, qualifiers.spans())
+        with self.assertRaisesRegex(ValueError, "cannot also be unresolved"):
+            SemanticQualifiers(
+                modality=Modality.POSSIBLE, cues=(cue,), ambiguities=(ambiguity,),
+            )
 
     def test_multiple_causes_and_effects_are_not_flattened_to_a_tuple(self) -> None:
         cause = _node(NodeType.EVENT, "rain and wind")
@@ -199,6 +264,12 @@ class SemanticGraphTests(unittest.TestCase):
         self.assertTrue(edge_type_supports(
             EdgeType.CONDITION, NodeType.ACTION, NodeType.EVENT,
         ))
+        self.assertTrue(edge_type_supports(
+            EdgeType.MODIFIES, NodeType.LOCATION_OR_SPACE, NodeType.ACTION,
+        ))
+        self.assertFalse(edge_type_supports(
+            EdgeType.MODIFIES, NodeType.LOCATION_OR_SPACE, NodeType.ENTITY,
+        ))
 
     def test_cross_source_nodes_and_edge_evidence_fail_closed(self) -> None:
         local = _node(NodeType.EVENT, "rain")
@@ -217,30 +288,50 @@ class SemanticGraphTests(unittest.TestCase):
             _graph((local, outcome), (edge,))
 
     def test_unresolved_coreference_is_preserved_without_a_fake_edge(self) -> None:
-        # Exact source candidates do not recursively depend on semantic node IDs.
+        mira = _node(NodeType.ENTITY, "Mira")
+        gate = _node(NodeType.ABILITY_OR_RESOURCE, "gate")
         mention = SemanticNode(
             NodeType.ENTITY, _span("wind"), _provenance("ambiguous-reference"),
             ambiguity=AmbiguityState.MULTIPLE_CANDIDATES,
             referent_candidates=(_span("Mira"), _span("gate")),
+            referent_candidate_node_ids=(mira.node_id, gate.node_id),
         )
-        graph = _graph((mention,))
+        graph = _graph((mention, mira, gate))
         self.assertFalse(graph.edges)
         restored = next(node for node in graph.nodes if node.node_id == mention.node_id)
         self.assertEqual(restored.ambiguity, AmbiguityState.MULTIPLE_CANDIDATES)
         self.assertEqual({item.text for item in restored.referent_candidates}, {"Mira", "gate"})
 
-        invalid = SemanticNode(NodeType.EVENT, _span("wind"), _provenance("invalid-reference"),
-                               ambiguity=AmbiguityState.MULTIPLE_CANDIDATES,
-                               referent_candidates=(
-                                   _span("Mira"), _span("gate", source="transcript:foreign"),
-                               ))
-        with self.assertRaisesRegex(ValueError, "different source"):
-            _graph((invalid,))
+        invalid = SemanticNode(
+            NodeType.EVENT, _span("wind"), _provenance("invalid-reference"),
+            ambiguity=AmbiguityState.AMBIGUOUS,
+            referent_candidates=(_span("Mira"),),
+            referent_candidate_node_ids=("node_missing",),
+        )
+        with self.assertRaisesRegex(ValueError, "selected target"):
+            _graph((invalid, mira))
+        rain = _node(NodeType.EVENT, "rain")
         event_reference = SemanticNode(
             NodeType.EVENT, _span("wind"), _provenance("event-reference"),
             ambiguity=AmbiguityState.AMBIGUOUS, referent_candidates=(_span("rain"),),
+            referent_candidate_node_ids=(rain.node_id,),
         )
-        self.assertEqual(_graph((event_reference,)).nodes[0].referent_candidates[0].text, "rain")
+        self.assertEqual(
+            next(node for node in _graph((event_reference, rain)).nodes if node.node_id == event_reference.node_id)
+            .referent_candidates[0].text,
+            "rain",
+        )
+        unresolved = SemanticNode(
+            NodeType.ENTITY, _span("wind"), _provenance("unresolved"),
+            ambiguity=AmbiguityState.AMBIGUOUS,
+        )
+        invented = SemanticEdge(
+            EdgeType.REFERS_TO, unresolved.node_id, mira.node_id,
+            (_span("Mira might not open the gate, rain and wind"),),
+            _provenance("invented-reference"), confidence=0.9,
+        )
+        with self.assertRaisesRegex(ValueError, "retained candidates"):
+            _graph((unresolved, mira), (invented,))
 
     def test_stable_ids_hashing_order_and_artifact_round_trip(self) -> None:
         rain = _node(NodeType.EVENT, "rain")

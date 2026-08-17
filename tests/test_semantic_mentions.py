@@ -58,6 +58,35 @@ class SemanticMentionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             generate_mention_candidates(window, max_ngram_words=10)
 
+    def test_catalog_does_not_treat_pass0_segments_as_semantic_boundaries(self):
+        text = " ".join(f"word{index}" for index in range(70))
+        window = _window(text)
+        self.assertGreater(len(window.segments), 1)
+        phrase = "word30 word31 word32 word33"
+        candidate = next(
+            item for item in generate_mention_candidates(window)
+            if item.source_text == phrase
+        )
+        self.assertGreater(len(candidate.segment_ids), 1)
+        candidate.validate(window)
+
+    def test_cross_segment_aliases_retain_every_intersecting_segment(self):
+        long_alias = " ".join(f"word{index}" for index in range(33))
+        for text, alias in (
+            ("Alpha. Beta moves.", "Alpha. Beta moves."),
+            (long_alias + " tail", long_alias),
+        ):
+            with self.subTest(alias=alias):
+                window = _window(text)
+                self.assertGreater(len(window.segments), 1)
+                candidate = next(
+                    item for item in generate_mention_candidates(
+                        window, entity_aliases=(alias,),
+                    ) if item.source_text == alias
+                )
+                self.assertGreater(len(candidate.segment_ids), 1)
+                candidate.validate(window)
+
     def test_candidate_identity_and_runtime_shapes_are_fail_closed(self):
         window = _window("walk forward")
         candidate = next(item for item in generate_mention_candidates(window) if item.source_text == "walk")
@@ -129,6 +158,19 @@ class SemanticMentionTests(unittest.TestCase):
         self.assertTrue(provider.failure.startswith("MentionProviderError:"))
         self.assertEqual(parsed.failure, "ValueError")
         self.assertEqual(parsed.raw_output, "not json")
+
+        aggregate = select_mention_catalog(
+            window, catalog, fail, model="reference", configuration={},
+        )
+        forged_partition = replace(
+            aggregate.partition_results[0], raw_output="forged provider bytes",
+        )
+        forged = replace(
+            aggregate,
+            partition_results=(forged_partition,) + aggregate.partition_results[1:],
+        )
+        with self.assertRaisesRegex(ValueError, "provider failure evidence"):
+            assemble_semantic_nodes(window, forged)
 
     def test_coverage_is_reported_by_family(self):
         window = _window("When Lux misses Q, walk forward.")

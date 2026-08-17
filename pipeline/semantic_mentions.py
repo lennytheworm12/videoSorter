@@ -20,7 +20,7 @@ from pipeline.semantic_ir import (
 
 
 MENTION_MAX_WORDS = 32
-MENTION_CATALOG_VERSION = f"phase2f-mention-catalog-v2-ngrams-{MENTION_MAX_WORDS}"
+MENTION_CATALOG_VERSION = f"phase2f-mention-catalog-v3-cross-segment-ngrams-{MENTION_MAX_WORDS}"
 MENTION_SELECTION_PROMPT_VERSION = "phase2f-mention-selection-v1"
 MENTION_SELECTION_SYSTEM = (
     "Return strict JSON only. Recover low-level source semantics, not strategic propositions or "
@@ -89,7 +89,7 @@ class MentionCandidate:
             raise ValueError("mention candidate type hints must be sorted and unique")
         expected_segments = tuple(sorted(
             segment.segment_id for segment in window.segments
-            if segment.start <= self.start and self.end <= segment.end
+            if segment.start < self.end and self.start < segment.end
         ))
         if self.segment_ids != expected_segments or not self.segment_ids:
             raise ValueError("mention candidate segment provenance is invalid")
@@ -161,11 +161,26 @@ def generate_mention_candidates(
                 spans.setdefault((start, end), set()).update(_hints(text))
                 segment_membership.setdefault((start, end), set()).add(segment.segment_id)
 
+    # Pass 0 segments are stable discourse hints, not semantic boundaries. Add
+    # bounded n-grams over the entire window so punctuation-poor fallback or a
+    # sentence boundary cannot deterministically erase an explicit mention.
+    words = tuple(_WORD.finditer(window.text))
+    for offset in range(len(words)):
+        for size in range(1, min(max_ngram_words, len(words) - offset) + 1):
+            start, end = words[offset].start(), words[offset + size - 1].end()
+            text = window.text[start:end]
+            spans.setdefault((start, end), set()).update(_hints(text))
+            segment_membership.setdefault((start, end), set()).update(
+                segment.segment_id for segment in window.segments
+                if segment.start < end and start < segment.end
+            )
+
     for alias, node_type in aliases:
         for start, end in _exact_alias_spans(window.text, alias):
             spans.setdefault((start, end), set()).add(node_type)
             segment_membership.setdefault((start, end), set()).update(
-                segment.segment_id for segment in window.segments if segment.start <= start and end <= segment.end
+                segment.segment_id for segment in window.segments
+                if segment.start < end and start < segment.end
             )
 
     candidates = []
@@ -265,8 +280,9 @@ def select_mentions(
     try:
         status, selections, body = parse_mention_selection(raw, candidates)
     except Exception as exc:
+        retained_raw = raw if isinstance(raw, str) else repr(raw)
         return MentionSelectionResult(
-            "INSUFFICIENT_EVIDENCE", (), raw, None, type(exc).__name__,
+            "INSUFFICIENT_EVIDENCE", (), retained_raw, None, type(exc).__name__,
             candidate_ids, prompt, model, config_hash, request_json,
         )
     return MentionSelectionResult(
@@ -398,8 +414,23 @@ def _validate_catalog_selection(
             raise ValueError("mention partition effective configuration hash is invalid")
         if result.failure:
             expected_failures.append(f"partition:{index}:{result.failure}")
-            if result.mentions or result.parsed_output is not None:
+            if result.status != "INSUFFICIENT_EVIDENCE" or result.mentions or result.parsed_output is not None:
                 raise ValueError("failed mention partition cannot retain accepted decisions")
+            if result.failure.startswith(f"{MentionProviderError.__name__}:"):
+                if result.raw_output != "" or not re.fullmatch(
+                    r"MentionProviderError:[A-Za-z_][A-Za-z0-9_]*", result.failure,
+                ):
+                    raise ValueError("mention provider failure evidence is inconsistent")
+            else:
+                if not isinstance(result.raw_output, str) or not result.raw_output:
+                    raise ValueError("mention model parse failure must retain nonempty raw output")
+                try:
+                    parse_mention_selection(result.raw_output, partition)
+                except Exception as exc:
+                    if result.failure != type(exc).__name__:
+                        raise ValueError("mention model parse failure taxonomy is inconsistent") from exc
+                else:
+                    raise ValueError("claimed mention model parse failure reparses successfully")
             continue
         if result.candidate_ids:
             status, mentions, body = parse_mention_selection(result.raw_output, partition)
@@ -594,6 +625,8 @@ def _strict_object(raw: str) -> Mapping[str, Any]:
                 raise ValueError("JSON contains duplicate keys")
             result[key] = value
         return result
+    if not isinstance(raw, str):
+        raise ValueError("mention selection output must be a string")
     try:
         body = json.loads(raw, object_pairs_hook=unique)
     except (TypeError, json.JSONDecodeError) as exc:
