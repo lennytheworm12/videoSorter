@@ -28,8 +28,10 @@ from pipeline.semantic_edges import (
 )
 from pipeline.semantic_ir import EdgeType, SemanticEdge, SemanticGraph, SemanticNode
 from pipeline.semantic_mentions import (
+    MENTION_SELECTION_PROMPT_VERSION,
+    MENTION_SELECTION_PROMPT_VERSION_LEGACY,
     MentionCandidate, MentionCatalogSelectionResult, assemble_semantic_nodes,
-    generate_mention_candidates, select_mention_catalog,
+    generate_mention_candidates, partition_candidate_catalog, select_mention_catalog,
 )
 from pipeline.semantic_qualifiers import (
     QualifierCandidate, QualifierSelectionResult, apply_node_qualifiers,
@@ -40,7 +42,11 @@ from pipeline.semantic_qualifiers import (
 from pipeline.semantic_source import SemanticSourceWindow
 
 
-COMPILER_ORCHESTRATION_VERSION = "phase2f-semantic-compiler-orchestration-v2"
+COMPILER_ORCHESTRATION_VERSION_LEGACY = "phase2f-semantic-compiler-orchestration-v2"
+COMPILER_ORCHESTRATION_VERSION = "phase2f-semantic-compiler-orchestration-v3-focal-mentions"
+_SUPPORTED_COMPILER_ORCHESTRATION_VERSIONS = frozenset({
+    COMPILER_ORCHESTRATION_VERSION_LEGACY, COMPILER_ORCHESTRATION_VERSION,
+})
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _FAILURE_CODES_BY_STAGE = {
     "mention_catalog": {"ASSEMBLY_FAILURE"},
@@ -87,7 +93,7 @@ class SemanticCompilerConfig:
     version: str = COMPILER_ORCHESTRATION_VERSION
 
     def __post_init__(self) -> None:
-        if self.version != COMPILER_ORCHESTRATION_VERSION:
+        if self.version not in _SUPPORTED_COMPILER_ORCHESTRATION_VERSIONS:
             raise ValueError("semantic compiler configuration version is unsupported")
         if not isinstance(self.model, str) or not self.model.strip():
             raise ValueError("semantic compiler model must be non-empty")
@@ -224,8 +230,10 @@ class SemanticCompileRun:
         """Reconstruct every completed boundary and verify the sealed run."""
         self.window.validate()
         self.config.__post_init__()
-        if self.version != COMPILER_ORCHESTRATION_VERSION:
+        if self.version not in _SUPPORTED_COMPILER_ORCHESTRATION_VERSIONS:
             raise ValueError("semantic compiler run version is unsupported")
+        if self.version != self.config.version:
+            raise ValueError("semantic compiler run/config versions disagree")
         for aliases, label in (
             (self.entity_aliases, "entity"), (self.ability_aliases, "ability"),
         ):
@@ -249,7 +257,29 @@ class SemanticCompileRun:
             _validate_terminal_suffix(self, stage_failure)
             self._validate_integrity()
             return
+        if self.version == COMPILER_ORCHESTRATION_VERSION:
+            expected_partitions = partition_candidate_catalog(
+                self.mention_catalog, max_candidates=self.config.mention_partition_size,
+            )
+            retained_partitions = tuple(
+                tuple(result.candidate_ids)
+                for result in self.mention_selection.partition_results
+            )
+            if retained_partitions != tuple(
+                tuple(item.candidate_id for item in partition)
+                for partition in expected_partitions
+            ):
+                raise ValueError("retained focal mention partitions are not deterministic")
         mention_nodes = assemble_semantic_nodes(self.window, self.mention_selection)
+        expected_mention_prompt_version = (
+            MENTION_SELECTION_PROMPT_VERSION_LEGACY
+            if self.version == COMPILER_ORCHESTRATION_VERSION_LEGACY
+            else MENTION_SELECTION_PROMPT_VERSION
+        )
+        for result in self.mention_selection.partition_results:
+            request = _strict_json_object(result.request_json, "mention request")
+            if request.get("prompt_version") != expected_mention_prompt_version:
+                raise ValueError("compiler orchestration and mention prompt versions disagree")
         _validate_stage_requests(self, "mentions")
         if stage_failure == "mention_assembly":
             _validate_terminal_suffix(self, stage_failure)
@@ -429,6 +459,8 @@ def compile_source_semantic_ir(
     if not isinstance(config, SemanticCompilerConfig):
         raise ValueError("semantic compiler requires typed configuration")
     config.__post_init__()
+    if config.version != COMPILER_ORCHESTRATION_VERSION:
+        raise ValueError("legacy semantic compiler configuration is deserialization-only")
     if not callable(chat):
         raise ValueError("semantic compiler chat provider must be callable")
     entities = _normalize_aliases(entity_aliases, "entity")
@@ -1103,7 +1135,8 @@ def _detail(exc: Exception) -> str:
 
 
 __all__ = [
-    "COMPILER_ORCHESTRATION_VERSION", "SemanticCompilerConfig",
+    "COMPILER_ORCHESTRATION_VERSION", "COMPILER_ORCHESTRATION_VERSION_LEGACY",
+    "SemanticCompilerConfig",
     "NodeQualifierRun", "CompilerFailure", "SemanticCompileRun",
     "compile_source_semantic_ir",
 ]

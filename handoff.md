@@ -166,7 +166,7 @@ SEMANTIC IR VIABLE WITH SPECIFIC LIMITATIONS — REPAIR BEFORE PASS 2
 SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
 ```
 
-## 8. Current Phase 2F checkpoint (pre-live reference gate)
+## 8. Current Phase 2F checkpoint (legacy development gate failed; reviewed Pass 1A repair ready)
 
 The clean-room Pass 0/Pass 1 implementation now lives in separate
 `pipeline/semantic_*` modules and covers typed nodes/edges, deterministic
@@ -199,5 +199,43 @@ model bytes and is not a semantic-quality run. The complete reconstructible
 negative artifact is retained at
 `data/phase2f_artifacts/phase2f-legacy-pro-run1.tar.gz` (SHA-256
 `e6c2122a2b91c2b70d9775f2c108c26c82cdfff2f5cea9b3c5f60dbbc4146330`).
-Semantic recoverability and the final Phase 2F recommendation remain
-undetermined until the unchanged strong-reference gate can reach the provider.
+After network access was enabled, the first valid strong-model legacy-development
+run on the locked `LEGACY_FAILURE` split completed at clean revision
+`b5317c6bd90572e052ab85f399e339c4de83a4e8` against the official endpoint with
+`deepseek-v4-pro`. It is a genuine semantic-quality failure, not provider
+evidence. Deterministic mention coverage was 33/33, but reviewed exact mention
+selection and typing were 0/33; qualifier recall was 0/10, edge recall 0/24,
+reference recovery 0/8, and semantic checksum 0/75. All 1,949 model calls
+returned bytes and there were zero provider failures. Safe diagnostic removal
+of one complete Markdown fence still recovers 0/33 reviewed mentions; only one
+reviewed candidate ID appears anywhere in all retained raw mention output.
+
+The first semantic loss is therefore:
+
+```text
+DETERMINISTIC EXACT MENTION CATALOG        33/33
+        ↓
+FLAT MODEL-FACING MENTION SELECTION         0/33
+        ↓
+DOWNSTREAM REVIEWED SOURCE SEMANTICS        0/75
+```
+
+The immutable run is retained at
+`data/phase2f_artifacts/phase2f-legacy-pro-run2.tar.gz` (archive SHA-256
+`b17cde9d7dc909c317aac81be08e9ed4860f91231d5568aeb6ee515a1fd67183`, aggregate
+inner/file SHA-256 `b0a030765217f2dcb52634d31eec171b307541308012945f87864cf7d5697492` /
+`ad3801a9fc23a23837fe0ad078273a2744fb9640bbd826172d359af4654cf547`). The old
+interface exposed 3,248–3,344 overlapping n-grams per window in six 600-item
+flat partitions, produced 43k–143k-character prompts, and encouraged clause-sized
+proxy spans; 11/30 responses also truncated. Parser tolerance does not repair
+the semantic miss.
+
+Per the preregistered stop rule, do not build the broader reviewed benchmark or
+inspect/run FROZEN_EVAL yet. A general Pass 1A development repair is now
+implemented and independently approved: keep the exhaustive catalog as the
+coverage oracle, but group all
+end alternatives by exact source-start anchor, expose exactly one anchor per
+request with compact aliases and exact offsets, ask only for atomic mentions
+beginning at those anchors, hide heuristic type hints, and safely accept only a
+single complete JSON fence. The locked five-case rerun is now justified; final
+Phase 2F viability remains undetermined until that repair is evaluated.

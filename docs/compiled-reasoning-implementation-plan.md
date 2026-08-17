@@ -1114,6 +1114,88 @@ The strict gate correctly failed and the CLI returned status 2. Do not count
 this attempt as the once-only semantic reference run; retry the unchanged
 committed configuration only when the official provider is reachable.
 
+**Milestone 11 — first valid strong-model development result: FAILED at Pass
+1A; general repair authorized.** After network access was enabled, the locked
+five-case command completed against `https://api.deepseek.com` with
+`deepseek-v4-pro`, thinking disabled, from clean revision
+`b5317c6bd90572e052ab85f399e339c4de83a4e8`. This was a valid legacy-development
+run on the locked `LEGACY_FAILURE` split, not the once-only frozen run and not a
+provider failure. Its aggregate inner
+and file hashes are
+`b0a030765217f2dcb52634d31eec171b307541308012945f87864cf7d5697492` and
+`ad3801a9fc23a23837fe0ad078273a2744fb9640bbd826172d359af4654cf547`.
+
+Preregistered results:
+
+- deterministic exact mention candidate coverage: 33/33;
+- exact reviewed mention selection and compatible typing: 0/33;
+- qualifier recall: 0/10;
+- reviewed edge-pair/edge recall: 0/24 (endpoints were not recovered, so this
+  is upstream-cascaded and does not evaluate pair pruning/classification);
+- unresolved-reference recovery: 0/8;
+- semantic completeness/checksum: 0/75, with every case at zero;
+- provider failures: 0 across 30 mention, 80 qualifier, and 1,839 edge calls.
+
+Official first loss is mention-stage `MODEL_PARSE_FAILURE`, but the semantic
+diagnostic localizes the architecture failure independently of parsing. Only
+7/30 mention responses were strict JSON, 12 more were complete JSON inside a
+single Markdown fence, and 11 truncated. Safely unwrapping only complete fences
+raises parseable responses to 19/30 but reviewed exact selection remains 0/33.
+Only 1/33 reviewed candidate IDs occurs anywhere in all retained raw output.
+The old interface exposed 3,248–3,344 overlapping n-grams per roughly
+500-character window in six flat 600-candidate slices, repeated the full source
+while asking each partial slice to recover every mention, omitted offsets, and
+showed incomplete heuristic type hints. The model selected long clause-sized
+proxy spans (111-character median across emitted IDs) instead of atomic
+mentions. This reproduces the prohibited selection bottleneck one level lower.
+
+The immutable negative evidence is archived at
+`data/phase2f_artifacts/phase2f-legacy-pro-run2.tar.gz`, deterministic archive
+SHA-256 `b17cde9d7dc909c317aac81be08e9ed4860f91231d5568aeb6ee515a1fd67183`.
+The archive reconstructs all five typed artifacts and is regression-tested.
+Preserve the earlier DNS/provider archive separately.
+
+Hypothesis for the single allowed general DEV repair: a strong model can select
+atomic exact mentions when each request asks only about a bounded set of exact
+source-start anchors, while the exhaustive catalog remains the independent
+coverage oracle. Invariant: every catalog candidate appears exactly once; all
+end alternatives for one start remain together; a request contains exactly
+one start so every abstention is attributable; candidates expose exact offsets
+and compact request-local aliases;
+model-visible heuristic type hints are absent; source text/offsets remain
+deterministically resolved; `NONE`, ambiguity, and nested same-start mentions
+remain possible. Exactly one complete JSON fence may be canonicalized while raw
+bytes remain retained; this transport repair is not counted as semantic repair.
+
+Do not build the 30–50 reviewed DEV/FROZEN subsets, inspect frozen labels, or
+run frozen evaluation until the repaired interface passes all five locked
+legacy mechanisms. After deterministic tests and independent diff review, rerun
+only the legacy development gate. Thresholds, gold, and denominators remain
+unchanged.
+
+Implementation checkpoint before the rerun: `pipeline/semantic_mentions.py`
+now uses one complete source-start group per model request, with no change to
+the exhaustive candidate generator; `pipeline/semantic_compiler.py` binds the
+new orchestration/prompt versions and regenerates the retained partition layout.
+Across the locked cases this yields 117–120 requests/window, at most 32 exact
+end alternatives and fewer than 7,000 prompt characters per request. This is a
+deliberate representation-proof/cost tradeoff; batching is future cheapification.
+The historical v1 selection/orchestration path remains deserializable only so
+both negative archives continue to reconstruct.
+
+Deterministic tests prove all 33 reviewed spans occur in exactly one focal
+request, repeated phrases remain offset-distinguishable, aliases resolve only
+to offered stable IDs, nested same-start mentions survive, type hints are not
+model-visible, exact single-fence handling is versioned, and partition/prompt
+tampering fails reconstruction. Independent diff review found and drove fixes
+for three issues: mention-boundary ambiguity had been incorrectly overloaded
+onto coreference `MULTIPLE_CANDIDATES`; legacy compiler versions were not bound
+to legacy prompt versions; and a multi-focus response could not attribute a
+mixed abstention. The final one-focus design closes all three. Reviewer suites
+passed 56 focused and 148 semantic tests plus a 100-window randomized partition
+audit. The next legacy-development rerun is justified; broader DEV/FROZEN work
+is still not justified unless it passes.
+
 **Milestone 12 — representative pool complete; reviewed subsets pending.** A
 deterministic, source-exact pool of 300 windows from 300 distinct coaching
 videos covers all 25 declared routing phenomena at least eight times, with zero

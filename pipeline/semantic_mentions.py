@@ -21,10 +21,17 @@ from pipeline.semantic_ir import (
 
 MENTION_MAX_WORDS = 32
 MENTION_CATALOG_VERSION = f"phase2f-mention-catalog-v3-cross-segment-ngrams-{MENTION_MAX_WORDS}"
-MENTION_SELECTION_PROMPT_VERSION = "phase2f-mention-selection-v1"
-MENTION_SELECTION_SYSTEM = (
+MENTION_SELECTION_PROMPT_VERSION_LEGACY = "phase2f-mention-selection-v1"
+MENTION_SELECTION_PROMPT_VERSION = "phase2f-mention-selection-v2-focal-anchors"
+MENTION_MAX_FOCAL_STARTS_PER_REQUEST = 1
+MENTION_FOCAL_CONTEXT_PADDING_CHARACTERS = 160
+MENTION_SELECTION_SYSTEM_LEGACY = (
     "Return strict JSON only. Recover low-level source semantics, not strategic propositions or "
     "League ontology. Use only supplied candidate IDs and allowed node types. Abstain when uncertain."
+)
+MENTION_SELECTION_SYSTEM = (
+    "Return strict JSON only. Return one object. Recover exact, atomic, source-semantic mentions; do not "
+    "synthesize propositions, strategic concepts, or League ontology. Use only supplied local aliases."
 )
 NODE_TYPES = frozenset({
     "ENTITY", "ABILITY_OR_RESOURCE", "EVENT", "ACTION", "STATE", "OUTCOME",
@@ -208,26 +215,112 @@ def generate_mention_candidates(
 def partition_candidate_catalog(
     candidates: tuple[MentionCandidate, ...], *, max_candidates: int = 180,
 ) -> tuple[tuple[MentionCandidate, ...], ...]:
-    """Partition without dropping candidates or changing their stable IDs."""
+    """Build bounded focal-start requests without splitting a source anchor.
+
+    The exhaustive catalog remains the deterministic coverage oracle.  A model
+    request sees exactly one source-start anchor, with every possible
+    end boundary for those anchors kept together.  This prevents the old flat
+    catalog slices from asking a partial start band to recover the whole source.
+    ``max_candidates`` is a request budget, except that a single indivisible
+    focal group is retained whole rather than silently dropping candidates.
+    """
     if isinstance(max_candidates, bool) or not isinstance(max_candidates, int) or max_candidates <= 0:
         raise ValueError("max_candidates must be positive")
-    return tuple(candidates[index:index + max_candidates] for index in range(0, len(candidates), max_candidates))
+    if not candidates:
+        return ()
+    ordered = tuple(sorted(candidates, key=lambda item: (item.start, item.end, item.candidate_id)))
+    if ordered != candidates:
+        raise ValueError("mention candidates must use deterministic source order")
+    groups: list[tuple[MentionCandidate, ...]] = []
+    index = 0
+    while index < len(candidates):
+        start = candidates[index].start
+        end = index + 1
+        while end < len(candidates) and candidates[end].start == start:
+            end += 1
+        groups.append(candidates[index:end])
+        index = end
+    partitions: list[tuple[MentionCandidate, ...]] = []
+    current: list[MentionCandidate] = []
+    focal_count = 0
+    for group in groups:
+        if current and (
+            focal_count >= MENTION_MAX_FOCAL_STARTS_PER_REQUEST
+            or len(current) + len(group) > max_candidates
+        ):
+            partitions.append(tuple(current))
+            current = []
+            focal_count = 0
+        current.extend(group)
+        focal_count += 1
+    if current:
+        partitions.append(tuple(current))
+    return tuple(partitions)
 
 
-def mention_selection_prompt(window: SemanticSourceWindow, candidates: tuple[MentionCandidate, ...]) -> str:
+def mention_selection_prompt(
+    window: SemanticSourceWindow,
+    candidates: tuple[MentionCandidate, ...],
+    *,
+    prompt_version: str = MENTION_SELECTION_PROMPT_VERSION,
+) -> str:
+    if prompt_version == MENTION_SELECTION_PROMPT_VERSION_LEGACY:
+        return _legacy_mention_selection_prompt(window, candidates)
+    if prompt_version != MENTION_SELECTION_PROMPT_VERSION:
+        raise ValueError("mention prompt version is unsupported")
+    if len({item.start for item in candidates}) > MENTION_MAX_FOCAL_STARTS_PER_REQUEST:
+        raise ValueError("mention focal request contains too many source anchors")
+    aliases = _candidate_aliases(candidates)
+    focus_aliases = {
+        start: f"f{index:02d}" for index, start in enumerate(
+            sorted({item.start for item in candidates}), 1,
+        )
+    }
     values = [
-        {"id": item.candidate_id, "text": item.source_text, "type_hints": item.type_hints}
-        for item in candidates
+        {
+            "id": alias,
+            "focus": focus_aliases[item.start],
+            "start": item.start,
+            "end": item.end,
+            "text": item.source_text,
+        }
+        for alias, item in zip(aliases, candidates)
     ]
+    focal_offsets = [
+        {"focus": focus_aliases[start], "start": start}
+        for start in sorted(focus_aliases)
+    ]
+    context_start = max(
+        0, min((item.start for item in candidates), default=0)
+        - MENTION_FOCAL_CONTEXT_PADDING_CHARACTERS,
+    )
+    context_end = min(
+        len(window.text), max((item.end for item in candidates), default=0)
+        + MENTION_FOCAL_CONTEXT_PADDING_CHARACTERS,
+    )
     return (
-        "SOURCE WINDOW:\n" + window.text + "\n\nCANDIDATES:\n"
+        f"LOCAL SOURCE CONTEXT [{context_start},{context_end}) IN WINDOW COORDINATES:\n"
+        + window.text[context_start:context_end] + "\n\nFOCAL STARTS:\n"
+        + json.dumps(focal_offsets, ensure_ascii=False, separators=(",", ":"))
+        + "\n\nCANDIDATES:\n"
         + json.dumps(values, ensure_ascii=False, separators=(",", ":"))
-        + "\nSelect every explicit semantic mention needed to preserve what the source says. "
-          "Select IDs only; hints are nonbinding. Do not infer champion identities for pronouns. "
+        + "\nSelect every explicit atomic semantic mention beginning at the listed focal starts only. "
+          "For each focal start, decide whether one or more mentions begin at that exact character. "
+          "Select the smallest complete source span for each "
+          "distinct mention; do not use a long clause as a proxy for meaning that begins elsewhere. "
+          "Nested mentions with the same start are allowed when each independently denotes source "
+          "meaning. ENTITY is a minimal referring expression; ABILITY_OR_RESOURCE is a named or "
+          "described ability/resource; ACTION is an intentional act; EVENT is an occurrence; STATE is "
+          "a condition that holds; OUTCOME is a resulting situation; QUANTITY, TIME, and "
+          "LOCATION_OR_SPACE retain their ordinary source meanings. Preserve grammatical pronouns as "
+          "ENTITY mentions but do not resolve or rewrite them. Do not include neighboring conditions, "
+          "explanations, or unrelated predicates in a selected span. Return local candidate aliases only. "
           "Return exactly {\"status\":\"OK|NONE|UNKNOWN|AMBIGUOUS|INSUFFICIENT_EVIDENCE\","
           "\"mentions\":[{\"candidate_id\":\"...\",\"node_type\":\"...\","
           "\"confidence\":0.0,\"ambiguity\":\"NONE|UNKNOWN|AMBIGUOUS|INSUFFICIENT_EVIDENCE\"}]} "
-          "Do not classify qualifiers or resolve references in this pass."
+          "Use status OK iff at least one mention is selected; otherwise use NONE, UNKNOWN, AMBIGUOUS, "
+          "or INSUFFICIENT_EVIDENCE with an empty mentions list. Do not classify qualifiers or resolve "
+          "references in this pass."
     )
 
 
@@ -278,7 +371,9 @@ def select_mentions(
             candidate_ids, prompt, model, config_hash, request_json,
         )
     try:
-        status, selections, body = parse_mention_selection(raw, candidates)
+        status, selections, body = parse_mention_selection(
+            raw, candidates, prompt_version=MENTION_SELECTION_PROMPT_VERSION,
+        )
     except Exception as exc:
         retained_raw = raw if isinstance(raw, str) else repr(raw)
         return MentionSelectionResult(
@@ -364,10 +459,11 @@ def assemble_semantic_nodes(
             window.source_id, window.window_id, candidate.start, candidate.end, candidate.source_text,
             candidate.absolute_start, candidate.absolute_end, window.speaker, window.start_ms, window.end_ms,
         )
+        request = _strict_request(result.request_json)
         provenance = ModelDecisionProvenance(
             decision_id=f"{mention.candidate_id}:mention-selection",
             model_id=result.model_id,
-            prompt_version=MENTION_SELECTION_PROMPT_VERSION,
+            prompt_version=str(request["prompt_version"]),
             configuration_sha256=result.configuration_sha256,
             input_sha256=content_sha256(json.loads(result.request_json)),
             output_sha256=content_sha256(result.raw_output),
@@ -403,8 +499,23 @@ def _validate_catalog_selection(
         if not result.request_json or result.model_id is None or result.configuration_sha256 is None:
             raise ValueError("mention partition lacks reconstructible request provenance")
         request = _strict_request(result.request_json)
-        if request.get("system") != MENTION_SELECTION_SYSTEM or request.get("user") != result.prompt:
+        prompt_version = request.get("prompt_version")
+        expected_system = _mention_selection_system(prompt_version)
+        if request.get("system") != expected_system or request.get("user") != result.prompt:
             raise ValueError("mention partition request contradicts its retained prompt")
+        if result.prompt != mention_selection_prompt(
+            window, partition, prompt_version=str(prompt_version),
+        ):
+            raise ValueError("mention partition prompt is not reconstructible")
+        if prompt_version == MENTION_SELECTION_PROMPT_VERSION:
+            if len({item.start for item in partition}) > MENTION_MAX_FOCAL_STARTS_PER_REQUEST:
+                raise ValueError("mention focal partition exceeds its versioned anchor bound")
+            for candidate in partition:
+                if any(
+                    other.start == candidate.start and other.candidate_id not in result.candidate_ids
+                    for other in selection.catalog
+                ):
+                    raise ValueError("mention focal partition splits a source-start decision set")
         effective = {
             key: request[key] for key in (
                 "caller_configuration", "temperature", "max_tokens", "model", "thinking", "prompt_version",
@@ -425,7 +536,9 @@ def _validate_catalog_selection(
                 if not isinstance(result.raw_output, str) or not result.raw_output:
                     raise ValueError("mention model parse failure must retain nonempty raw output")
                 try:
-                    parse_mention_selection(result.raw_output, partition)
+                    parse_mention_selection(
+                        result.raw_output, partition, prompt_version=str(prompt_version),
+                    )
                 except Exception as exc:
                     if result.failure != type(exc).__name__:
                         raise ValueError("mention model parse failure taxonomy is inconsistent") from exc
@@ -433,7 +546,9 @@ def _validate_catalog_selection(
                     raise ValueError("claimed mention model parse failure reparses successfully")
             continue
         if result.candidate_ids:
-            status, mentions, body = parse_mention_selection(result.raw_output, partition)
+            status, mentions, body = parse_mention_selection(
+                result.raw_output, partition, prompt_version=str(prompt_version),
+            )
             if (status, mentions, body) != (result.status, result.mentions, result.parsed_output):
                 raise ValueError("mention partition raw output contradicts its parsed decision")
         elif (result.status, result.mentions, result.parsed_output) != (
@@ -463,7 +578,7 @@ def _validate_catalog_selection(
 
 
 def _strict_request(payload: str) -> Mapping[str, Any]:
-    body = _strict_object(payload)
+    body = _strict_object(payload, allow_single_fence=False)
     expected = {
         "system", "user", "caller_configuration", "temperature", "max_tokens",
         "model", "thinking", "prompt_version",
@@ -474,15 +589,25 @@ def _strict_request(payload: str) -> Mapping[str, Any]:
 
 
 def parse_mention_selection(
-    raw: str, candidates: tuple[MentionCandidate, ...],
+    raw: str,
+    candidates: tuple[MentionCandidate, ...],
+    *,
+    prompt_version: str = MENTION_SELECTION_PROMPT_VERSION,
 ) -> tuple[str, tuple[MentionSelection, ...], Mapping[str, Any]]:
-    body = _strict_object(raw)
+    if prompt_version not in {
+        MENTION_SELECTION_PROMPT_VERSION_LEGACY, MENTION_SELECTION_PROMPT_VERSION,
+    }:
+        raise ValueError("mention prompt version is unsupported")
+    body = _strict_object(
+        raw, allow_single_fence=prompt_version == MENTION_SELECTION_PROMPT_VERSION,
+    )
     if set(body) != {"status", "mentions"} or body.get("status") not in SELECTION_STATUSES or not isinstance(body.get("mentions"), list):
         raise ValueError("mention selection has an invalid envelope")
     status = str(body["status"])
     by_id = {candidate.candidate_id: candidate for candidate in candidates}
     if len(by_id) != len(candidates):
         raise ValueError("mention candidate IDs must be unique")
+    aliases = dict(zip(_candidate_aliases(candidates), candidates))
     selections = []
     seen: set[str] = set()
     for raw_item in body["mentions"]:
@@ -494,7 +619,14 @@ def parse_mention_selection(
         node_type = raw_item.get("node_type")
         confidence = raw_item.get("confidence")
         ambiguity = raw_item.get("ambiguity")
-        if candidate_id not in by_id:
+        if not isinstance(candidate_id, str):
+            raise ValueError("mention selection contains a non-string candidate ID")
+        candidate = (
+            aliases.get(candidate_id)
+            if prompt_version == MENTION_SELECTION_PROMPT_VERSION
+            else by_id.get(candidate_id)
+        )
+        if candidate is None:
             raise ValueError("mention selection contains an unknown candidate ID")
         if node_type not in NODE_TYPES:
             raise ValueError("mention selection contains an unknown node type")
@@ -502,12 +634,12 @@ def parse_mention_selection(
             raise ValueError("mention confidence must be between zero and one")
         if ambiguity not in AMBIGUITY_STATES - {"MULTIPLE_CANDIDATES"}:
             raise ValueError("mention ambiguity state is invalid")
-        key = str(candidate_id)
+        key = candidate.candidate_id
         if key in seen:
             raise ValueError("mention selection contains a duplicate candidate ID")
         seen.add(key)
         selections.append(MentionSelection(
-            str(candidate_id), str(node_type), float(confidence), str(ambiguity),
+            candidate.candidate_id, str(node_type), float(confidence), str(ambiguity),
         ))
     if status == "OK" and not selections:
         raise ValueError("OK mention selection requires at least one mention")
@@ -617,7 +749,39 @@ def _candidate_id(window_id: str, start: int, end: int, source_text: str) -> str
     return f"{window_id}:m{hashlib.sha256(raw).hexdigest()[:20]}"
 
 
-def _strict_object(raw: str) -> Mapping[str, Any]:
+def _candidate_aliases(candidates: tuple[MentionCandidate, ...]) -> tuple[str, ...]:
+    width = max(3, len(str(len(candidates))))
+    return tuple(f"c{index:0{width}d}" for index in range(1, len(candidates) + 1))
+
+
+def _mention_selection_system(prompt_version: object) -> str:
+    if prompt_version == MENTION_SELECTION_PROMPT_VERSION:
+        return MENTION_SELECTION_SYSTEM
+    if prompt_version == MENTION_SELECTION_PROMPT_VERSION_LEGACY:
+        return MENTION_SELECTION_SYSTEM_LEGACY
+    raise ValueError("mention prompt version is unsupported")
+
+
+def _legacy_mention_selection_prompt(
+    window: SemanticSourceWindow, candidates: tuple[MentionCandidate, ...],
+) -> str:
+    values = [
+        {"id": item.candidate_id, "text": item.source_text, "type_hints": item.type_hints}
+        for item in candidates
+    ]
+    return (
+        "SOURCE WINDOW:\n" + window.text + "\n\nCANDIDATES:\n"
+        + json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+        + "\nSelect every explicit semantic mention needed to preserve what the source says. "
+          "Select IDs only; hints are nonbinding. Do not infer champion identities for pronouns. "
+          "Return exactly {\"status\":\"OK|NONE|UNKNOWN|AMBIGUOUS|INSUFFICIENT_EVIDENCE\","
+          "\"mentions\":[{\"candidate_id\":\"...\",\"node_type\":\"...\","
+          "\"confidence\":0.0,\"ambiguity\":\"NONE|UNKNOWN|AMBIGUOUS|INSUFFICIENT_EVIDENCE\"}]} "
+          "Do not classify qualifiers or resolve references in this pass."
+    )
+
+
+def _strict_object(raw: str, *, allow_single_fence: bool) -> Mapping[str, Any]:
     def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result = {}
         for key, value in pairs:
@@ -627,8 +791,11 @@ def _strict_object(raw: str) -> Mapping[str, Any]:
         return result
     if not isinstance(raw, str):
         raise ValueError("mention selection output must be a string")
+    payload = raw
+    if allow_single_fence and raw.startswith("```json\n") and raw.endswith("\n```"):
+        payload = raw[len("```json\n"):-len("\n```")]
     try:
-        body = json.loads(raw, object_pairs_hook=unique)
+        body = json.loads(payload, object_pairs_hook=unique)
     except (TypeError, json.JSONDecodeError) as exc:
         raise ValueError("mention selection returned malformed JSON") from exc
     if not isinstance(body, Mapping):

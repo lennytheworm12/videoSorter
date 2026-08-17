@@ -3,10 +3,13 @@ from dataclasses import replace
 import unittest
 
 from pipeline.semantic_mentions import (
+    MENTION_MAX_FOCAL_STARTS_PER_REQUEST,
+    MENTION_SELECTION_PROMPT_VERSION_LEGACY,
     MentionSelection,
     candidate_coverage,
     assemble_semantic_nodes,
     generate_mention_candidates,
+    mention_selection_prompt,
     parse_mention_selection,
     partition_candidate_catalog,
     select_mentions,
@@ -104,6 +107,63 @@ class SemanticMentionTests(unittest.TestCase):
         catalog = generate_mention_candidates(_window("one two three four five six seven"))
         parts = partition_candidate_catalog(catalog, max_candidates=5)
         self.assertEqual(tuple(item for part in parts for item in part), catalog)
+        self.assertTrue(all(
+            len({item.start for item in part}) <= MENTION_MAX_FOCAL_STARTS_PER_REQUEST
+            for part in parts
+        ))
+        locations = {
+            start: {index for index, part in enumerate(parts) for item in part if item.start == start}
+            for start in {item.start for item in catalog}
+        }
+        self.assertTrue(all(len(indices) == 1 for indices in locations.values()))
+
+    def test_focal_prompt_uses_offsets_compact_aliases_and_no_type_hints(self):
+        window = _window("ward bush, then ward bush again")
+        catalog = generate_mention_candidates(window)
+        first = partition_candidate_catalog(catalog, max_candidates=100)[0]
+        prompt = mention_selection_prompt(window, first)
+        candidates = json.loads(
+            prompt.split("CANDIDATES:\n", 1)[1].split("\nSelect every", 1)[0]
+        )
+        self.assertTrue(all(set(item) == {"id", "focus", "start", "end", "text"} for item in candidates))
+        self.assertEqual(candidates[0]["id"], "c001")
+        self.assertNotIn("type_hints", prompt)
+        self.assertNotIn(first[0].candidate_id, prompt)
+        ward_entries = [item for item in candidates if item["text"] == "ward"]
+        self.assertEqual(len({(item["start"], item["end"]) for item in ward_entries}), len(ward_entries))
+
+    def test_local_aliases_nested_mentions_and_single_json_fence_are_resolved(self):
+        window = _window("Lux walks forward")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",))
+        partition = partition_candidate_catalog(catalog, max_candidates=100)[0]
+        aliases = {item.source_text: f"c{index:03d}" for index, item in enumerate(partition, 1)}
+        raw = json.dumps({"status": "OK", "mentions": [
+            {"candidate_id": aliases["Lux"], "node_type": "ENTITY", "confidence": 0.9, "ambiguity": "NONE"},
+            {"candidate_id": aliases["Lux walks"], "node_type": "EVENT", "confidence": 0.6,
+             "ambiguity": "NONE"},
+        ]})
+        status, mentions, _ = parse_mention_selection(f"```json\n{raw}\n```", partition)
+        self.assertEqual(status, "OK")
+        self.assertEqual({item.candidate_id for item in mentions}, {
+            next(item.candidate_id for item in partition if item.source_text == "Lux"),
+            next(item.candidate_id for item in partition if item.source_text == "Lux walks"),
+        })
+        self.assertEqual({item.ambiguity for item in mentions}, {"NONE"})
+        invalid_ambiguity = raw.replace('"ambiguity": "NONE"', '"ambiguity": "MULTIPLE_CANDIDATES"', 1)
+        with self.assertRaisesRegex(ValueError, "ambiguity state"):
+            parse_mention_selection(invalid_ambiguity, partition)
+        global_id = raw.replace(aliases["Lux"], next(
+            item.candidate_id for item in partition if item.source_text == "Lux"
+        ), 1)
+        with self.assertRaisesRegex(ValueError, "unknown candidate ID"):
+            parse_mention_selection(global_id, partition)
+        with self.assertRaisesRegex(ValueError, "malformed JSON"):
+            parse_mention_selection(f"```json\n{raw}\n``` trailing", partition)
+        with self.assertRaisesRegex(ValueError, "malformed JSON"):
+            parse_mention_selection(
+                f"```json\n{raw}\n```", partition,
+                prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+            )
 
     def test_parse_selection_accepts_unresolved_pronoun_without_guessing_reference(self):
         window = _window("When Lux misses Q, she cannot stop you.")
@@ -115,7 +175,9 @@ class SemanticMentionTests(unittest.TestCase):
             "confidence": 0.55,
             "ambiguity": "AMBIGUOUS",
         }]})
-        status, mentions, _ = parse_mention_selection(raw, catalog)
+        status, mentions, _ = parse_mention_selection(
+            raw, catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+        )
         self.assertEqual(status, "OK")
         self.assertEqual(mentions[0].ambiguity, "AMBIGUOUS")
 
@@ -135,7 +197,9 @@ class SemanticMentionTests(unittest.TestCase):
         variants.append('{"status":"OK","status":"NONE","mentions":[]}')
         for raw in variants:
             with self.subTest(raw=raw), self.assertRaises(ValueError):
-                parse_mention_selection(raw, catalog)
+                parse_mention_selection(
+                    raw, catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+                )
 
     def test_non_ok_status_cannot_smuggle_mentions(self):
         catalog = generate_mention_candidates(_window("walk"))
@@ -144,20 +208,25 @@ class SemanticMentionTests(unittest.TestCase):
             "ambiguity": "AMBIGUOUS",
         }]})
         with self.assertRaises(ValueError):
-            parse_mention_selection(raw, catalog)
+            parse_mention_selection(
+                raw, catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+            )
 
     def test_provider_failure_is_distinct_from_parse_failure(self):
         window = _window("walk forward")
         catalog = generate_mention_candidates(window)
+        focal = partition_candidate_catalog(catalog)[0]
 
         def fail(**kwargs):
             raise RuntimeError("offline")
 
-        provider = select_mentions(window, catalog, fail)
-        parsed = select_mentions(window, catalog, lambda **kwargs: "not json")
+        provider = select_mentions(window, focal, fail)
+        parsed = select_mentions(window, focal, lambda **kwargs: "not json")
         self.assertTrue(provider.failure.startswith("MentionProviderError:"))
         self.assertEqual(parsed.failure, "ValueError")
         self.assertEqual(parsed.raw_output, "not json")
+        with self.assertRaisesRegex(ValueError, "too many source anchors"):
+            select_mentions(window, catalog, fail)
 
         aggregate = select_mention_catalog(
             window, catalog, fail, model="reference", configuration={},
@@ -192,12 +261,12 @@ class SemanticMentionTests(unittest.TestCase):
             parse_mention_selection(json.dumps({"status": "OK", "mentions": [{
                 "candidate_id": item.candidate_id, "node_type": "ACTION", "confidence": 0.8,
                 "ambiguity": "NONE", "qualifiers": {"concept": "access"},
-            }]}), catalog)
+            }]}), catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY)
         with self.assertRaisesRegex(ValueError, "duplicate candidate"):
             parse_mention_selection(json.dumps({"status": "OK", "mentions": [
                 {"candidate_id": item.candidate_id, "node_type": "ACTION", "confidence": 0.8, "ambiguity": "NONE"},
                 {"candidate_id": item.candidate_id, "node_type": "EVENT", "confidence": 0.7, "ambiguity": "UNKNOWN"},
-            ]}), catalog)
+            ]}), catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY)
 
     def test_partition_aggregation_retains_catalog_failures_and_builds_exact_nodes(self):
         window = _window("Lux walks forward then she stops")

@@ -5,6 +5,7 @@ from dataclasses import replace
 from unittest.mock import patch
 
 from pipeline.semantic_compiler import (
+    COMPILER_ORCHESTRATION_VERSION_LEGACY,
     SemanticCompilerConfig, _run_integrity_sha256, compile_source_semantic_ir,
 )
 import pipeline.semantic_compiler as semantic_compiler
@@ -119,6 +120,45 @@ class EdgeOutcomeModel(ScriptedSemanticModel):
 
 
 class SemanticCompilerTests(unittest.TestCase):
+    def test_legacy_orchestration_is_deserialization_only_and_prompt_version_is_bound(self):
+        legacy = SemanticCompilerConfig.create(
+            "reference-pro", provider_configuration={"provider": "scripted"},
+            version=COMPILER_ORCHESTRATION_VERSION_LEGACY,
+        )
+        with self.assertRaisesRegex(ValueError, "deserialization-only"):
+            compile_source_semantic_ir(_window(), ScriptedSemanticModel(), config=legacy)
+
+        current = SemanticCompilerConfig.create(
+            "reference-pro", provider_configuration={"provider": "scripted"},
+            mention_partition_size=1000,
+        )
+        run = compile_source_semantic_ir(_window(), ScriptedSemanticModel(), config=current)
+        forged_config = replace(current, version=COMPILER_ORCHESTRATION_VERSION_LEGACY)
+        forged = replace(
+            run, config=forged_config, version=COMPILER_ORCHESTRATION_VERSION_LEGACY,
+        )
+        forged = replace(forged, integrity_sha256=_run_integrity_sha256(forged))
+        with self.assertRaisesRegex(ValueError, "mention prompt versions disagree"):
+            forged.validate()
+
+        small_config = replace(current, mention_partition_size=2)
+        partitioned_run = compile_source_semantic_ir(
+            _window(), ScriptedSemanticModel(), config=small_config,
+        )
+        self.assertGreater(len(partitioned_run.mention_selection.partition_results), 1)
+        reversed_results = tuple(reversed(partitioned_run.mention_selection.partition_results))
+        repartitioned = replace(
+            partitioned_run.mention_selection,
+            partition_results=reversed_results,
+            mentions=tuple(
+                mention for result in reversed_results for mention in result.mentions
+            ),
+        )
+        forged = replace(partitioned_run, mention_selection=repartitioned)
+        forged = replace(forged, integrity_sha256=_run_integrity_sha256(forged))
+        with self.assertRaisesRegex(ValueError, "focal mention partitions are not deterministic"):
+            forged.validate()
+
     def test_end_to_end_run_retains_every_catalog_and_builds_graph(self):
         window = _window()
         config = SemanticCompilerConfig.create(

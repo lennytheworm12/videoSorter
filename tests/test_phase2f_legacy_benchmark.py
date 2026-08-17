@@ -7,7 +7,11 @@ from pipeline.semantic_edges import generate_candidate_edge_pairs
 from pipeline.semantic_coreference import generate_coreference_candidate_sets
 from pipeline.semantic_ir import ModelDecisionProvenance, SemanticNode, SourceSpan
 from pipeline.semantic_ir_evaluation import load_semantic_benchmark
-from pipeline.semantic_mentions import generate_mention_candidates
+from pipeline.semantic_mentions import (
+    MENTION_MAX_FOCAL_STARTS_PER_REQUEST,
+    generate_mention_candidates,
+    partition_candidate_catalog,
+)
 from pipeline.semantic_qualifiers import generate_qualifier_candidates
 from pipeline.semantic_source import BronzeSource, window_from_exact_span
 
@@ -79,6 +83,37 @@ class Phase2FLegacyBenchmarkTests(unittest.TestCase):
                         (qualifier.field.upper(), start, end) in qualifier_spans
                         for start, end in qualifier.cue_spans
                     ), qualifier.qualifier_id)
+
+    def test_focal_requests_cover_every_gold_span_once_without_splitting_starts(self):
+        covered = 0
+        for case in self.benchmark.cases:
+            window = window_from_exact_span(
+                BronzeSource(case.source_id, case.source_text), 0, len(case.source_text),
+            )
+            catalog = generate_mention_candidates(window)
+            partitions = partition_candidate_catalog(catalog, max_candidates=600)
+            self.assertEqual(tuple(item for part in partitions for item in part), catalog)
+            self.assertTrue(all(
+                len({item.start for item in part}) <= MENTION_MAX_FOCAL_STARTS_PER_REQUEST
+                for part in partitions
+            ))
+            start_partition = {}
+            for partition_index, partition in enumerate(partitions):
+                for candidate in partition:
+                    previous = start_partition.setdefault(candidate.start, partition_index)
+                    self.assertEqual(previous, partition_index)
+            for mention in case.mentions:
+                matching_partitions = {
+                    partition_index
+                    for partition_index, partition in enumerate(partitions)
+                    if any(
+                        (item.start, item.end) in mention.acceptable_spans
+                        for item in partition
+                    )
+                }
+                self.assertEqual(len(matching_partitions), 1, (case.case_id, mention.mention_id))
+                covered += 1
+        self.assertEqual(covered, 33)
 
     def test_every_gold_edge_is_offered_before_model_classification(self):
         for case in self.benchmark.cases:
