@@ -6,11 +6,12 @@
 WEAK RANKING SIGNAL ONLY
 ```
 
-Gate 1 failed and Gate 2 was not triggered. Implementation: clean commit
-`65e7100` (`Add Phase 2H discriminative endpoint scoring`). Two immutable
-offline runs of `phase2h-endpoint-scoring-v1` completed at that commit
+Gate 1 failed and Gate 2 was not triggered. Initial implementation: commit
+`65e7100` (`Add Phase 2H discriminative endpoint scoring`). The final clean
+experiment, including the parser-taxonomy correction, ran at commit `a754991`.
+Two immutable offline runs of `phase2h-endpoint-scoring-v1` completed there
 (`repository_dirty: false`); run 1 is the authoritative artifact at
-`/tmp/phase2h-endpoint-scoring-v1-run1`, and both runs are archived under
+`/tmp/phase2h-endpoint-scoring-v1-final-run1`, and both runs are archived under
 `data/phase2h_artifacts/`.
 
 ## 1. Scope and non-goals
@@ -53,6 +54,9 @@ importance).
   fold trains on the other four windows and scores the held-out window. Fold
   guard: never train/test a fold whose training windows have no positive
   examples.
+- **Source overlap audit:** the five windows are disjoint source spans. Three
+  come from the same source video at non-overlapping offsets, which is not
+  span leakage but further limits the diversity of this micro-benchmark.
 - **Fit scope:** every preprocessing statistic — scaler, sparse vocabulary,
   class weights, and model fit — is computed from training windows only. The
   B-cell fit-scope audit records actual held-out OOV token types absent from
@@ -270,18 +274,18 @@ scored candidates):
 | Code | `logistic_A` | `logistic_B` | `lightgbm_A` | `lightgbm_B` |
 | --- | ---: | ---: | ---: | ---: |
 | Correct (TP+TN) | 14,736 | 16,497 | 16,213 | 16,214 |
-| PARSER_FEATURE_ERROR | 27 | 0 | 9 | 0 |
+| PARSER_FEATURE_ERROR | 0 | 0 | 0 | 0 |
 | OVERLAPPING_LONGER_SPAN | 224 | 3 | 38 | 53 |
 | OVERLAPPING_SHORTER_FRAGMENT | 173 | 8 | 52 | 55 |
 | PRONOUN_DISTRACTOR | 54 | 29 | 22 | 27 |
-| DISCOURSE_FILLER | 421 | 6 | 84 | 29 |
+| DISCOURSE_FILLER | 446 | 6 | 91 | 29 |
 | GENERIC_ACTION_DISTRACTOR | 177 | 33 | 43 | 64 |
-| GENERIC_ENTITY_DISTRACTOR | 336 | 7 | 42 | 57 |
-| WRONG_CUE_PRIOR | 42 | 1 | 6 | 11 |
+| GENERIC_ENTITY_DISTRACTOR | 337 | 7 | 43 | 57 |
+| WRONG_CUE_PRIOR | 42 | 1 | 7 | 11 |
 | SOURCE_POSITION_BIAS | 9 | 2 | 0 | 0 |
 | GOLD_RANKED_LOW | 7 | 23 | 23 | 22 |
 | GOLD_RANKED_HIGH_THRESHOLD_MISS | 0 | 0 | 0 | 0 |
-| OTHER | 418 | 15 | 92 | 92 |
+| OTHER | 419 | 15 | 92 | 92 |
 
 At the fixed 0.5 threshold, the recall loss is exactly the
 `GOLD_RANKED_LOW` counts (7/23/23/22); no gold endpoint was in the top-5 of its
@@ -346,7 +350,8 @@ WEAK RANKING SIGNAL ONLY
 
 ## 11. Reproducibility
 
-Two clean offline runs at commit `65e7100` (`repository_dirty: false`)
+Two clean offline runs at commit `a7549918fdef5dda0c5d10da8d52164d550d6142`
+(`repository_dirty: false`)
 produce identical scientific content; only the run timestamp differs.
 
 - Definition SHA-256: `75dfaca522195ccd953825317c72e9780781c6c2b45b19f2655638d544c4a459`
@@ -359,26 +364,29 @@ produce identical scientific content; only the run timestamp differs.
 - Dependencies (identical): python 3.10.12, scikit-learn 1.7.2, lightgbm
   4.7.0, numpy 2.2.6, scipy 1.15.3.
 - Aggregate inner `content_sha256`: run1
-  `506b495ce446a9619066c9075cccbc7393e754e58718e5fc3887f8e090a20a70`; run2
-  `8c4d5657421a2df8793b472d82d54a05599061e997b251c6295b1b4f0ea17cd6`
+  `3a890de5f429056bae9d9932ce7f1985d9315e20655b4239be5acee4174edee2`; run2
+  `9e62226a0ccb716bde74c186786038d8546980863eba37e8c18acdc24967e7ed`
   (differ only because `created_at` is inside the aggregate body).
 - Aggregate file SHA-256: run1
-  `f9e4ce1ffa5e6b6c9819c13db44ec71187e3fb44db546e52dec6e53aa4444ffc`; run2
-  `c7fbedce562e8323945b5fd74bae27c13a86ec786c758226fbff3172e19032c9`.
+  `bf6a591edc683491e3597013c83a74c774257c9dda2e910709117353de4b7816`; run2
+  `1081e5b4da892c0f7d32ef28469dad4903f74597040c94ccf09f834adee8b655`.
+- Manifest SHA-256: run1
+  `b80fc6e7916dd473b024b9b59c48ccef38d72c9ef296e1438bc267c861ae2569`; run2
+  `ea4962221e41fc3f378958ae646444c905f36f6692ff59dac54f581aa4c130e2`.
 - Window-file SHA-256 (identical across runs): mid-push
   `a66ad0301f3491099419c8e2bb0c749a81bef666bfbec4d0ace9a317f4e5199a`;
-  push-poke `2046795712c4a57a2d3d7c38c34cfa776f73f4399b4be2986cdc29df37b69666`;
+  push-poke `ab89f82e53d80216f3ee0ff63dc09df6c0afe2a76a2158bcfd8dfcf7aa673555`;
   sweeper `00b7029ae0991c18137e1c897a8d583da77a4cbea22f60894b29fa8d51af18b8`;
   unwarded `6895d98ad61aaf3fb2b790f8e9e75bbf584dcf3de987f9bf42f2d3806dee394b`;
   wave-reset `a38a886650a9fda1b3b409a7fb41a611450c87ac28c5c14d5ac314e3ac4e5c58`.
-- Archived runs (identical content inside each archive):
+- Archived clean runs:
   `data/phase2h_artifacts/phase2h-endpoint-scoring-run1.tar.gz` SHA-256
-  `18840fe52273c78fee429588e926b9d5f52f79e486291d852dc868fd26d33c62`;
+  `22aaab162f6122691f577bc95746a0b7b1da9834706766b746a29737a5e46380`;
   `data/phase2h_artifacts/phase2h-endpoint-scoring-run2.tar.gz` SHA-256
-  `8feec0903821517d689a90f9af8dd456f37f76fc978632869f3f2c64eefa2e61`.
+  `02b3e62030169c3c394b10ca3440ea1433bd270d2fe207f68ac1d7a6e165d817`.
 - Per-window candidate-table locks recorded in the aggregate: mid-push
   `7c044f18dae95ab106df9c0406d7d562fe1be1ce419aa622e267d2e174e7ff72`; push-poke
-  `8d1b33d5fcaafcc52f1520a29f079eb5b45912821f4fb2f7903b73d564dec644`; sweeper
+  `4f655580c9dd6843ce64a44676a7b6b8b5a2a64b3c061cb72c119f4e8fa109b6`; sweeper
   `450041aabaa26bd90403242556a7825819139ffda2d7329408f9c2f1b9a9c896`; unwarded
   `6d862626ad9f572477eab6287ca249c9abcaef3dd98e3bc7ba83c1b81066a6b2`; wave-reset
   `c56cc8ace72d697c9cf22b768201a0edbb69e985b33a50ddda58f2143bfd89cf`.
@@ -392,8 +400,8 @@ bytes.
 
 - Focused Phase 2H suite: `tests/test_phase2h_endpoint_scoring.py` and
   `tests/test_eval_phase2h_endpoint_scoring_cli.py` —
-  **45 tests + 16 subtests passed** (locally verified:
-  `45 passed, 16 subtests passed in 68.36s`) using
+  **46 tests + 16 subtests passed** after the taxonomy correction (locally
+  verified: `46 passed, 16 subtests passed in 54.87s`) using
   `./.venv/bin/python -m pytest tests/test_phase2h_endpoint_scoring.py tests/test_eval_phase2h_endpoint_scoring_cli.py -q`.
 - Coverage: dataset contract and benchmark tamper rejection, four-cell
   determinism (including a cross-process determinism test), fold and fit-scope
@@ -401,9 +409,10 @@ bytes.
   accounting), metrics and R@K/P@K with explicit denominators, overlap
   diagnostics, error taxonomy, strongest-features aggregation, hash-locked
   immutable artifact publishing, and CLI compare/publish behavior.
-- Independent reviewer: **APPROVE** (recorded review pass over the Phase 2H
-  implementation, artifact integrity, and closeout evidence).
-- Broad repository suite: **680 tests + 366 subtests passed** in 163.92s via
+- Fresh independent review after the parser-taxonomy correction: **APPROVE**.
+  The reviewer independently recomputed label, split, metric, overlap, and
+  artifact-integrity invariants and found no blocking issue.
+- Broad repository suite: **681 tests + 366 subtests passed** in 137.36s via
   `./.venv/bin/python -m pytest tests --ignore=tests/test_auth.py -q`.
 
 ## 13. Exactly one next justified intervention

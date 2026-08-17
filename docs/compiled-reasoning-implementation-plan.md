@@ -1435,7 +1435,8 @@ diagnosis remain preserved.
 
 ## Phase 2H: Discriminative Endpoint Scoring
 
-**Closed — weak ranking signal only.** Commit `65e7100` implements a fully
+**Closed — weak ranking signal only.** Commit `65e7100` implements the scorer;
+the final corrected clean experiment ran at commit `a754991`. It is a fully
 offline, deterministic candidate-level binary KEEP/DROP endpoint scorer over
 the frozen Phase 2F/2G five-case benchmark (16,624 candidates, 33 KEEP,
 16,591 DROP, 33/33 coverage) with grouped leave-one-window-out folds, fixed
