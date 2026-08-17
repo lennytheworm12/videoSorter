@@ -253,3 +253,33 @@ Do not begin Pass 2 or any later compiler pass without a new explicit goal.
 ```text
 SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
 ```
+
+## 9. Phase 2G endpoint-recovery ablation closed
+
+Phase 2G replaced source-text regeneration with compact candidate-ID selection
+and held the 33 reviewed endpoints fixed across Raw Bronze, Mechanical Silver,
+and Resolved Silver. The experiment is implemented at clean commit `64baf2b`.
+The final report is
+[docs/phase2g-endpoint-recovery-ablation.md](docs/phase2g-endpoint-recovery-ablation.md).
+
+Two clean 15-call runs completed against the official DeepSeek endpoint with
+`deepseek-v4-pro`, thinking disabled, and no provider failures. Deterministic
+coverage stayed 33/33. No condition passed. Across the two runs, endpoint
+recall ranged from 4/33 to 10/33, precision from 1.3% to 11.3%, reviewed
+reference-status accuracy was always 0/8, and broad wrong-candidate selection
+dominated. Mechanical and Resolved Silver produced no stable material lift.
+Every known selection remained exactly traceable to Bronze.
+
+The clean rerun reproduced the failed gate and diagnosis but not exact score or
+failure distributions; this negative reproducibility evidence is retained.
+Phase 2G is therefore closed as:
+
+```text
+TARGETED NEXT INTERVENTION
+DIAGNOSIS: MODEL-CAPABILITY BOTTLENECK
+```
+
+Exactly one next action is authorized: rerun the frozen candidate-ID benchmark
+with the same `deepseek-v4-pro` teacher and thinking enabled. Do not tune the
+prompt, candidate catalog, Silver fixture, reviewed endpoints, parser, ontology,
+or downstream graph stages before that intervention.

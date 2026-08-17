@@ -1407,6 +1407,26 @@ deterministic tests, keep live LLM tests opt-in, obtain independent review,
 fix findings, retest, then make one focused commit and push it to `main`.
 Never mix unrelated dirty-worktree changes into those commits.
 
+## Phase 2G: Semantic Endpoint Recovery Ablation
+
+**Closed — targeted next intervention.** Commit `64baf2b` replaces model text
+regeneration with compact deterministic candidate-ID selection and evaluates
+the locked 33-endpoint legacy benchmark under Raw Bronze, Mechanical Silver,
+and Resolved Silver. The full report is
+[phase2g-endpoint-recovery-ablation.md](phase2g-endpoint-recovery-ablation.md).
+
+Two clean runs retained 33/33 deterministic coverage but no condition passed.
+Endpoint recall ranged from 4/33 to 10/33, endpoint precision from 1.3% to
+11.3%, and reviewed reference-status accuracy remained 0/8. Mechanical and
+Resolved Silver did not produce a stable material improvement. Exact recovered
+endpoints were role-compatible, but broad wrong-candidate selection dominated.
+
+Decision: `MODEL-CAPABILITY BOTTLENECK` for the tested non-thinking model. The
+candidate-ID interface, gold, Silver fixture, parser, and grounding rules are
+frozen. Exactly one next intervention is justified: evaluate the same matrix
+with `deepseek-v4-pro` thinking enabled. Pass 2, typed semantic edges, ontology
+tuning, and Phase 3 remain on hold.
+
 ## Fresh Session Bootstrap
 
 ```text
