@@ -1082,7 +1082,8 @@ source/window/input hashes, retain raw outputs and provider/config identity, and
 reject inner/outer reseal attacks.
 
 **Milestone 11 — reviewed fixture and preregistration complete; live run
-pending.** The five Phase 2E failures are reconstructed from the verified
+blocked by provider connectivity, not semantically evaluated.** The five Phase
+2E failures are reconstructed from the verified
 artifact and primary bronze database. The current fixture contains 33 mentions,
 24 edges, 10 qualifiers, 8 explicit unresolved-reference judgments, and 75
 one-fact semantic-checksum questions. Independent gold review corrected a
@@ -1090,6 +1091,28 @@ polarity-reversing sweeper annotation, an invented hook relation, lost
 conjunction, missing actor/reference facts, and brittle types before any model
 output was observed. The strict gate and strong-model configuration are locked
 above.
+
+The first clean committed attempt ran at revision
+`a0feefd50013722c943976a9131eb545f364178c` on
+`2026-08-17T00:17:39.171617Z`. All 30 mention-partition calls failed before
+returning model bytes as `MentionProviderError:URLError`; a separate read-only
+probe localized this to DNS (`gaierror: Temporary failure in name resolution`)
+for the official DeepSeek endpoint in the execution environment. The artifact
+therefore is **provider-failure evidence, not a strong-model quality result**.
+Deterministic mention coverage remained 33/33 and qualifier-cue coverage 10/10;
+mention selection, endpoint-reached pair enumeration, and all downstream
+semantic checks were not reached. Every case's chronological first loss is
+`PROVIDER_FAILURE`.
+
+The reconstructible run is retained as
+`data/phase2f_artifacts/phase2f-legacy-pro-run1.tar.gz`, deterministic archive
+SHA-256 `e6c2122a2b91c2b70d9775f2c108c26c82cdfff2f5cea9b3c5f60dbbc4146330`.
+Its aggregate inner/file hashes are
+`80be66cc48b9f2e7685a3da2effa3e190cc1cd8cae5aa9c392a6ba1e693c782a` /
+`68e85a6d9b69265ffe8793b27f0c8a44235857be4b8134a1670c3d48c2d4fe1c`.
+The strict gate correctly failed and the CLI returned status 2. Do not count
+this attempt as the once-only semantic reference run; retry the unchanged
+committed configuration only when the official provider is reachable.
 
 **Milestone 12 — representative pool complete; reviewed subsets pending.** A
 deterministic, source-exact pool of 300 windows from 300 distinct coaching

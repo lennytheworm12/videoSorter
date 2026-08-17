@@ -191,6 +191,13 @@ semantic-checksum questions. It is locked at content SHA-256
 its exact-source manifest is
 `cf86dde955f4cbeee091f38aab8293256b0c48f809c969384185a330ee511241`.
 The first strong-model configuration and strict five-case thresholds are
-preregistered in the implementation plan. No provider call has occurred yet,
-so semantic recoverability and the final Phase 2F recommendation remain
-undetermined at this checkpoint.
+preregistered in the implementation plan. A clean committed attempt at
+`a0feefd50013722c943976a9131eb545f364178c` reached the provider boundary, but
+all 30 mention calls failed as `MentionProviderError:URLError` because the
+execution environment could not resolve `api.deepseek.com`. It returned no
+model bytes and is not a semantic-quality run. The complete reconstructible
+negative artifact is retained at
+`data/phase2f_artifacts/phase2f-legacy-pro-run1.tar.gz` (SHA-256
+`e6c2122a2b91c2b70d9775f2c108c26c82cdfff2f5cea9b3c5f60dbbc4146330`).
+Semantic recoverability and the final Phase 2F recommendation remain
+undetermined until the unchanged strong-reference gate can reach the provider.
