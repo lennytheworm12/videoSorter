@@ -165,3 +165,32 @@ SEMANTIC IR VIABLE — READY TO DESIGN PASS 2
 SEMANTIC IR VIABLE WITH SPECIFIC LIMITATIONS — REPAIR BEFORE PASS 2
 SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
 ```
+
+## 8. Current Phase 2F checkpoint (pre-live reference gate)
+
+The clean-room Pass 0/Pass 1 implementation now lives in separate
+`pipeline/semantic_*` modules and covers typed nodes/edges, deterministic
+mentions, qualifiers, coreference, pairwise relations, graph orchestration,
+proof-carrying run artifacts, semantic-checksum evaluation, and isolated pool
+construction. Independent adversarial reviews have passed the source, schema,
+mention, qualifier, coreference, edge, compiler, artifact, evaluator, and pool
+boundaries after their findings were repaired. The current non-browser suite
+passes 574 tests and 249 subtests; `tests/test_auth.py` remains an unrelated
+Chromium import-time environment problem.
+
+The representative pool contains 300 exact windows from 300 distinct videos,
+covers every declared phenomenon at least eight times, and has content SHA-256
+`9b89c6d6c6c8070eba48d6db47254e156c1b2591c1480a60f98a1e8d789491c2`.
+External reproduction against `videos.db` and the Phase 2B/2D exclusions
+matched exactly.
+
+The repaired legacy benchmark contains 33 reviewed mentions, 24 reviewed
+edges, 10 grounded qualifiers, 8 unresolved-reference judgments, and 75
+semantic-checksum questions. It is locked at content SHA-256
+`a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd`;
+its exact-source manifest is
+`cf86dde955f4cbeee091f38aab8293256b0c48f809c969384185a330ee511241`.
+The first strong-model configuration and strict five-case thresholds are
+preregistered in the implementation plan. No provider call has occurred yet,
+so semantic recoverability and the final Phase 2F recommendation remain
+undetermined at this checkpoint.

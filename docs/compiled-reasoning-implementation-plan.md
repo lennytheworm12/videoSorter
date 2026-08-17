@@ -927,6 +927,180 @@ ontology normalization **0**. Initial semantic thresholds are DEV checksum
 **0.80**. Any revised exact threshold must be justified from DEV evidence and
 committed before frozen labels/results are inspected.
 
+##### Legacy five-case strong-reference gate — preregistered before first live run
+
+The first live Phase 2F decision uses the reviewed five-case regression fixture
+`data/semantic_ir_legacy_failure_v1.json`, locked at content SHA-256
+`a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd`.
+Its exact-source manifest is locked at
+`cf86dde955f4cbeee091f38aab8293256b0c48f809c969384185a330ee511241`.
+The manifest is reproducible from the primary `videos.db`, the immutable Phase
+2D development fixture, and the valid Phase 2E artifact; the latter retains
+the verified inner/file hashes recorded above. The five cases are development
+regressions, not the later frozen representation set.
+
+The reference compiler configuration is DeepSeek `deepseek-v4-pro` through the
+existing provider abstraction and official `https://api.deepseek.com` endpoint,
+with provider thinking explicitly `disabled`,
+temperature `0`, mention partitions of 600 candidates, and retained output
+limits of 2048 mention / 512 qualifier / 256 coreference / 256 edge tokens.
+Coreference is limited to two Pass 0 segments; edge pairs are limited to 600
+characters and two Pass 0 segments. Entity hints come from the hash-locked
+representative pool's deterministic champion catalog. Ability/resource hints
+are the general source vocabulary `Q`, `W`, `E`, `R`, `ult`, `ultimate`,
+`Flash`, `Teleport`, `Ignite`, `Exhaust`, `Ward`, and `Sweeper`. The runner must
+verify a clean, committed worktree before the first provider call so the
+retained revision binds the executed code. These hints do not normalize or
+type model output.
+
+The gate is intentionally strict because every reviewed fact was selected as
+necessary to reconstruct the five mechanisms:
+
+- accepted node source anchoring and edge provenance traceability: 5/5 cases;
+- fabricated offsets: zero; hidden strategic/domain normalization: zero;
+- deterministic mention candidate coverage, qualifier-cue coverage, and
+  endpoint-reached edge-pair coverage: 100%;
+- mention selection/type, reviewed qualifier, reviewed reference, and reviewed
+  edge recall: 100%;
+- semantic checksum: 100% in every case and in aggregate;
+- provider failures, model parse failures, and assembly failures: zero.
+
+The fixture is deliberately non-exhaustive, so unscored extra nodes/edges are
+reported but cannot be called unsupported invention. The broader exhaustive
+DEV/FROZEN benchmark owns invention-rate acceptance. A failed legacy run may
+drive a general Pass 1 repair and another development run, but Phase 2F must
+not advance to broad annotation/evaluation while any of the five reviewed
+mechanisms remains semantically incomplete. Thresholds above do not change
+after observing live output.
+
+#### Phase 2F milestone record
+
+**Milestone 0 — complete (`cacb15d`).** Hypothesis: the valid clause-first v2
+artifact can close Phase 2E without erasing earlier negative evidence. The
+handoff and this plan now retain the official 0/5 parse-valid/semantic result,
+the diagnostic-only 2/5 reviewed-mechanism containment (exact/minimal <= 1/5),
+the verified inner/file hashes, and the earlier v1/provider-failure artifacts.
+Independent artifact review regenerated all seven windows and five catalogs at
+`1b3063e` and confirmed the first loss as deterministic catalog 5/5 -> Flash
+clause selection failure -> unusable proposition extraction. No unresolved
+Phase 2E quality run remains, so the clean-room boundary is justified.
+
+**Milestone 1 — complete.** Hypothesis: stable source/provider/test utilities
+can be reused without inheriting proposition assumptions. Repository mapping
+kept exact source loading, offset handling, provider injection, failure
+retention, hashing, and test utilities; it explicitly rejected
+`SourceSemanticFrame`, `GroundedProposition`, fixed slot scoring, normalization,
+and proposition ledgers as Pass 1 IR. New work is isolated in
+`pipeline/semantic_source.py`, `pipeline/semantic_ir.py`, and later sibling
+modules. Production retrieval and persistence remain unchanged.
+
+**Milestone 2 — complete (`b3c9dc6`).** Hypothesis: a general graph can express
+bronze meaning without a mandatory proposition tuple. The typed schema retains
+the nine source node families, the preregistered general edge vocabulary,
+exact local/absolute spans, source context, confidence, ambiguity, typed
+field-specific qualifier cues, unresolved exact referent candidates, and
+model/config digests. Graph validation binds the supported Pass 0 version and
+provenance-derived window ID, enforces directed endpoint signatures, and
+requires one exact evidence span jointly covering both endpoints. Tests also
+cover multiple effects, time/condition expressiveness, strict JSON, prohibited
+domain units, malformed offsets, and artifact round trips. Independent review
+found and drove fixes for arbitrary absolute offsets, ungrounded qualifiers,
+recursive/entity-only coreference, irrelevant edge proof, and inconsistent
+Pass 0 identity; its final verdict found no schema blocker. Raw failed attempts
+and independently recomputable model digests remain assigned to the later run
+artifact boundary, not silently claimed by the graph alone.
+
+**Milestone 3 — complete (`cf32d40`).** Hypothesis: Pass 0 can be entirely
+deterministic while retaining exact contextual bronze truth. The implementation
+uses provenance-bound window IDs, exact source/local offsets, versioned
+sentence/discourse hints, bounded 32-word punctuation-poor fallback segments,
+canonical context/provenance hashes, and exact deterministic regeneration in
+validation. Twenty focused tests cover reconstruction, malformed inputs,
+timestamps, source prefixes, sparse punctuation, closing delimiters, leading
+whitespace, multiple windows, runtime type attacks, algorithm/config stability,
+and contextual identity. Independent review plus 1,000 randomized windows
+found no remaining source-truth or stability defect after fixes. There is no
+model or development evaluation in Pass 0; first loss is therefore not in this
+boundary, and mention-catalog work remains justified.
+
+**Milestone 4 — complete (`614e110`, with later catalog-version hardening).**
+Hypothesis: a broad source-local catalog can guarantee
+reviewed mention availability before model selection is judged. The catalog
+uses versioned, span-hashed IDs and exhaustive within-segment spans up to the
+Pass 0 bound, including repeated, overlapping, Unicode, percent, possessive,
+alias, negation, and temporal forms. Required coverage buckets are emitted even
+at zero denominator and require a validated window. Partitioned selection now
+retains complete catalogs, raw/parsed decisions, semantic abstentions,
+failures, and the effective request; exact node assembly revalidates every
+partition and never trusts model offsets. Independent review drove fixes for
+hidden free-form qualifiers, cross-window candidates, swallowed partition
+abstentions, contradictory assembly provenance, incomplete request identity,
+and optional metric validation. Pass 0 segments remain provenance/context
+hints rather than semantic-loss boundaries: the current catalog also includes
+bounded cross-segment spans, with every intersecting segment retained. The
+reviewed legacy fixture has deterministic mention coverage 33/33. The known
+risk is quadratic overlapping-candidate volume; the live runner reports the
+complete catalogs and uses larger, fixed strong-model partitions without
+discarding candidates. Catalog size, redundant selections, and cost remain
+explicit DEV measurements rather than hidden success assumptions.
+
+**Milestones 5–7 — implementation complete; live quality pending.** Constrained
+mention selection retains every partition and effective request, while node
+assembly resolves only offered IDs to deterministic spans. Directed edge-pair
+generation retains full discourse evidence, configuration-bound distance
+pruning, compatible general-semantic signatures, and a complete catalog.
+Pairwise classification supports abstention/no-relation and rejects unsupported
+or contradictory labels. Independent reviews drove repairs for swallowed
+partition abstentions, contradictory raw/parsed selections, cue loss, forged
+pair fields, incomplete catalogs, false request provenance, coreference guesses,
+and failure taxonomy. The repaired legacy fixture has endpoint/type-reachable
+candidate edge coverage 24/24; strong-model selection/classification quality is
+still unmeasured until the preregistered live gate.
+
+**Milestones 8–9 — implementation complete and independently reviewed.** Typed
+qualifiers preserve polarity, modality, temporal scope, conditionality,
+comparison, uncertainty, and focus/restriction using exact cue spans. Dedicated
+coreference preserves zero-target unresolved references, ambiguity candidates,
+and proof-carrying `REFERS_TO` only after supported resolution. Graph assembly
+requires source-local nodes, exact evidence, resolved-reference edges, retained
+decision provenance, and relational condition/temporal structure rather than
+flattened strings. The orchestration run is reconstructively sealed across
+mentions, qualifiers, coreference, edges, failures, and safe partial outcomes.
+Independent adversarial reviews found and closed application-result loss,
+provider/model conflation, mutable configuration, suffix smuggling, incomplete
+decision prefixes, invented reference resolution, and unbound terminal failure
+codes.
+
+**Milestone 10 — complete and independently reviewed.** The evaluator scores
+candidate coverage separately from selection, type, edge-pair enumeration,
+edge classification, qualifiers, coreference, provenance, unsupported
+invention, dimensions, and semantic checksum. Gold facts map one-to-one to
+questions; duplicate/intersecting gold, split overlap, double-credited edges,
+zero-denominator hiding, failures excluded from metrics, and wrong first-loss
+ordering fail closed. Run artifacts reconstruct typed compiler state, bind exact
+source/window/input hashes, retain raw outputs and provider/config identity, and
+reject inner/outer reseal attacks.
+
+**Milestone 11 — reviewed fixture and preregistration complete; live run
+pending.** The five Phase 2E failures are reconstructed from the verified
+artifact and primary bronze database. The current fixture contains 33 mentions,
+24 edges, 10 qualifiers, 8 explicit unresolved-reference judgments, and 75
+one-fact semantic-checksum questions. Independent gold review corrected a
+polarity-reversing sweeper annotation, an invented hook relation, lost
+conjunction, missing actor/reference facts, and brittle types before any model
+output was observed. The strict gate and strong-model configuration are locked
+above.
+
+**Milestone 12 — representative pool complete; reviewed subsets pending.** A
+deterministic, source-exact pool of 300 windows from 300 distinct coaching
+videos covers all 25 declared routing phenomena at least eight times, with zero
+Phase 2B/2D source overlap. Its content hash is
+`9b89c6d6c6c8070eba48d6db47254e156c1b2591c1480a60f98a1e8d789491c2`.
+Independent external verification rebuilt exact equality from `videos.db` and
+the exclusion fixtures and rejected source, policy, phenomenon, hash, and
+exclusion tampering. Phenomenon tags are deterministic routing aids, not gold.
+Manual 30–50-window DEV/FROZEN annotation begins only after the five-case gate.
+
 The final Phase 2F recommendation must be exactly one of:
 
 ```text

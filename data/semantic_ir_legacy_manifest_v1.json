@@ -1,0 +1,78 @@
+{
+  "content_sha256": "cf86dde955f4cbeee091f38aab8293256b0c48f809c969384185a330ee511241",
+  "input_hashes": {
+    "database_sha256": "e91e879d77bf560b802e434f3ac06015d88c523d5e011fc1cbfe02d243394fca",
+    "phase2d_fixture_sha256": "d5d5d54c817edd3ff7501f16d4ffb46bbf5f9ae0a861d70e47e02f8f81438a64",
+    "phase2e_artifact_file_sha256": "02725fb163ef752c98f51a070652ef5418a5b0d4916363d1c61c3071e957c808",
+    "phase2e_artifact_inner_sha256": "04c185aaf324251b4733e76c87b2c71ea3946497f79a8956f268e88f28e2e17b"
+  },
+  "purpose": "Exact bronze source windows for the five eligible Phase 2E architecture failures.",
+  "schema_version": "phase2f-legacy-five-source-manifest-v1",
+  "windows": [
+    {
+      "case_id": "wave-reset-after-kill",
+      "phenomena": [
+        "legacy_failure_regression"
+      ],
+      "source_id": "transcript:3nKrtwpZ6sQ",
+      "source_text": "already good right lane you understand so yeah your egg knife is just super late and also in this case um like it's just half of it only went off kind of bad right here you might have to flash in front of the hook he's just gonna tap it I guess yeah yeah nice you should just W the whole wave you should just W I don't know yeah nice yeah sometimes when you kill them here um like it won't happen here because the way is here but sometimes when you kill him here you should just run into Tower and just die to pull the wave up again because sometimes this wave is like here you know",
+      "source_text_sha256": "807c44d2446d68048d7833c591199cebd527f37ad7ee66a144a3e86cdd901ea4",
+      "upstream_content_sha256": "a96164cda6c102f36b0c05f0ee386f43ca362a2fc12d4e4b792069079a367266",
+      "upstream_end": 10992,
+      "upstream_source_id": "3nKrtwpZ6sQ",
+      "upstream_start": 10410
+    },
+    {
+      "case_id": "push-poke-wave-crash",
+      "phenomena": [
+        "legacy_failure_regression"
+      ],
+      "source_id": "transcript:uAdWuLPYn-0",
+      "source_text": "because let's say now Caitlyn didn't die right let's say Caitlyn is alive right now and Caitlyn is like here under Tower with you wave crashes and then you guys end up on the bounce then you have to hope Pike isn't chasing you here here here whatever right yeah we're [ __ ] anyway yes so I really dislike that like when you're playing Push and poke lanes and you crash like this you really want to make sure you keep poking and pushing and hitting creeps unless like if you're like hard winning right then you could slow push like I said cuz they can't hit creeps but here you guys don't have like enough damage to like",
+      "source_text_sha256": "139ca186d99043fdf9e3246d01e747c8f778fb6642821ae3e5a245cf351979ef",
+      "upstream_content_sha256": "4bdcb6aaae38e816401fd5c591e1bfbc65d854419c1db588b7f0fca716439c1f",
+      "upstream_end": 15216,
+      "upstream_source_id": "uAdWuLPYn-0",
+      "upstream_start": 14596
+    },
+    {
+      "case_id": "sweeper-limits-mid-play",
+      "phenomena": [
+        "legacy_failure_regression"
+      ],
+      "source_id": "transcript:uAdWuLPYn-0",
+      "source_text": "should be happening here is we should want to play around Thea who is ulti but then you happen to get hooked so you portal away now portaling to both side is a bit of a mistake I think you should portal here obviously and I think also the sweeper should be used around mid again we want to remove their Vision on Mid and try to remove their ability to play on Mid and your WS should be around mid and if they start to put Saia on Mid which maybe Diana can't like go on right let's say they end up swapping right then Diana should go to side and then we do the same thing but on",
+      "source_text_sha256": "a25673edf9591c26d8bed1bd86437334ea2ba79dc0c074e1fefc19e29aa05292",
+      "upstream_content_sha256": "4bdcb6aaae38e816401fd5c591e1bfbc65d854419c1db588b7f0fca716439c1f",
+      "upstream_end": 46610,
+      "upstream_source_id": "uAdWuLPYn-0",
+      "upstream_start": 46033
+    },
+    {
+      "case_id": "mid-push-prevents-side-collapse",
+      "phenomena": [
+        "legacy_failure_regression"
+      ],
+      "source_id": "transcript:z5IXabhMLzQ",
+      "source_text": "first on side and get mid push so you guys can overload on side if if you know like you said Gwen will outscale renek on side okay but Gwen cannot just stand here and fight Renekton if you guys are here right yeah yeah and enemy team cannot punish you guys going four for Gwen if you guys got deep mid push and the counter play when enemies trying to get deep mid push versus you is to engage on them but they can't engage on sa and a fresh Lantern right yes so that's kind of how you guys have to play this game because if you're not stepping up on Mid waves then yeah you you guys",
+      "source_text_sha256": "bee79d620a3469f430cb75733a16cc15e5dab53dd03b776e10ce7d284d229255",
+      "upstream_content_sha256": "247e6f513026df630ae1036be96ce5a89a3faee27314f1cce236b74e944c3f2d",
+      "upstream_end": 23063,
+      "upstream_source_id": "z5IXabhMLzQ",
+      "upstream_start": 22481
+    },
+    {
+      "case_id": "unwarded-bush-hook-risk",
+      "phenomena": [
+        "legacy_failure_regression"
+      ],
+      "source_id": "transcript:uAdWuLPYn-0",
+      "source_text": "you here like you have no control over these bushes you know like if you watch here you guys walk like this you don't walk like this because you guys hard lose level one you know like the only way you guys can win level one is if you get hooked and land double Q on them make sense but that's not guaranteed give it yeah so you do this which is fine and you just play for push which is fine think I Ward middle Bush while D this I mean you can if you are able to Ward without stepping into hook you know yeah like that would be fine to do around this point here you know",
+      "source_text_sha256": "321388fe8c46283e784aa06dbdbcb821e70c8cb8543c2cf68d531670cb87737c",
+      "upstream_content_sha256": "4bdcb6aaae38e816401fd5c591e1bfbc65d854419c1db588b7f0fca716439c1f",
+      "upstream_end": 5366,
+      "upstream_source_id": "uAdWuLPYn-0",
+      "upstream_start": 4796
+    }
+  ]
+}
