@@ -122,7 +122,6 @@ ERROR_PRECEDENCE = (
 _WORD = re.compile(r"[^\W_][\w'’%-]*", re.UNICODE)
 _PUNCTUATION_AFTER = frozenset(".!?;:)]\"'’")
 _PUNCTUATION_BEFORE = frozenset(".!?;:,)]\"'’")
-_PARSER_ARTIFACT = re.compile(r"[\[\]()\\]|\r")
 
 # Bounded lexical cue sets used by feature set B.  The pronoun, ability-alias,
 # action, event, time, condition, negation, and modal lists are the exact
@@ -1503,8 +1502,9 @@ def classify_candidate_error(
         return "GOLD_RANKED_LOW"
     lowered = set(_lower_tokens(row.text))
     start, end = row.start, row.end
-    if _PARSER_ARTIFACT.search(row.text):
-        return "PARSER_FEATURE_ERROR"
+    # ``PARSER_FEATURE_ERROR`` remains in the taxonomy for a future Feature
+    # Set C integration, but Phase 2H runs no parser and carries no parser
+    # evidence state on CandidateRow, so it is never assigned here.
     # Inclusive-boundary span containment: LONGER_SPAN when the gold span is
     # fully contained by the candidate with at least one boundary strictly
     # extended; SHORTER_FRAGMENT symmetrically when the candidate is fully

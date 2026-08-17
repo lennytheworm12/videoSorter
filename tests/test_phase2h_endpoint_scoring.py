@@ -817,10 +817,16 @@ class Phase2HErrorTaxonomyTests(unittest.TestCase):
                 ),
             ),
             (
-                "PARSER_FEATURE_ERROR",
-                self._row(index=9, start=70, end=77, text="foo[bar]"),
+                "GENERIC_ENTITY_DISTRACTOR",
+                self._row(
+                    index=9, start=70, end=77, text="foo[bar]",
+                    hints=("ENTITY",),
+                ),
             ),
         ]
+        # PARSER_FEATURE_ERROR stays in the required taxonomy but Phase 2H
+        # runs no parser and CandidateRow carries no parser evidence state,
+        # so it is intentionally unreachable (never assigned) in this phase.
         for expected, row in cases:
             with self.subTest(expected=expected):
                 code = classify_candidate_error(
@@ -933,6 +939,55 @@ class Phase2HErrorTaxonomyTests(unittest.TestCase):
         )
         self.assertEqual(code, "OTHER")
 
+    def test_bracket_source_text_falls_through_to_genuine_categories(self):
+        """Phase 2H has no parser evidence state, so bracket/backslash/CR
+        source text must not be classified as PARSER_FEATURE_ERROR."""
+        gold_spans = [(10, 14)]
+        overlapping = self._row(
+            index=1, start=5, end=20, text="foo[bar]", hints=("ENTITY",),
+        )
+        plain = self._row(
+            index=2, start=70, end=77, text="foo(bar)",
+            hints=("ENTITY",),
+        )
+        fallback = self._row(
+            index=3, start=80, end=94, text="some [bracket] text",
+            hints=("TIME",),
+        )
+        self.assertEqual(
+            classify_candidate_error(
+                overlapping,
+                window_gold_spans=gold_spans,
+                window_rows=(overlapping,),
+                predicted_label=KEEP,
+                rank=1,
+                window_text_len=100,
+            ),
+            "OVERLAPPING_LONGER_SPAN",
+        )
+        self.assertEqual(
+            classify_candidate_error(
+                plain,
+                window_gold_spans=gold_spans,
+                window_rows=(plain,),
+                predicted_label=KEEP,
+                rank=1,
+                window_text_len=100,
+            ),
+            "GENERIC_ENTITY_DISTRACTOR",
+        )
+        self.assertEqual(
+            classify_candidate_error(
+                fallback,
+                window_gold_spans=gold_spans,
+                window_rows=(fallback,),
+                predicted_label=KEEP,
+                rank=1,
+                window_text_len=100,
+            ),
+            "OTHER",
+        )
+
     def test_overlap_precedence_collisions(self):
         gold_spans = [(10, 14)]
         containing_pronoun = self._row(
@@ -947,7 +1002,7 @@ class Phase2HErrorTaxonomyTests(unittest.TestCase):
         cases = [
             ("OVERLAPPING_LONGER_SPAN", containing_pronoun),
             ("OVERLAPPING_SHORTER_FRAGMENT", fragment_filler),
-            ("PARSER_FEATURE_ERROR", artifact_overlap),
+            ("OVERLAPPING_LONGER_SPAN", artifact_overlap),
         ]
         for expected, row in cases:
             with self.subTest(expected=expected):

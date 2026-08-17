@@ -1427,6 +1427,43 @@ frozen. Exactly one next intervention is justified: evaluate the same matrix
 with `deepseek-v4-pro` thinking enabled. Pass 2, typed semantic edges, ontology
 tuning, and Phase 3 remain on hold.
 
+**Superseded (2026-08-17).** The Phase 2G thinking-enabled generative rerun
+was not executed as the next step. Phase 2H implemented a deterministic
+discriminative endpoint-scoring intervention instead and is now closed as
+`WEAK RANKING SIGNAL ONLY`; see Phase 2H below. Phase 2G history and its
+diagnosis remain preserved.
+
+## Phase 2H: Discriminative Endpoint Scoring
+
+**Closed — weak ranking signal only.** Commit `65e7100` implements a fully
+offline, deterministic candidate-level binary KEEP/DROP endpoint scorer over
+the frozen Phase 2F/2G five-case benchmark (16,624 candidates, 33 KEEP,
+16,591 DROP, 33/33 coverage) with grouped leave-one-window-out folds, fixed
+threshold 0.5, and four cells: class-balanced L2 logistic and conservative
+LightGBM on Feature Set A (geometry/provenance) and Feature Set B (A plus
+bounded lexical/cue features). No LLM/API calls, no syntax/UD work, no roles,
+no edges, and no graph construction. The full report is
+[phase2h-discriminative-endpoint-scoring.md](phase2h-discriminative-endpoint-scoring.md).
+
+The ranking signal is real but weak and inconsistent. Best pooled results:
+logistic B precision 8.772%, recall 30.303%, AP 0.081275, AUC 0.939701,
+R@10 18.182%, median gold rank 92; logistic A precision 1.363%, recall
+78.788%, AP 0.020927, AUC 0.929158, R@10 0; LightGBM B precision 2.757%,
+recall 33.333%, AP 0.050952, AUC 0.932765, R@10 12.121%, median gold rank
+157; LightGBM A precision 2.513%, recall 30.303%, AP 0.026943, AUC 0.861030.
+Only 4/33 gold endpoints are selected by all four cells, and every true
+positive of the B and LightGBM cells is inside logistic A's 26-hit recall set.
+LightGBM did not establish nonlinear superiority.
+
+Decision: `WEAK RANKING SIGNAL ONLY`. Gate 1 failed; Gate 2 was not triggered.
+Exactly one next intervention is justified: a bounded Feature Set C
+UD/syntactic ablation with the same frozen candidate universe, labels, folds,
+threshold, two model families, and metrics, retaining A/B as frozen
+comparators; stop if parser integration becomes substantial.
+Data expansion is not justified. The Phase 2G thinking-enabled generative
+rerun recommendation is superseded. Pass 2, typed semantic edges, ontology
+tuning, and Phase 3 remain on hold.
+
 ## Fresh Session Bootstrap
 
 ```text

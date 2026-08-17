@@ -1,4 +1,13 @@
-# Handoff: Phase 2E and Phase 2F Closed at Their Architecture Gates
+# Handoff: Phase 2E/2F/2G Closed at Their Architecture Gates; Phase 2H Closed — WEAK RANKING SIGNAL ONLY
+
+**Current checkpoint:** Phase 2H (discriminative semantic endpoint scoring,
+commit `65e7100`) is closed as `WEAK RANKING SIGNAL ONLY`. Gate 1 failed and
+Gate 2 was not triggered. Exactly one next intervention is justified: a bounded
+Feature Set C UD/syntactic ablation on the same frozen candidate universe,
+labels, folds, threshold, models, and metrics, stopping if parser integration
+becomes substantial. The two existing model families remain fixed and A/B are
+retained as comparators. The Phase 2G thinking-enabled generative rerun
+recommendation is superseded. See section 10.
 
 ## 1. Architectural decision
 
@@ -283,3 +292,54 @@ Exactly one next action is authorized: rerun the frozen candidate-ID benchmark
 with the same `deepseek-v4-pro` teacher and thinking enabled. Do not tune the
 prompt, candidate catalog, Silver fixture, reviewed endpoints, parser, ontology,
 or downstream graph stages before that intervention.
+
+## 10. Phase 2H discriminative endpoint scoring closed
+
+Phase 2H (commit `65e7100`) replaced generative recovery with a fully offline,
+deterministic candidate-level binary KEEP/DROP endpoint scorer over the exact
+frozen Phase 2F/2G candidate universe: 5-window grouped leave-one-window-out,
+16,624 candidates, 33 KEEP, 16,591 DROP, 33/33 coverage. Fixed threshold 0.5;
+class-balanced L2 logistic and conservative LightGBM on Feature Set A
+(geometry/provenance) and Feature Set B (A plus bounded lexical/cue features).
+No generative calls, no syntax/UD work, no roles, no edges, and no graph work.
+The final report is
+[docs/phase2h-discriminative-endpoint-scoring.md](docs/phase2h-discriminative-endpoint-scoring.md).
+
+Final status:
+
+```text
+WEAK RANKING SIGNAL ONLY
+```
+
+Gate 1 failed; Gate 2 was not triggered. The signal is real but weak and
+inconsistent: logistic B reaches the best pooled ranking (P 8.772%, R 30.303%,
+AP 0.081275, AUC 0.939701, R@10 18.182%, median gold rank 92); logistic A
+reaches 78.788% recall only by flooding 1,907 selections at 1.363% precision;
+LightGBM B reaches P 2.757%, R 33.333%, AP 0.050952, AUC 0.932765, R@10
+12.121%, median gold rank 157; LightGBM A reaches P 2.513%, R 30.303%, AP
+0.026943, AUC 0.861030. Only 4/33 gold endpoints are selected by all four
+cells, 7/33 by none, and every B/LightGBM true positive lies inside logistic
+A's 26-hit recall set. LightGBM did not establish nonlinear superiority.
+
+Reproducibility: two clean runs at `65e7100` (`repository_dirty: false`)
+produce identical dataset, folds, metrics, feature findings, and error
+taxonomies; definition SHA-256
+`75dfaca522195ccd953825317c72e9780781c6c2b45b19f2655638d544c4a459`; benchmark
+content SHA-256
+`a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd`. Archives:
+`data/phase2h_artifacts/phase2h-endpoint-scoring-run1.tar.gz` (SHA-256
+`18840fe52273c78fee429588e926b9d5f52f79e486291d852dc868fd26d33c62`) and
+`run2.tar.gz` (SHA-256
+`8feec0903821517d689a90f9af8dd456f37f76fc978632869f3f2c64eefa2e61`).
+
+Testing/review: focused Phase 2H suite passes 45 tests + 16 subtests;
+independent reviewer APPROVE; the broad non-auth suite passes 680 tests + 366
+subtests.
+
+Exactly one next intervention is justified: a bounded Feature Set C
+UD/syntactic ablation with the same frozen candidate universe, labels, folds,
+threshold, two model families, and metrics, retaining A/B as frozen
+comparators and stopping if parser integration becomes substantial. Do not
+expand the data or run generative interventions now. The
+Phase 2G thinking-enabled generative rerun recommendation is superseded by
+this result; Phase 2G history and its diagnosis remain preserved.
