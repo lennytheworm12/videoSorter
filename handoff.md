@@ -345,3 +345,61 @@ comparators and stopping if parser integration becomes substantial. Do not
 expand the data or run generative interventions now. The
 Phase 2G thinking-enabled generative rerun recommendation is superseded by
 this result; Phase 2G history and its diagnosis remain preserved.
+
+## 11. Phase 2I UD / syntactic feature ablation closed
+
+Phase 2I is implemented at clean commit `9a88c3a`. It added only Feature Set C:
+the frozen Phase 2H geometry + lexical matrix plus deterministic Stanza 1.14.0
+English EWT UD/syntactic evidence. Bronze text, all 16,624 candidate rows, 33
+KEEP labels, 33/33 endpoint coverage, five grouped folds, threshold 0.5, seed,
+model configurations, and the archived B predictions remained unchanged. No
+generative model, candidate-bound change, SRL, role model, semantic edge, graph,
+ontology, or Phase 3 work was performed. The final report is
+[docs/phase2i-ud-syntactic-feature-ablation.md](docs/phase2i-ud-syntactic-feature-ablation.md).
+
+Final status:
+
+```text
+SYNTACTIC SIGNAL FOUND
+```
+
+Logistic C regressed relative to Logistic B: P 5.882%, R 18.182%, F1 0.08889,
+AP 0.049788, AUC 0.929188, R@10 4/33, median rank 89, and 102 selections.
+LightGBM C supplied the positive evidence: versus LightGBM B, precision rose
+from 2.757% to 7.692%, recall from 33.333% to 36.364%, F1 from 0.05093 to
+0.12698, AUC from 0.932765 to 0.950458, median gold rank improved from 157 to
+96, mean rank from 226.24 to 170.09, and selections fell from 399 to 156. AP
+fell from 0.050952 to 0.041251 and R@10 remained 4/33, so top-of-list ranking
+is still unstable.
+
+The LightGBM gains were distributed rather than isolated: precision, F1, AUC,
+selection efficiency, and mean rank improved in all five held-out windows.
+Syntax accounted for 31.5%–83.1% of gain by fold and reduced generic action,
+generic entity, filler, cue-prior, and overlap false positives. Five of the
+seven universally missed Phase 2H endpoints moved upward but none crossed the
+fixed threshold. Parser projection produced 597 EXACT and 16,027
+TOKEN_ALIGNED candidates, with no partial, unaligned, ambiguous-status, or
+objective parser/alignment errors.
+
+The signal is a five-window proof, not a production model decision. Severe
+train/held-out AP gaps and 132–187 held-out syntax OOV values per fold remain.
+A fresh independent post-fix review returned `ACCEPT`. The Phase 2I syntax and
+CLI suite passed 74 tests; the endpoint/artifact suite passed 49 tests and 8
+subtests after two corrected expectation checks passed 2 tests and 5 subtests;
+the frozen Phase 2H regression passed 46 tests and 16 subtests; and six new
+adversarial provenance/JSON/Git/manifest checks passed.
+
+Two clean official runs matched on deterministic inputs, parser tables,
+candidate scores/ranks, metrics, deltas, diagnostics, importances, and content
+hashes. Retained archives:
+
+- `data/phase2i_artifacts/phase2i-syntax-features-run1.tar.gz`, SHA-256
+  `ed1c489c8ce273adb59b6321017d03c89015c8afad2f3e3e6cade813458cc4ad`;
+- `data/phase2i_artifacts/phase2i-syntax-features-run2.tar.gz`, SHA-256
+  `6fd83bf9f0bfafbf58f43eac3b3203fc2a1ac7e0292bf6fad52b36f6fe89afb5`.
+
+Exactly one next intervention is justified: expand the reviewed candidate-level
+dataset with substantially more independent source windows while preserving
+group-level source isolation. Do not begin it without a new explicit goal. Do
+not tune the current models, redesign candidate bounds, add SRL, train semantic
+edges, or start Phase 3 first.

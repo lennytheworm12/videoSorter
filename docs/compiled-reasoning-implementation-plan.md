@@ -1465,6 +1465,45 @@ Data expansion is not justified. The Phase 2G thinking-enabled generative
 rerun recommendation is superseded. Pass 2, typed semantic edges, ontology
 tuning, and Phase 3 remain on hold.
 
+## Phase 2I: UD / Syntactic Feature Ablation
+
+**Closed — syntactic signal found.** Implementation commit `9a88c3a` adds
+Stanza 1.14.0 English EWT Feature Set C over the exact frozen Phase 2H
+candidate universe. Bronze, 16,624 candidate rows, 33 KEEP labels, 33/33
+coverage, five grouped folds, threshold 0.5, seed, model configurations, and B
+comparators remained unchanged. The full report is
+[phase2i-ud-syntactic-feature-ablation.md](phase2i-ud-syntactic-feature-ablation.md).
+
+Logistic C regressed: precision 5.882%, recall 18.182%, F1 0.08889, AP
+0.049788, AUC 0.929188, R@10 4/33, median gold rank 89, and 102 selections.
+
+LightGBM C established the positive result: precision improved from 2.757% to
+7.692%, recall from 33.333% to 36.364%, F1 from 0.05093 to 0.12698, AUC from
+0.932765 to 0.950458, median gold rank from 157 to 96, mean rank from 226.24
+to 170.09, and selections fell from 399 to 156. Precision, F1, AUC, and
+selection efficiency improved in all five held-out windows; mean gold rank
+improved in all five. AP fell from 0.050952 to 0.041251 and R@10 stayed 4/33,
+so top-of-list ranking remains unstable.
+
+Syntax features supplied 31.5%–83.1% of LightGBM gain by fold and materially
+reduced generic-action, generic-entity, filler, wrong-cue, and overlap false
+positives. Five of the seven endpoints missed by every Phase 2H cell moved up
+under LightGBM C, but none crossed threshold. Alignment was 597 exact and
+16,027 token-aligned with zero unaligned, ambiguous, or objective parser
+errors. Severe train/held-out AP gaps remain.
+
+Final status:
+
+```text
+SYNTACTIC SIGNAL FOUND
+```
+
+Exactly one next intervention is justified: expand the reviewed
+candidate-level dataset with substantially more independent source windows,
+preserving group-level source isolation. Do not begin that expansion without
+a new explicit goal. Do not tune models, redesign candidate bounds, add SRL,
+train semantic edges, or start Phase 3 first.
+
 ## Fresh Session Bootstrap
 
 ```text
