@@ -32,3 +32,18 @@ apps/web/.next/
 apps/web/out/
 apps/web/.env.local
 apps/web/tsconfig.tsbuildinfo
+
+# Retired course deliverables; videoSorter development belongs on project branches.
+HOMEWORK_README.md
+homework_data_cleaning.ipynb
+homework_data_cleaning_and_eda.ipynb
+homework_data_cleaning_and_eda.pdf
+homework_data_cleaning_and_eda.txt
+phase3_question_answering.pdf
+phase3_question_answering.txt
+phase3_question_answering_text_only.txt
+scripts/build_homework_eda_notebook.py
+scripts/export_homework_notebook_pdf.py
+scripts/homework_ml.py
+tests/test_homework_ml.py
+tests/test_homework_notebook.py

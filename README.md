@@ -170,6 +170,7 @@ older commands continue to work, but the preferred entrypoints now live under
 
 - [Command reference](docs/commands.md)
 - [Deployment and cloud setup](docs/deployment.md)
+- [Incremental GitHub workflow](docs/development-workflow.md)
 - [Supabase schema](supabase/schema.sql)
 
 ## Hosted Stack Notes
@@ -183,7 +184,9 @@ older commands continue to work, but the preferred entrypoints now live under
 
 ## Development Notes
 
-- `HOMEWORK_README.md` and `homework_data_cleaning.ipynb` are unrelated local
-  files and are intentionally not part of the project layout.
+- Retired course notebooks, reports, and export helpers are intentionally
+  excluded from the project repository.
+- Develop on a focused branch, commit a validated logical slice, and push that
+  branch after each checkpoint; see the incremental GitHub workflow above.
 - `apps/web/tsconfig.tsbuildinfo` is a generated artifact and should stay
   untracked.
