@@ -87,6 +87,33 @@ class RetrievalBackendTests(unittest.TestCase):
         self.assertEqual(vector.shape, (2,))
         self.assertAlmostEqual(float(np.linalg.norm(vector)), 1.0, places=5)
 
+    def test_lol_overview_answer_bypasses_retrieval(self) -> None:
+        with mock.patch.object(retrieval_query, "retrieve") as retrieve:
+            answer = retrieval_query.answer("what is League of Legends", game="lol", show_sources=True)
+
+        retrieve.assert_not_called()
+        self.assertIn("five-versus-five multiplayer strategy game", answer)
+        self.assertNotIn("Sources:", answer)
+
+    def test_sources_block_contains_rows_only_for_wrapping_headers(self) -> None:
+        block = retrieval_query._sources_block(
+            [
+                {
+                    "score": 0.42,
+                    "confidence": 0.77,
+                    "source_weight": 1.6,
+                    "retrieval_layer": "supabase",
+                    "source": "discord",
+                    "insight_type": "principles",
+                    "text": "Identify your win condition before forcing a fight.",
+                }
+            ]
+        )
+
+        self.assertTrue(block.startswith("[0.42 | conf 0.77"))
+        self.assertIn("(principles)", block)
+        self.assertNotIn("Sources:", block)
+
 
 if __name__ == "__main__":
     unittest.main()

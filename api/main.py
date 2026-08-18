@@ -249,13 +249,32 @@ def _validate_supabase_token(authorization: str | None = Header(default=None)) -
 
 def _split_answer_sources(text: str) -> tuple[str, list[str]]:
     match = re.search(r"\n+\s*---\s*\n\s*(Sources(?:[^\n]*)?)\n", text, flags=re.IGNORECASE)
-    if not match:
+    if match:
+        answer_text = text[:match.start()]
+        source_text = text[match.start():]
+        source_lines = [
+            line.rstrip()
+            for line in re.sub(r"^\s*---\s*\n", "", source_text, count=1).splitlines()
+            if line.strip()
+        ]
+        return answer_text.rstrip(), source_lines
+
+    raw_source_match = re.search(
+        r"\[\d+(?:\.\d+)?\s*\|\s*conf\s+[^\]]+\]\s+\([^)]+\)\s+",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not raw_source_match:
         return text, []
-    answer_text = text[:match.start()]
-    source_text = text[match.start():]
+
+    answer_text = text[:raw_source_match.start()]
+    source_text = text[raw_source_match.start():]
     source_lines = [
         line.rstrip()
-        for line in re.sub(r"^\s*---\s*\n", "", source_text, count=1).splitlines()
+        for line in re.split(
+            r"\s*(?=\[\d+(?:\.\d+)?\s*\|\s*conf\s+)",
+            source_text,
+        )
         if line.strip()
     ]
     return answer_text.rstrip(), source_lines

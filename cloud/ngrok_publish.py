@@ -30,45 +30,78 @@ def _https_tunnel_url(payload: dict) -> str | None:
     return None
 
 
-def publish_current_url(api_url: str = DEFAULT_NGROK_API) -> dict:
+def current_ngrok_value(api_url: str = DEFAULT_NGROK_API) -> dict:
     try:
         payload = _fetch_ngrok_payload(api_url)
         public_url = _https_tunnel_url(payload)
     except (urllib.error.URLError, TimeoutError, ValueError, OSError):
         public_url = None
 
-    value = {
+    return {
         "url": public_url,
         "online": bool(public_url),
         "backend_label": "Home strong backend",
         "backend_quality": "strong",
         "source": "ngrok",
     }
+
+
+def publish_current_url(api_url: str = DEFAULT_NGROK_API) -> dict:
+    value = current_ngrok_value(api_url)
     upsert_runtime_config(RUNTIME_KEY, value)
     return value
+
+
+def _status(value: dict) -> str:
+    return value["url"] if value["online"] else "offline"
+
+
+def _publish_or_report(value: dict) -> bool:
+    try:
+        upsert_runtime_config(RUNTIME_KEY, value)
+    except Exception as exc:
+        status = _status(value)
+        print(
+            "[ngrok] Supabase publish failed; use this URL manually: "
+            f"{status}. Error: {exc}",
+            flush=True,
+        )
+        return False
+    return True
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Publish ngrok URL to Supabase runtime config")
     parser.add_argument("--api-url", default=DEFAULT_NGROK_API, help="ngrok local API URL")
+    parser.add_argument("--print-only", action="store_true", help="Print the current ngrok HTTPS URL without writing to Supabase")
     parser.add_argument("--watch", action="store_true", help="Continuously watch and publish changes")
     parser.add_argument("--interval", type=float, default=10.0, help="Watch interval in seconds")
     args = parser.parse_args()
 
     if not args.watch:
-        value = publish_current_url(args.api_url)
-        status = value["url"] if value["online"] else "offline"
-        print(f"Published primary backend: {status}")
+        value = current_ngrok_value(args.api_url)
+        status = _status(value)
+        if args.print_only:
+            print(f"Current ngrok backend: {status}")
+            return
+        if _publish_or_report(value):
+            print(f"Published primary backend: {status}")
         return
 
     last_url: str | None | object = object()
+    last_publish_ok: bool | None = None
     while True:
-        value = publish_current_url(args.api_url)
+        value = current_ngrok_value(args.api_url)
         current_url = value["url"]
-        if current_url != last_url:
-            status = current_url if value["online"] else "offline"
-            print(f"[ngrok] primary backend updated: {status}", flush=True)
+        publish_ok = True if args.print_only else _publish_or_report(value)
+        if current_url != last_url or publish_ok != last_publish_ok:
+            status = _status(value)
+            if args.print_only:
+                print(f"[ngrok] current backend: {status}", flush=True)
+            elif publish_ok:
+                print(f"[ngrok] primary backend updated: {status}", flush=True)
             last_url = current_url
+            last_publish_ok = publish_ok
         time.sleep(max(args.interval, 2.0))
 
 

@@ -40,6 +40,32 @@ class NgrokPublishTests(unittest.TestCase):
         self.assertIsNone(value["url"])
         upsert.assert_called_once()
 
+    def test_current_ngrok_value_does_not_publish(self) -> None:
+        with mock.patch(
+            "cloud.ngrok_publish._fetch_ngrok_payload",
+            return_value={"tunnels": [{"proto": "https", "public_url": "https://manual.ngrok.dev"}]},
+        ), mock.patch("cloud.ngrok_publish.upsert_runtime_config") as upsert:
+            value = ngrok_publish.current_ngrok_value()
+
+        self.assertTrue(value["online"])
+        self.assertEqual(value["url"], "https://manual.ngrok.dev")
+        upsert.assert_not_called()
+
+    def test_publish_or_report_returns_false_when_supabase_publish_fails(self) -> None:
+        value = {
+            "url": "https://manual.ngrok.dev",
+            "online": True,
+            "backend_label": "Home strong backend",
+            "backend_quality": "strong",
+            "source": "ngrok",
+        }
+
+        with mock.patch(
+            "cloud.ngrok_publish.upsert_runtime_config",
+            side_effect=RuntimeError("bad database url"),
+        ):
+            self.assertFalse(ngrok_publish._publish_or_report(value))
+
 
 if __name__ == "__main__":
     unittest.main()

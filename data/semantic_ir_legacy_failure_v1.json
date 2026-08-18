@@ -1,0 +1,1650 @@
+{
+  "cases": [
+    {
+      "edges": [
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "actor_kill",
+          "source": "kill_actor",
+          "target": "kill"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "actor_die",
+          "source": "die_actor",
+          "target": "die"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "CONDITION"
+          ],
+          "id": "kill_condition",
+          "source": "kill",
+          "target": "die"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "PURPOSE"
+          ],
+          "id": "die_purpose",
+          "source": "die",
+          "target": "pull"
+        }
+      ],
+      "exhaustive": false,
+      "id": "wave-reset-after-kill",
+      "mentions": [
+        {
+          "acceptable_spans": [
+            [
+              445,
+              448
+            ]
+          ],
+          "critical": true,
+          "id": "kill_actor",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              463,
+              466
+            ]
+          ],
+          "critical": true,
+          "id": "die_actor",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              449,
+              457
+            ]
+          ],
+          "critical": true,
+          "id": "kill",
+          "node_types": [
+            "EVENT"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              479,
+              506
+            ]
+          ],
+          "critical": true,
+          "id": "die",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              510,
+              532
+            ]
+          ],
+          "critical": true,
+          "id": "pull",
+          "node_types": [
+            "ACTION"
+          ]
+        }
+      ],
+      "phenomena": [
+        "legacy_failure_regression",
+        "legacy_phase2e_failure"
+      ],
+      "qualifiers": [
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              440,
+              444
+            ]
+          ],
+          "field": "conditionality",
+          "id": "kill_when",
+          "mention": "kill",
+          "value": "CONDITIONAL"
+        }
+      ],
+      "questions": [
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-kill_actor",
+          "prompt": "Which exact source mention expresses kill actor?",
+          "requires": [
+            "mention:kill_actor"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-die_actor",
+          "prompt": "Which exact source mention expresses die actor?",
+          "requires": [
+            "mention:die_actor"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "event_recovery",
+          "id": "question-mention-kill",
+          "prompt": "Which exact source mention expresses kill?",
+          "requires": [
+            "mention:kill"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-die",
+          "prompt": "Which exact source mention expresses die?",
+          "requires": [
+            "mention:die"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-pull",
+          "prompt": "Which exact source mention expresses pull?",
+          "requires": [
+            "mention:pull"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-actor_kill",
+          "prompt": "What source-supported relation expresses actor kill?",
+          "requires": [
+            "edge:actor_kill"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-actor_die",
+          "prompt": "What source-supported relation expresses actor die?",
+          "requires": [
+            "edge:actor_die"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-edge-kill_condition",
+          "prompt": "What source-supported relation expresses kill condition?",
+          "requires": [
+            "edge:kill_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "causal_edges",
+          "id": "question-edge-die_purpose",
+          "prompt": "What source-supported relation expresses die purpose?",
+          "requires": [
+            "edge:die_purpose"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-qualifier-kill_when",
+          "prompt": "What grounded qualifier expresses kill when?",
+          "requires": [
+            "qualifier:kill_when"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-kill_actor_unresolved",
+          "prompt": "What is the supported reference status for kill actor unresolved?",
+          "requires": [
+            "reference:kill_actor_unresolved"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-die_actor_unresolved",
+          "prompt": "What is the supported reference status for die actor unresolved?",
+          "requires": [
+            "reference:die_actor_unresolved"
+          ]
+        }
+      ],
+      "references": [
+        {
+          "critical": true,
+          "id": "kill_actor_unresolved",
+          "source": "kill_actor",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        },
+        {
+          "critical": true,
+          "id": "die_actor_unresolved",
+          "source": "die_actor",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        }
+      ],
+      "source_id": "transcript:3nKrtwpZ6sQ",
+      "source_kind": "transcript",
+      "source_text": "already good right lane you understand so yeah your egg knife is just super late and also in this case um like it's just half of it only went off kind of bad right here you might have to flash in front of the hook he's just gonna tap it I guess yeah yeah nice you should just W the whole wave you should just W I don't know yeah nice yeah sometimes when you kill them here um like it won't happen here because the way is here but sometimes when you kill him here you should just run into Tower and just die to pull the wave up again because sometimes this wave is like here you know",
+      "split": "LEGACY_FAILURE",
+      "upstream_end": 10992,
+      "upstream_source_id": "3nKrtwpZ6sQ",
+      "upstream_start": 10410
+    },
+    {
+      "edges": [
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "actor_pressure",
+          "source": "pressure_actor",
+          "target": "pressure"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "actor_crash",
+          "source": "crash_actor",
+          "target": "crash"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "CONDITION"
+          ],
+          "id": "lane_condition",
+          "source": "lane",
+          "target": "pressure"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "CONDITION"
+          ],
+          "id": "crash_condition",
+          "source": "crash",
+          "target": "pressure"
+        }
+      ],
+      "exhaustive": false,
+      "id": "push-poke-wave-crash",
+      "mentions": [
+        {
+          "acceptable_spans": [
+            [
+              380,
+              383
+            ]
+          ],
+          "critical": true,
+          "id": "pressure_actor",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              360,
+              363
+            ]
+          ],
+          "critical": true,
+          "id": "crash_actor",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              328,
+              355
+            ]
+          ],
+          "critical": true,
+          "id": "lane",
+          "node_types": [
+            "ACTION",
+            "STATE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              360,
+              379
+            ]
+          ],
+          "critical": true,
+          "id": "crash",
+          "node_types": [
+            "ACTION",
+            "EVENT"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              413,
+              455
+            ]
+          ],
+          "critical": true,
+          "id": "pressure",
+          "node_types": [
+            "ACTION"
+          ]
+        }
+      ],
+      "phenomena": [
+        "legacy_failure_regression",
+        "legacy_phase2e_failure"
+      ],
+      "qualifiers": [
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              316,
+              320
+            ]
+          ],
+          "field": "conditionality",
+          "id": "lane_when",
+          "mention": "lane",
+          "value": "CONDITIONAL"
+        }
+      ],
+      "questions": [
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-pressure_actor",
+          "prompt": "Which exact source mention expresses pressure actor?",
+          "requires": [
+            "mention:pressure_actor"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-crash_actor",
+          "prompt": "Which exact source mention expresses crash actor?",
+          "requires": [
+            "mention:crash_actor"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-lane",
+          "prompt": "Which exact source mention expresses lane?",
+          "requires": [
+            "mention:lane"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-crash",
+          "prompt": "Which exact source mention expresses crash?",
+          "requires": [
+            "mention:crash"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-pressure",
+          "prompt": "Which exact source mention expresses pressure?",
+          "requires": [
+            "mention:pressure"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-actor_pressure",
+          "prompt": "What source-supported relation expresses actor pressure?",
+          "requires": [
+            "edge:actor_pressure"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-actor_crash",
+          "prompt": "What source-supported relation expresses actor crash?",
+          "requires": [
+            "edge:actor_crash"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-edge-lane_condition",
+          "prompt": "What source-supported relation expresses lane condition?",
+          "requires": [
+            "edge:lane_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-edge-crash_condition",
+          "prompt": "What source-supported relation expresses crash condition?",
+          "requires": [
+            "edge:crash_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-qualifier-lane_when",
+          "prompt": "What grounded qualifier expresses lane when?",
+          "requires": [
+            "qualifier:lane_when"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-pressure_actor_unresolved",
+          "prompt": "What is the supported reference status for pressure actor unresolved?",
+          "requires": [
+            "reference:pressure_actor_unresolved"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-crash_actor_unresolved",
+          "prompt": "What is the supported reference status for crash actor unresolved?",
+          "requires": [
+            "reference:crash_actor_unresolved"
+          ]
+        }
+      ],
+      "references": [
+        {
+          "critical": true,
+          "id": "pressure_actor_unresolved",
+          "source": "pressure_actor",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        },
+        {
+          "critical": true,
+          "id": "crash_actor_unresolved",
+          "source": "crash_actor",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        }
+      ],
+      "source_id": "transcript:uAdWuLPYn-0",
+      "source_kind": "transcript",
+      "source_text": "because let's say now Caitlyn didn't die right let's say Caitlyn is alive right now and Caitlyn is like here under Tower with you wave crashes and then you guys end up on the bounce then you have to hope Pike isn't chasing you here here here whatever right yeah we're [ __ ] anyway yes so I really dislike that like when you're playing Push and poke lanes and you crash like this you really want to make sure you keep poking and pushing and hitting creeps unless like if you're like hard winning right then you could slow push like I said cuz they can't hit creeps but here you guys don't have like enough damage to like",
+      "split": "LEGACY_FAILURE",
+      "upstream_end": 15216,
+      "upstream_source_id": "uAdWuLPYn-0",
+      "upstream_start": 14596
+    },
+    {
+      "edges": [
+        {
+          "critical": true,
+          "edge_types": [
+            "OBJECT"
+          ],
+          "id": "sweeper_object",
+          "source": "sweeper",
+          "target": "use"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "PURPOSE"
+          ],
+          "id": "vision_purpose",
+          "source": "use",
+          "target": "remove_vision"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "OBJECT"
+          ],
+          "id": "vision_object",
+          "source": "vision",
+          "target": "remove_vision"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "PURPOSE"
+          ],
+          "id": "play_purpose",
+          "source": "use",
+          "target": "remove_play"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "OBJECT"
+          ],
+          "id": "play_object",
+          "source": "play_ability",
+          "target": "remove_play"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "MODIFIES"
+          ],
+          "id": "mid_modifies",
+          "source": "location",
+          "target": "use"
+        }
+      ],
+      "exhaustive": false,
+      "id": "sweeper-limits-mid-play",
+      "mentions": [
+        {
+          "acceptable_spans": [
+            [
+              239,
+              246
+            ]
+          ],
+          "critical": true,
+          "id": "sweeper",
+          "node_types": [
+            "ABILITY_OR_RESOURCE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              235,
+              272
+            ]
+          ],
+          "critical": true,
+          "id": "use",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              297,
+              316
+            ]
+          ],
+          "critical": true,
+          "id": "vision",
+          "node_types": [
+            "ABILITY_OR_RESOURCE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              290,
+              316
+            ]
+          ],
+          "critical": true,
+          "id": "remove_vision",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              335,
+              363
+            ]
+          ],
+          "critical": true,
+          "id": "play_ability",
+          "node_types": [
+            "ABILITY_OR_RESOURCE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              328,
+              363
+            ]
+          ],
+          "critical": true,
+          "id": "remove_play",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              262,
+              272
+            ]
+          ],
+          "critical": true,
+          "id": "location",
+          "node_types": [
+            "LOCATION_OR_SPACE"
+          ]
+        }
+      ],
+      "phenomena": [
+        "legacy_failure_regression",
+        "legacy_phase2e_failure"
+      ],
+      "qualifiers": [
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              247,
+              253
+            ]
+          ],
+          "field": "modality",
+          "id": "use_should",
+          "mention": "use",
+          "value": "OBLIGATORY"
+        }
+      ],
+      "questions": [
+        {
+          "critical": true,
+          "dimension": "ability_resource_recovery",
+          "id": "question-mention-sweeper",
+          "prompt": "Which exact source mention expresses sweeper?",
+          "requires": [
+            "mention:sweeper"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-use",
+          "prompt": "Which exact source mention expresses use?",
+          "requires": [
+            "mention:use"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "ability_resource_recovery",
+          "id": "question-mention-vision",
+          "prompt": "Which exact source mention expresses vision?",
+          "requires": [
+            "mention:vision"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-remove_vision",
+          "prompt": "Which exact source mention expresses remove vision?",
+          "requires": [
+            "mention:remove_vision"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "ability_resource_recovery",
+          "id": "question-mention-play_ability",
+          "prompt": "Which exact source mention expresses play ability?",
+          "requires": [
+            "mention:play_ability"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-remove_play",
+          "prompt": "Which exact source mention expresses remove play?",
+          "requires": [
+            "mention:remove_play"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "location_or_space",
+          "id": "question-mention-location",
+          "prompt": "Which exact source mention expresses location?",
+          "requires": [
+            "mention:location"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-sweeper_object",
+          "prompt": "What source-supported relation expresses sweeper object?",
+          "requires": [
+            "edge:sweeper_object"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "causal_edges",
+          "id": "question-edge-vision_purpose",
+          "prompt": "What source-supported relation expresses vision purpose?",
+          "requires": [
+            "edge:vision_purpose"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-vision_object",
+          "prompt": "What source-supported relation expresses vision object?",
+          "requires": [
+            "edge:vision_object"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "causal_edges",
+          "id": "question-edge-play_purpose",
+          "prompt": "What source-supported relation expresses play purpose?",
+          "requires": [
+            "edge:play_purpose"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-play_object",
+          "prompt": "What source-supported relation expresses play object?",
+          "requires": [
+            "edge:play_object"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "semantic_completeness",
+          "id": "question-edge-mid_modifies",
+          "prompt": "What source-supported relation expresses mid modifies?",
+          "requires": [
+            "edge:mid_modifies"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "modality",
+          "id": "question-qualifier-use_should",
+          "prompt": "What grounded qualifier expresses use should?",
+          "requires": [
+            "qualifier:use_should"
+          ]
+        }
+      ],
+      "references": [],
+      "source_id": "transcript:uAdWuLPYn-0",
+      "source_kind": "transcript",
+      "source_text": "should be happening here is we should want to play around Thea who is ulti but then you happen to get hooked so you portal away now portaling to both side is a bit of a mistake I think you should portal here obviously and I think also the sweeper should be used around mid again we want to remove their Vision on Mid and try to remove their ability to play on Mid and your WS should be around mid and if they start to put Saia on Mid which maybe Diana can't like go on right let's say they end up swapping right then Diana should go to side and then we do the same thing but on",
+      "split": "LEGACY_FAILURE",
+      "upstream_end": 46610,
+      "upstream_source_id": "uAdWuLPYn-0",
+      "upstream_start": 46033
+    },
+    {
+      "edges": [
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "allies_rotate",
+          "source": "allies",
+          "target": "rotate"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "EXPERIENCER"
+          ],
+          "id": "enemy_experiences",
+          "source": "enemy",
+          "target": "cannot_punish"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "CONDITION"
+          ],
+          "id": "push_condition",
+          "source": "push",
+          "target": "cannot_punish"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "ENABLES"
+          ],
+          "id": "safety_enables",
+          "source": "cannot_punish",
+          "target": "rotate"
+        }
+      ],
+      "exhaustive": false,
+      "id": "mid-push-prevents-side-collapse",
+      "mentions": [
+        {
+          "acceptable_spans": [
+            [
+              248,
+              256
+            ]
+          ],
+          "critical": true,
+          "id": "allies",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              223,
+              233
+            ]
+          ],
+          "critical": true,
+          "id": "enemy",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              293,
+              306
+            ]
+          ],
+          "critical": true,
+          "id": "push",
+          "node_types": [
+            "ACTION",
+            "OUTCOME",
+            "STATE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              248,
+              276
+            ]
+          ],
+          "critical": true,
+          "id": "rotate",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              223,
+              276
+            ]
+          ],
+          "critical": true,
+          "id": "cannot_punish",
+          "node_types": [
+            "OUTCOME",
+            "STATE"
+          ]
+        }
+      ],
+      "phenomena": [
+        "legacy_failure_regression",
+        "legacy_phase2e_failure"
+      ],
+      "qualifiers": [
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              277,
+              279
+            ]
+          ],
+          "field": "conditionality",
+          "id": "push_if",
+          "mention": "push",
+          "value": "CONDITIONAL"
+        },
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              234,
+              240
+            ]
+          ],
+          "field": "polarity",
+          "id": "punish_negative",
+          "mention": "cannot_punish",
+          "value": "NEGATIVE"
+        }
+      ],
+      "questions": [
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-allies",
+          "prompt": "Which exact source mention expresses allies?",
+          "requires": [
+            "mention:allies"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-enemy",
+          "prompt": "Which exact source mention expresses enemy?",
+          "requires": [
+            "mention:enemy"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-push",
+          "prompt": "Which exact source mention expresses push?",
+          "requires": [
+            "mention:push"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-rotate",
+          "prompt": "Which exact source mention expresses rotate?",
+          "requires": [
+            "mention:rotate"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "state_outcome_recovery",
+          "id": "question-mention-cannot_punish",
+          "prompt": "Which exact source mention expresses cannot punish?",
+          "requires": [
+            "mention:cannot_punish"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-allies_rotate",
+          "prompt": "What source-supported relation expresses allies rotate?",
+          "requires": [
+            "edge:allies_rotate"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-enemy_experiences",
+          "prompt": "What source-supported relation expresses enemy experiences?",
+          "requires": [
+            "edge:enemy_experiences"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-edge-push_condition",
+          "prompt": "What source-supported relation expresses push condition?",
+          "requires": [
+            "edge:push_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "causal_edges",
+          "id": "question-edge-safety_enables",
+          "prompt": "What source-supported relation expresses safety enables?",
+          "requires": [
+            "edge:safety_enables"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-qualifier-push_if",
+          "prompt": "What grounded qualifier expresses push if?",
+          "requires": [
+            "qualifier:push_if"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "negation",
+          "id": "question-qualifier-punish_negative",
+          "prompt": "What grounded qualifier expresses punish negative?",
+          "requires": [
+            "qualifier:punish_negative"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-allies_unresolved",
+          "prompt": "What is the supported reference status for allies unresolved?",
+          "requires": [
+            "reference:allies_unresolved"
+          ]
+        }
+      ],
+      "references": [
+        {
+          "critical": true,
+          "id": "allies_unresolved",
+          "source": "allies",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        }
+      ],
+      "source_id": "transcript:z5IXabhMLzQ",
+      "source_kind": "transcript",
+      "source_text": "first on side and get mid push so you guys can overload on side if if you know like you said Gwen will outscale renek on side okay but Gwen cannot just stand here and fight Renekton if you guys are here right yeah yeah and enemy team cannot punish you guys going four for Gwen if you guys got deep mid push and the counter play when enemies trying to get deep mid push versus you is to engage on them but they can't engage on sa and a fresh Lantern right yes so that's kind of how you guys have to play this game because if you're not stepping up on Mid waves then yeah you you guys",
+      "split": "LEGACY_FAILURE",
+      "upstream_end": 23063,
+      "upstream_source_id": "z5IXabhMLzQ",
+      "upstream_start": 22481
+    },
+    {
+      "edges": [
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "walker_walk",
+          "source": "walker",
+          "target": "walk"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "allies_lose",
+          "source": "allies",
+          "target": "lose"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "PREVENTS"
+          ],
+          "id": "lose_prevents",
+          "source": "lose",
+          "target": "walk"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "CONDITION"
+          ],
+          "id": "conjunctive_win_condition",
+          "source": "win_condition",
+          "target": "win"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "ACTOR"
+          ],
+          "id": "ward_actor_edge",
+          "source": "ward_actor",
+          "target": "ward"
+        },
+        {
+          "critical": true,
+          "edge_types": [
+            "CONDITION"
+          ],
+          "id": "avoid_hook_condition",
+          "source": "step_hook",
+          "target": "ward"
+        }
+      ],
+      "exhaustive": false,
+      "id": "unwarded-bush-hook-risk",
+      "mentions": [
+        {
+          "acceptable_spans": [
+            [
+              141,
+              149
+            ]
+          ],
+          "critical": true,
+          "id": "allies",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              108,
+              111
+            ]
+          ],
+          "critical": true,
+          "id": "walker",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              118,
+              132
+            ]
+          ],
+          "critical": true,
+          "id": "walk",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              141,
+              169
+            ]
+          ],
+          "critical": true,
+          "id": "lose",
+          "node_types": [
+            "OUTCOME",
+            "STATE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              234,
+              270
+            ]
+          ],
+          "critical": true,
+          "id": "win_condition",
+          "node_types": [
+            "EVENT",
+            "STATE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              234,
+              244
+            ]
+          ],
+          "critical": true,
+          "id": "hooked",
+          "node_types": [
+            "EVENT",
+            "STATE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              249,
+              270
+            ]
+          ],
+          "critical": true,
+          "id": "double_q",
+          "node_types": [
+            "ACTION",
+            "EVENT"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              210,
+              223
+            ]
+          ],
+          "critical": true,
+          "id": "win",
+          "node_types": [
+            "OUTCOME",
+            "STATE"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              447,
+              450
+            ]
+          ],
+          "critical": true,
+          "id": "ward_actor",
+          "node_types": [
+            "ENTITY"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              463,
+              467
+            ]
+          ],
+          "critical": true,
+          "id": "ward",
+          "node_types": [
+            "ACTION"
+          ]
+        },
+        {
+          "acceptable_spans": [
+            [
+              476,
+              494
+            ]
+          ],
+          "critical": true,
+          "id": "step_hook",
+          "node_types": [
+            "ACTION",
+            "EVENT"
+          ]
+        }
+      ],
+      "phenomena": [
+        "legacy_failure_regression",
+        "legacy_phase2e_failure"
+      ],
+      "qualifiers": [
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              112,
+              117
+            ]
+          ],
+          "field": "polarity",
+          "id": "walk_negative",
+          "mention": "walk",
+          "value": "NEGATIVE"
+        },
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              188,
+              192
+            ]
+          ],
+          "field": "restriction",
+          "id": "win_only",
+          "mention": "win",
+          "value": "EXCLUSIVE"
+        },
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              227,
+              229
+            ]
+          ],
+          "field": "conditionality",
+          "id": "win_if",
+          "mention": "win_condition",
+          "value": "CONDITIONAL"
+        },
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              440,
+              443
+            ]
+          ],
+          "field": "modality",
+          "id": "ward_can",
+          "mention": "ward",
+          "value": "POSSIBLE"
+        },
+        {
+          "critical": true,
+          "cue_spans": [
+            [
+              468,
+              475
+            ]
+          ],
+          "field": "polarity",
+          "id": "avoid_hook_negative",
+          "mention": "step_hook",
+          "value": "NEGATIVE"
+        }
+      ],
+      "questions": [
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-allies",
+          "prompt": "Which exact source mention expresses allies?",
+          "requires": [
+            "mention:allies"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-walker",
+          "prompt": "Which exact source mention expresses walker?",
+          "requires": [
+            "mention:walker"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-walk",
+          "prompt": "Which exact source mention expresses walk?",
+          "requires": [
+            "mention:walk"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "state_outcome_recovery",
+          "id": "question-mention-lose",
+          "prompt": "Which exact source mention expresses lose?",
+          "requires": [
+            "mention:lose"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "event_recovery",
+          "id": "question-mention-win_condition",
+          "prompt": "Which exact source mention expresses win condition?",
+          "requires": [
+            "mention:win_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "event_recovery",
+          "id": "question-mention-hooked",
+          "prompt": "Which exact source mention expresses hooked?",
+          "requires": [
+            "mention:hooked"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-double_q",
+          "prompt": "Which exact source mention expresses double q?",
+          "requires": [
+            "mention:double_q"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "state_outcome_recovery",
+          "id": "question-mention-win",
+          "prompt": "Which exact source mention expresses win?",
+          "requires": [
+            "mention:win"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "entity_recovery",
+          "id": "question-mention-ward_actor",
+          "prompt": "Which exact source mention expresses ward actor?",
+          "requires": [
+            "mention:ward_actor"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-ward",
+          "prompt": "Which exact source mention expresses ward?",
+          "requires": [
+            "mention:ward"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "action_recovery",
+          "id": "question-mention-step_hook",
+          "prompt": "Which exact source mention expresses step hook?",
+          "requires": [
+            "mention:step_hook"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-walker_walk",
+          "prompt": "What source-supported relation expresses walker walk?",
+          "requires": [
+            "edge:walker_walk"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-allies_lose",
+          "prompt": "What source-supported relation expresses allies lose?",
+          "requires": [
+            "edge:allies_lose"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "causal_edges",
+          "id": "question-edge-lose_prevents",
+          "prompt": "What source-supported relation expresses lose prevents?",
+          "requires": [
+            "edge:lose_prevents"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-edge-conjunctive_win_condition",
+          "prompt": "What source-supported relation expresses conjunctive win condition?",
+          "requires": [
+            "edge:conjunctive_win_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "actor_target_roles",
+          "id": "question-edge-ward_actor_edge",
+          "prompt": "What source-supported relation expresses ward actor edge?",
+          "requires": [
+            "edge:ward_actor_edge"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-edge-avoid_hook_condition",
+          "prompt": "What source-supported relation expresses avoid hook condition?",
+          "requires": [
+            "edge:avoid_hook_condition"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "negation",
+          "id": "question-qualifier-walk_negative",
+          "prompt": "What grounded qualifier expresses walk negative?",
+          "requires": [
+            "qualifier:walk_negative"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "semantic_completeness",
+          "id": "question-qualifier-win_only",
+          "prompt": "What grounded qualifier expresses win only?",
+          "requires": [
+            "qualifier:win_only"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "condition_recovery",
+          "id": "question-qualifier-win_if",
+          "prompt": "What grounded qualifier expresses win if?",
+          "requires": [
+            "qualifier:win_if"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "modality",
+          "id": "question-qualifier-ward_can",
+          "prompt": "What grounded qualifier expresses ward can?",
+          "requires": [
+            "qualifier:ward_can"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "negation",
+          "id": "question-qualifier-avoid_hook_negative",
+          "prompt": "What grounded qualifier expresses avoid hook negative?",
+          "requires": [
+            "qualifier:avoid_hook_negative"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-allies_unresolved",
+          "prompt": "What is the supported reference status for allies unresolved?",
+          "requires": [
+            "reference:allies_unresolved"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-walker_unresolved",
+          "prompt": "What is the supported reference status for walker unresolved?",
+          "requires": [
+            "reference:walker_unresolved"
+          ]
+        },
+        {
+          "critical": true,
+          "dimension": "coreference",
+          "id": "question-reference-ward_actor_unresolved",
+          "prompt": "What is the supported reference status for ward actor unresolved?",
+          "requires": [
+            "reference:ward_actor_unresolved"
+          ]
+        }
+      ],
+      "references": [
+        {
+          "critical": true,
+          "id": "allies_unresolved",
+          "source": "allies",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        },
+        {
+          "critical": true,
+          "id": "walker_unresolved",
+          "source": "walker",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        },
+        {
+          "critical": true,
+          "id": "ward_actor_unresolved",
+          "source": "ward_actor",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "targets": []
+        }
+      ],
+      "source_id": "transcript:uAdWuLPYn-0",
+      "source_kind": "transcript",
+      "source_text": "you here like you have no control over these bushes you know like if you watch here you guys walk like this you don't walk like this because you guys hard lose level one you know like the only way you guys can win level one is if you get hooked and land double Q on them make sense but that's not guaranteed give it yeah so you do this which is fine and you just play for push which is fine think I Ward middle Bush while D this I mean you can if you are able to Ward without stepping into hook you know yeah like that would be fine to do around this point here you know",
+      "split": "LEGACY_FAILURE",
+      "upstream_end": 5366,
+      "upstream_source_id": "uAdWuLPYn-0",
+      "upstream_start": 4796
+    }
+  ],
+  "content_sha256": "a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd",
+  "pool_manifest_sha256": "cf86dde955f4cbeee091f38aab8293256b0c48f809c969384185a330ee511241",
+  "purpose": "Reviewed legacy regression: source semantic facts needed to reconstruct the five Phase 2E mechanisms.",
+  "schema_version": "phase2f-semantic-benchmark-v1",
+  "split": "LEGACY_FAILURE"
+}

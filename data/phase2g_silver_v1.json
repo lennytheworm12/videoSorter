@@ -1,0 +1,3154 @@
+{
+  "content_sha256": "4ae3f1bd167f1bebb27ce3d27118833d7c869bb28c4b076d98735182a9fb5a41",
+  "schema_version": "phase2g-silver-v1",
+  "purpose": "Reviewed Phase 2G mechanical/resolved silver representations for the five locked Phase 2F legacy cases; every fragment aligns to exact bronze spans or insertion anchors.",
+  "benchmark_content_sha256": "a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd",
+  "conditions": {
+    "RAW_BRONZE": {
+      "description": "immutable exact bronze window text"
+    },
+    "MECHANICAL_SILVER": {
+      "description": "reversible linguistic cleanup of bronze"
+    },
+    "RESOLVED_SILVER": {
+      "description": "mechanical plus high-confidence linguistic reference resolution"
+    }
+  },
+  "cases": {
+    "wave-reset-after-kill": {
+      "mechanical": {
+        "fragments": [
+          {
+            "kind": "changed",
+            "start": 0,
+            "end": 7,
+            "text": "Already",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 7,
+            "end": 23,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 23,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 23,
+            "end": 24,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 24,
+            "end": 38,
+            "text": "You understand?",
+            "reason": "capitalize and rhetorical-question punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 38,
+            "end": 39,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 39,
+            "end": 41,
+            "text": "So",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 41,
+            "end": 42,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 42,
+            "end": 46,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 46,
+            "end": 102,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 102,
+            "end": 103,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 103,
+            "end": 110,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 110,
+            "end": 168,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 168,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 168,
+            "end": 169,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 169,
+            "end": 172,
+            "text": "You",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 172,
+            "end": 213,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 213,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 213,
+            "end": 214,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 214,
+            "end": 218,
+            "text": "He's",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 218,
+            "end": 236,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 236,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 236,
+            "end": 237,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 237,
+            "end": 244,
+            "text": "",
+            "reason": "hedge filler"
+          },
+          {
+            "kind": "source",
+            "start": 244,
+            "end": 245,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 245,
+            "end": 259,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 259,
+            "end": 260,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 260,
+            "end": 263,
+            "text": "You",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 263,
+            "end": 292,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 292,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 292,
+            "end": 293,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 293,
+            "end": 296,
+            "text": "You",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 296,
+            "end": 310,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 310,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 310,
+            "end": 311,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 311,
+            "end": 323,
+            "text": "",
+            "reason": "hedge filler"
+          },
+          {
+            "kind": "source",
+            "start": 323,
+            "end": 324,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 324,
+            "end": 338,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 338,
+            "end": 339,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 339,
+            "end": 348,
+            "text": "Sometimes",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 348,
+            "end": 372,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 372,
+            "end": 373,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 373,
+            "end": 380,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 380,
+            "end": 425,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 425,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 425,
+            "end": 426,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 426,
+            "end": 429,
+            "text": "But",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 429,
+            "end": 462,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 462,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 462,
+            "end": 463,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 463,
+            "end": 466,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 466,
+            "end": 532,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 532,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 532,
+            "end": 533,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 533,
+            "end": 540,
+            "text": "Because",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 540,
+            "end": 564,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 564,
+            "end": 568,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 568,
+            "end": 573,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 573,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "changed",
+            "start": 573,
+            "end": 582,
+            "text": "",
+            "reason": "filler removal"
+          }
+        ],
+        "text": "Already good right lane. You understand? So your egg knife is just super late and also in this case it's just half of it only went off kind of bad right here. You might have to flash in front of the hook. He's just gonna tap it. You should just W the whole wave. You should just W. Sometimes when you kill them here it won't happen here because the way is here. But sometimes when you kill him here, you should just run into Tower and just die to pull the wave up again. Because sometimes this wave is here.",
+        "sha256": "8c88b25e8908755de45f175d6cd3146301295003029962dc20b1da125bf1bef7"
+      },
+      "resolved": {
+        "resolution_ops": [
+          {
+            "bronze_span": [
+              24,
+              38
+            ],
+            "prior_text": "you understand",
+            "mechanical_text": "You understand?",
+            "resolved_text": "The coached player understands?",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "The player being coached understands?",
+                "confidence": 0.85
+              },
+              {
+                "text": "You understand?",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              169,
+              172
+            ],
+            "prior_text": "you",
+            "mechanical_text": "You",
+            "resolved_text": "The coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "The player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "The team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              214,
+              218
+            ],
+            "prior_text": "he's",
+            "mechanical_text": "He's",
+            "resolved_text": "He's",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.4,
+            "alternatives": [
+              {
+                "text": "The opponent",
+                "confidence": 0.45
+              },
+              {
+                "text": "The hook caster",
+                "confidence": 0.3
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              260,
+              263
+            ],
+            "prior_text": "you",
+            "mechanical_text": "You",
+            "resolved_text": "The coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "The player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "The team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              293,
+              296
+            ],
+            "prior_text": "you",
+            "mechanical_text": "You",
+            "resolved_text": "The coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "The player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "The team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              354,
+              362
+            ],
+            "prior_text": "you kill",
+            "mechanical_text": "you kill",
+            "resolved_text": "the coached player kills",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached kills",
+                "confidence": 0.88
+              },
+              {
+                "text": "you kill",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              363,
+              367
+            ],
+            "prior_text": "them",
+            "mechanical_text": "them",
+            "resolved_text": "them",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.3,
+            "alternatives": [
+              {
+                "text": "the enemy players",
+                "confidence": 0.5
+              },
+              {
+                "text": "the enemy team",
+                "confidence": 0.2
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              445,
+              453
+            ],
+            "prior_text": "you kill",
+            "mechanical_text": "you kill",
+            "resolved_text": "the coached player kills",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached kills",
+                "confidence": 0.88
+              },
+              {
+                "text": "you kill",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              454,
+              457
+            ],
+            "prior_text": "him",
+            "mechanical_text": "him",
+            "resolved_text": "him",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.3,
+            "alternatives": [
+              {
+                "text": "the enemy player",
+                "confidence": 0.5
+              },
+              {
+                "text": "the enemy champion",
+                "confidence": 0.2
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              463,
+              466
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          }
+        ],
+        "text": "Already good right lane. The coached player understands? So your egg knife is just super late and also in this case it's just half of it only went off kind of bad right here. The coached player might have to flash in front of the hook. He's just gonna tap it. The coached player should just W the whole wave. The coached player should just W. Sometimes when the coached player kills them here it won't happen here because the way is here. But sometimes when the coached player kills him here, the coached player should just run into Tower and just die to pull the wave up again. Because sometimes this wave is here.",
+        "sha256": "8923a6027c1de1be3bcc9238b95976586de8b276c9a796f00406d9ad51ed8621"
+      }
+    },
+    "push-poke-wave-crash": {
+      "mechanical": {
+        "fragments": [
+          {
+            "kind": "changed",
+            "start": 0,
+            "end": 7,
+            "text": "Because",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 7,
+            "end": 46,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 46,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 46,
+            "end": 47,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 47,
+            "end": 52,
+            "text": "Let's",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 52,
+            "end": 99,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 99,
+            "end": 103,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 103,
+            "end": 129,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 129,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 129,
+            "end": 130,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 130,
+            "end": 134,
+            "text": "Wave",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 134,
+            "end": 181,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 181,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 181,
+            "end": 182,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 182,
+            "end": 186,
+            "text": "Then",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 186,
+            "end": 231,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 231,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 231,
+            "end": 232,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 232,
+            "end": 241,
+            "text": "",
+            "reason": "duplicate-word cleanup"
+          },
+          {
+            "kind": "source",
+            "start": 241,
+            "end": 242,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 242,
+            "end": 250,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 250,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 250,
+            "end": 251,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 251,
+            "end": 261,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 261,
+            "end": 262,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 262,
+            "end": 267,
+            "text": "We're",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 267,
+            "end": 268,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 268,
+            "end": 274,
+            "text": "",
+            "reason": "ASR unmodeled-token cleanup"
+          },
+          {
+            "kind": "source",
+            "start": 274,
+            "end": 275,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 275,
+            "end": 310,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 310,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 310,
+            "end": 311,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 311,
+            "end": 315,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 315,
+            "end": 316,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 316,
+            "end": 320,
+            "text": "When",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 320,
+            "end": 379,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 379,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 379,
+            "end": 455,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 455,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 455,
+            "end": 456,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 456,
+            "end": 462,
+            "text": "Unless",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 462,
+            "end": 463,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 463,
+            "end": 467,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 467,
+            "end": 478,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 478,
+            "end": 482,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 482,
+            "end": 501,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 501,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 501,
+            "end": 538,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 538,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 538,
+            "end": 539,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 539,
+            "end": 542,
+            "text": "Because",
+            "reason": "unambiguous ASR spelling correction"
+          },
+          {
+            "kind": "source",
+            "start": 542,
+            "end": 564,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 564,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 564,
+            "end": 565,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 565,
+            "end": 568,
+            "text": "But",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 568,
+            "end": 594,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 594,
+            "end": 598,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 598,
+            "end": 615,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 615,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "changed",
+            "start": 615,
+            "end": 620,
+            "text": "",
+            "reason": "trailing filler"
+          }
+        ],
+        "text": "Because let's say now Caitlyn didn't die right. Let's say Caitlyn is alive right now and Caitlyn is here under Tower with you. Wave crashes and then you guys end up on the bounce. Then you have to hope Pike isn't chasing you here, whatever. We're anyway yes so I really dislike that. When you're playing Push and poke lanes and you crash like this, you really want to make sure you keep poking and pushing and hitting creeps. Unless if you're hard winning right, then you could slow push like I said. Because they can't hit creeps. But here you guys don't have enough damage to.",
+        "sha256": "ac5f81b5e20d36a1730288094fa8c23fe43e39ba9f8826677d686ffeacd48878"
+      },
+      "resolved": {
+        "resolution_ops": [
+          {
+            "bronze_span": [
+              126,
+              129
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.88
+              },
+              {
+                "text": "the team",
+                "confidence": 0.06
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              152,
+              167
+            ],
+            "prior_text": "you guys end up",
+            "mechanical_text": "you guys end up",
+            "resolved_text": "the coached player's team ends up",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team ends up",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys end up",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              187,
+              198
+            ],
+            "prior_text": "you have to",
+            "mechanical_text": "you have to",
+            "resolved_text": "the coached player has to",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached has to",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team has to",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              223,
+              226
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              262,
+              267
+            ],
+            "prior_text": "we're",
+            "mechanical_text": "We're",
+            "resolved_text": "We're",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.45,
+            "alternatives": [
+              {
+                "text": "The coach and the coached player are",
+                "confidence": 0.4
+              },
+              {
+                "text": "The team is",
+                "confidence": 0.25
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              360,
+              369
+            ],
+            "prior_text": "you crash",
+            "mechanical_text": "you crash",
+            "resolved_text": "the coached player crashes",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached crashes",
+                "confidence": 0.88
+              },
+              {
+                "text": "you crash",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              380,
+              395
+            ],
+            "prior_text": "you really want",
+            "mechanical_text": "you really want",
+            "resolved_text": "the coached player really wants",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached really wants",
+                "confidence": 0.88
+              },
+              {
+                "text": "you really want",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              409,
+              417
+            ],
+            "prior_text": "you keep",
+            "mechanical_text": "you keep",
+            "resolved_text": "the coached player keeps",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "the player being coached keeps",
+                "confidence": 0.86
+              },
+              {
+                "text": "you keep",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              507,
+              510
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              574,
+              593
+            ],
+            "prior_text": "you guys don't have",
+            "mechanical_text": "you guys don't have",
+            "resolved_text": "the coached player's team doesn't have",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team doesn't have",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys don't have",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          }
+        ],
+        "text": "Because let's say now Caitlyn didn't die right. Let's say Caitlyn is alive right now and Caitlyn is here under Tower with the coached player. Wave crashes and then the coached player's team ends up on the bounce. Then the coached player has to hope Pike isn't chasing the coached player here, whatever. We're anyway yes so I really dislike that. When you're playing Push and poke lanes and the coached player crashes like this, the coached player really wants to make sure the coached player keeps poking and pushing and hitting creeps. Unless if you're hard winning right, then the coached player could slow push like I said. Because they can't hit creeps. But here the coached player's team doesn't have enough damage to.",
+        "sha256": "b67c6697daf2062cbd872c50b78bbffb61589395981c18f69cefb972273ae433"
+      }
+    },
+    "sweeper-limits-mid-play": {
+      "mechanical": {
+        "fragments": [
+          {
+            "kind": "changed",
+            "start": 0,
+            "end": 6,
+            "text": "Should",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 6,
+            "end": 70,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 70,
+            "end": 74,
+            "text": "ult",
+            "reason": "unambiguous ASR/informal abbreviation normalization"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 74,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 74,
+            "end": 108,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 108,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 108,
+            "end": 127,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 127,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 127,
+            "end": 128,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 128,
+            "end": 131,
+            "text": "Now",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 131,
+            "end": 176,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 176,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 176,
+            "end": 177,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 177,
+            "end": 207,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 207,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 207,
+            "end": 208,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 208,
+            "end": 217,
+            "text": "",
+            "reason": "hedge filler"
+          },
+          {
+            "kind": "source",
+            "start": 217,
+            "end": 218,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 218,
+            "end": 221,
+            "text": "And",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 221,
+            "end": 272,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 272,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 272,
+            "end": 273,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 273,
+            "end": 278,
+            "text": "Again",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 278,
+            "end": 317,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 317,
+            "end": 363,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 363,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 363,
+            "end": 364,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 364,
+            "end": 396,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 396,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 396,
+            "end": 397,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 397,
+            "end": 400,
+            "text": "And",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 400,
+            "end": 433,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 433,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 433,
+            "end": 434,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 434,
+            "end": 458,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 458,
+            "end": 462,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 462,
+            "end": 468,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 468,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 468,
+            "end": 469,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 469,
+            "end": 474,
+            "text": "",
+            "reason": "tag-question filler"
+          },
+          {
+            "kind": "source",
+            "start": 474,
+            "end": 475,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 475,
+            "end": 480,
+            "text": "Let's",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 480,
+            "end": 511,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 511,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 511,
+            "end": 540,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 540,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 540,
+            "end": 541,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 541,
+            "end": 577,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 577,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          }
+        ],
+        "text": "Should be happening here is we should want to play around Thea who is ult, but then you happen to get hooked, so you portal away. Now portaling to both side is a bit of a mistake. I think you should portal here. And I think also the sweeper should be used around mid. Again we want to remove their Vision on Mid and try to remove their ability to play on Mid, and your WS should be around mid. And if they start to put Saia on Mid, which maybe Diana can't go on. Let's say they end up swapping right, then Diana should go to side, and then we do the same thing but on.",
+        "sha256": "646d69e87cadb02e92c858bc69d989127b8455c1213709059e7bcf26e9a1dc84"
+      },
+      "resolved": {
+        "resolution_ops": [
+          {
+            "bronze_span": [
+              84,
+              94
+            ],
+            "prior_text": "you happen",
+            "mechanical_text": "you happen",
+            "resolved_text": "the coached player happens",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "the player being coached happens",
+                "confidence": 0.87
+              },
+              {
+                "text": "you happen",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              112,
+              127
+            ],
+            "prior_text": "you portal away",
+            "mechanical_text": "you portal away",
+            "resolved_text": "the coached player portals away",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached portals away",
+                "confidence": 0.88
+              },
+              {
+                "text": "you portal away",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              185,
+              188
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              297,
+              302
+            ],
+            "prior_text": "their",
+            "mechanical_text": "their",
+            "resolved_text": "their",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.3,
+            "alternatives": [
+              {
+                "text": "the enemy team's",
+                "confidence": 0.55
+              },
+              {
+                "text": "the opponents'",
+                "confidence": 0.25
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              368,
+              372
+            ],
+            "prior_text": "your",
+            "mechanical_text": "your",
+            "resolved_text": "the coached player's",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team's",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              404,
+              408
+            ],
+            "prior_text": "they",
+            "mechanical_text": "they",
+            "resolved_text": "they",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.35,
+            "alternatives": [
+              {
+                "text": "the enemy team",
+                "confidence": 0.5
+              },
+              {
+                "text": "the opponents",
+                "confidence": 0.25
+              }
+            ],
+            "reason": ""
+          }
+        ],
+        "text": "Should be happening here is we should want to play around Thea who is ult, but then the coached player happens to get hooked, so the coached player portals away. Now portaling to both side is a bit of a mistake. I think the coached player should portal here. And I think also the sweeper should be used around mid. Again we want to remove their Vision on Mid and try to remove their ability to play on Mid, and the coached player's WS should be around mid. And if they start to put Saia on Mid, which maybe Diana can't go on. Let's say they end up swapping right, then Diana should go to side, and then we do the same thing but on.",
+        "sha256": "28de2c701719c8ba0b817282971f0ba4cbf30f38920313f566088a160d72ba21"
+      }
+    },
+    "mid-push-prevents-side-collapse": {
+      "mechanical": {
+        "fragments": [
+          {
+            "kind": "changed",
+            "start": 0,
+            "end": 5,
+            "text": "First",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 5,
+            "end": 30,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 30,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 30,
+            "end": 63,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 63,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 63,
+            "end": 64,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 64,
+            "end": 66,
+            "text": "If",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 66,
+            "end": 67,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 67,
+            "end": 69,
+            "text": "",
+            "reason": "duplicate-word cleanup"
+          },
+          {
+            "kind": "source",
+            "start": 69,
+            "end": 70,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 70,
+            "end": 83,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 83,
+            "end": 93,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 93,
+            "end": 112,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 112,
+            "end": 117,
+            "text": "Renekton",
+            "reason": "unambiguous ASR abbreviation expansion"
+          },
+          {
+            "kind": "source",
+            "start": 117,
+            "end": 125,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 125,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 125,
+            "end": 126,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 126,
+            "end": 130,
+            "text": "Okay",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 130,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 130,
+            "end": 135,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 135,
+            "end": 182,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 182,
+            "end": 202,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 202,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 202,
+            "end": 203,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 203,
+            "end": 218,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 218,
+            "end": 219,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 219,
+            "end": 222,
+            "text": "And",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 222,
+            "end": 247,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 247,
+            "end": 248,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 248,
+            "end": 306,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 306,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 306,
+            "end": 307,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 307,
+            "end": 310,
+            "text": "And",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 310,
+            "end": 327,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 327,
+            "end": 328,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 328,
+            "end": 375,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 375,
+            "end": 376,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 376,
+            "end": 400,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 400,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 400,
+            "end": 401,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 401,
+            "end": 404,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 404,
+            "end": 405,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 405,
+            "end": 425,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 425,
+            "end": 426,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 426,
+            "end": 428,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 428,
+            "end": 429,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 429,
+            "end": 448,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 448,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 448,
+            "end": 449,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 449,
+            "end": 458,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 458,
+            "end": 461,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 461,
+            "end": 462,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 462,
+            "end": 480,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 480,
+            "end": 481,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 481,
+            "end": 512,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 512,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 512,
+            "end": 513,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 513,
+            "end": 520,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 520,
+            "end": 521,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 521,
+            "end": 564,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 564,
+            "end": 565,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 565,
+            "end": 569,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 569,
+            "end": 570,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 570,
+            "end": 573,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 573,
+            "end": 574,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 574,
+            "end": 577,
+            "text": "",
+            "reason": "duplicate-word cleanup"
+          },
+          {
+            "kind": "source",
+            "start": 577,
+            "end": 578,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 578,
+            "end": 582,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 582,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          }
+        ],
+        "text": "First on side and get mid push, so you guys can overload on side. If you said Gwen will outscale Renekton on side. Okay, but Gwen cannot just stand here and fight Renekton if you guys are here. And enemy team cannot punish you guys going four for Gwen if you guys got deep mid push. And the counter play when enemies trying to get deep mid push versus you is to engage on them, but they can't engage on sa and a fresh Lantern, so that's kind of how you guys have to play this game, because if you're not stepping up on Mid waves then you guys.",
+        "sha256": "8003ea6d7b2ee4c0f6307419584d54837dcb8e0362c89273e667b0db511a8e5b"
+      },
+      "resolved": {
+        "resolution_ops": [
+          {
+            "bronze_span": [
+              34,
+              42
+            ],
+            "prior_text": "you guys",
+            "mechanical_text": "you guys",
+            "resolved_text": "the coached player's team",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              84,
+              92
+            ],
+            "prior_text": "you said",
+            "mechanical_text": "you said",
+            "resolved_text": "the coached player said",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.9,
+            "alternatives": [
+              {
+                "text": "the player being coached said",
+                "confidence": 0.82
+              },
+              {
+                "text": "you said",
+                "confidence": 0.06
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              185,
+              202
+            ],
+            "prior_text": "you guys are here",
+            "mechanical_text": "you guys are here",
+            "resolved_text": "the coached player's team is here",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team is here",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys are here",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              248,
+              256
+            ],
+            "prior_text": "you guys",
+            "mechanical_text": "you guys",
+            "resolved_text": "the coached player's team",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              280,
+              288
+            ],
+            "prior_text": "you guys",
+            "mechanical_text": "you guys",
+            "resolved_text": "the coached player's team",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              376,
+              379
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              396,
+              400
+            ],
+            "prior_text": "them",
+            "mechanical_text": "them",
+            "resolved_text": "them",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.3,
+            "alternatives": [
+              {
+                "text": "the enemy team",
+                "confidence": 0.5
+              },
+              {
+                "text": "the enemy players",
+                "confidence": 0.2
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              405,
+              409
+            ],
+            "prior_text": "they",
+            "mechanical_text": "they",
+            "resolved_text": "they",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.35,
+            "alternatives": [
+              {
+                "text": "the enemy team",
+                "confidence": 0.5
+              },
+              {
+                "text": "the opponents",
+                "confidence": 0.25
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              481,
+              497
+            ],
+            "prior_text": "you guys have to",
+            "mechanical_text": "you guys have to",
+            "resolved_text": "the coached player's team has to",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team has to",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys have to",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              570,
+              582
+            ],
+            "prior_text": "you you guys",
+            "mechanical_text": "you guys",
+            "resolved_text": "the coached player's team",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          }
+        ],
+        "text": "First on side and get mid push, so the coached player's team can overload on side. If the coached player said Gwen will outscale Renekton on side. Okay, but Gwen cannot just stand here and fight Renekton if the coached player's team is here. And enemy team cannot punish the coached player's team going four for Gwen if the coached player's team got deep mid push. And the counter play when enemies trying to get deep mid push versus the coached player is to engage on them, but they can't engage on sa and a fresh Lantern, so that's kind of how the coached player's team has to play this game, because if you're not stepping up on Mid waves then the coached player's team.",
+        "sha256": "ca12de2ad67009d029262c38da64aaec4c8c4f69a6aeb11edeb1171680667a84"
+      }
+    },
+    "unwarded-bush-hook-risk": {
+      "mechanical": {
+        "fragments": [
+          {
+            "kind": "changed",
+            "start": 0,
+            "end": 3,
+            "text": "You",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 3,
+            "end": 8,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 8,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 8,
+            "end": 9,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 9,
+            "end": 13,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 13,
+            "end": 14,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "changed",
+            "start": 14,
+            "end": 17,
+            "text": "You",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 17,
+            "end": 51,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 51,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 51,
+            "end": 52,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 52,
+            "end": 65,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 65,
+            "end": 66,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 66,
+            "end": 68,
+            "text": "If",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 68,
+            "end": 83,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 83,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 83,
+            "end": 107,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 107,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 107,
+            "end": 108,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 108,
+            "end": 111,
+            "text": "You",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 111,
+            "end": 133,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 133,
+            "end": 140,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 140,
+            "end": 141,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 141,
+            "end": 169,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 169,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 169,
+            "end": 170,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 170,
+            "end": 183,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 183,
+            "end": 184,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 184,
+            "end": 187,
+            "text": "The",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 187,
+            "end": 226,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 226,
+            "end": 227,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 227,
+            "end": 270,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 270,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 270,
+            "end": 271,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 271,
+            "end": 275,
+            "text": "Make",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 275,
+            "end": 276,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 276,
+            "end": 281,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 281,
+            "text": "?",
+            "reason": "rhetorical-question punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 281,
+            "end": 282,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 282,
+            "end": 285,
+            "text": "But",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 285,
+            "end": 315,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 315,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 315,
+            "end": 316,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 316,
+            "end": 320,
+            "text": "",
+            "reason": "backchannel filler"
+          },
+          {
+            "kind": "source",
+            "start": 320,
+            "end": 321,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 321,
+            "end": 323,
+            "text": "So",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 323,
+            "end": 335,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 335,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 335,
+            "end": 336,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 336,
+            "end": 349,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 349,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 349,
+            "end": 350,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 350,
+            "end": 376,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 376,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 376,
+            "end": 390,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 390,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 390,
+            "end": 391,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 391,
+            "end": 396,
+            "text": "Think",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 396,
+            "end": 428,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 428,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 428,
+            "end": 429,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 429,
+            "end": 435,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 435,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 435,
+            "end": 436,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 436,
+            "end": 443,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 443,
+            "text": ",",
+            "reason": "clause punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 443,
+            "end": 444,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 444,
+            "end": 475,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "source",
+            "start": 475,
+            "end": 476,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "source",
+            "start": 476,
+            "end": 494,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 494,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "source",
+            "start": 494,
+            "end": 495,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 495,
+            "end": 513,
+            "text": "",
+            "reason": "filler removal"
+          },
+          {
+            "kind": "source",
+            "start": 513,
+            "end": 514,
+            "reason": "whitespace gap"
+          },
+          {
+            "kind": "changed",
+            "start": 514,
+            "end": 518,
+            "text": "That",
+            "reason": "capitalize sentence start"
+          },
+          {
+            "kind": "source",
+            "start": 518,
+            "end": 561,
+            "reason": "keep verbatim"
+          },
+          {
+            "kind": "insertion",
+            "anchor": 561,
+            "text": ".",
+            "reason": "sentence boundary punctuation"
+          },
+          {
+            "kind": "changed",
+            "start": 561,
+            "end": 570,
+            "text": "",
+            "reason": "filler removal"
+          }
+        ],
+        "text": "You here. You have no control over these bushes. If you watch here, you guys walk like this. You don't walk like this because you guys hard lose level one. The only way you guys can win level one is if you get hooked and land double Q on them. Make sense? But that's not guaranteed give it. So you do this, which is fine, and you just play for push, which is fine. Think I Ward middle Bush while D this. I mean, you can, if you are able to Ward without stepping into hook. That would be fine to do around this point here.",
+        "sha256": "66583df144f22838cce7f8856f44ccc52051b24e334efd601dd615dc600b99f4"
+      },
+      "resolved": {
+        "resolution_ops": [
+          {
+            "bronze_span": [
+              0,
+              3
+            ],
+            "prior_text": "you",
+            "mechanical_text": "You",
+            "resolved_text": "The coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "The player being coached",
+                "confidence": 0.87
+              },
+              {
+                "text": "The team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              14,
+              22
+            ],
+            "prior_text": "you have",
+            "mechanical_text": "You have",
+            "resolved_text": "The coached player has",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "The player being coached has",
+                "confidence": 0.88
+              },
+              {
+                "text": "You have",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              69,
+              78
+            ],
+            "prior_text": "you watch",
+            "mechanical_text": "you watch",
+            "resolved_text": "the coached player watches",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached watches",
+                "confidence": 0.88
+              },
+              {
+                "text": "you watch",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              84,
+              97
+            ],
+            "prior_text": "you guys walk",
+            "mechanical_text": "you guys walk",
+            "resolved_text": "the coached player's team walks",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team walks",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys walk",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              108,
+              117
+            ],
+            "prior_text": "you don't",
+            "mechanical_text": "You don't",
+            "resolved_text": "The coached player doesn't",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "The player being coached doesn't",
+                "confidence": 0.88
+              },
+              {
+                "text": "You don't",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              141,
+              159
+            ],
+            "prior_text": "you guys hard lose",
+            "mechanical_text": "you guys hard lose",
+            "resolved_text": "the coached player's team hard loses",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team hard loses",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys hard lose",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              197,
+              205
+            ],
+            "prior_text": "you guys",
+            "mechanical_text": "you guys",
+            "resolved_text": "the coached player's team",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached's team",
+                "confidence": 0.8
+              },
+              {
+                "text": "you guys",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              230,
+              253
+            ],
+            "prior_text": "you get hooked and land",
+            "mechanical_text": "you get hooked and land",
+            "resolved_text": "the coached player gets hooked and lands",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached gets hooked and lands",
+                "confidence": 0.88
+              },
+              {
+                "text": "you get hooked and land",
+                "confidence": 0.04
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              266,
+              270
+            ],
+            "prior_text": "them",
+            "mechanical_text": "them",
+            "resolved_text": "them",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.3,
+            "alternatives": [
+              {
+                "text": "the enemy players",
+                "confidence": 0.5
+              },
+              {
+                "text": "the enemy team",
+                "confidence": 0.2
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              324,
+              330
+            ],
+            "prior_text": "you do",
+            "mechanical_text": "you do",
+            "resolved_text": "the coached player does",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "the player being coached does",
+                "confidence": 0.86
+              },
+              {
+                "text": "you do",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              354,
+              367
+            ],
+            "prior_text": "you just play",
+            "mechanical_text": "you just play",
+            "resolved_text": "the coached player just plays",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.95,
+            "alternatives": [
+              {
+                "text": "the player being coached just plays",
+                "confidence": 0.86
+              },
+              {
+                "text": "you just play",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              422,
+              423
+            ],
+            "prior_text": "D",
+            "mechanical_text": "D",
+            "resolved_text": "D",
+            "transformation_type": "AMBIGUOUS_RETAINED",
+            "confidence": 0.6,
+            "alternatives": [
+              {
+                "text": "the D ability",
+                "confidence": 0.55
+              },
+              {
+                "text": "the summoner ability",
+                "confidence": 0.2
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              436,
+              439
+            ],
+            "prior_text": "you",
+            "mechanical_text": "you",
+            "resolved_text": "the coached player",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.96,
+            "alternatives": [
+              {
+                "text": "the player being coached",
+                "confidence": 0.9
+              },
+              {
+                "text": "the team",
+                "confidence": 0.05
+              }
+            ],
+            "reason": ""
+          },
+          {
+            "bronze_span": [
+              447,
+              454
+            ],
+            "prior_text": "you are",
+            "mechanical_text": "you are",
+            "resolved_text": "the coached player is",
+            "transformation_type": "PRONOUN_RESOLUTION",
+            "confidence": 0.97,
+            "alternatives": [
+              {
+                "text": "the player being coached is",
+                "confidence": 0.9
+              },
+              {
+                "text": "you are",
+                "confidence": 0.03
+              }
+            ],
+            "reason": ""
+          }
+        ],
+        "text": "The coached player here. The coached player has no control over these bushes. If the coached player watches here, the coached player's team walks like this. The coached player doesn't walk like this because the coached player's team hard loses level one. The only way the coached player's team can win level one is if the coached player gets hooked and lands double Q on them. Make sense? But that's not guaranteed give it. So the coached player does this, which is fine, and the coached player just plays for push, which is fine. Think I Ward middle Bush while D this. I mean, the coached player can, if the coached player is able to Ward without stepping into hook. That would be fine to do around this point here.",
+        "sha256": "4820128e2aeebf9097de3ea6e39b5a74cb1e1a2ecc9c47040306f18ddcadda68"
+      }
+    }
+  }
+}

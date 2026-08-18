@@ -1,125 +1,405 @@
-# Handoff: Phase 2E Clause-First v2 Implemented; Valid Flash Gate Pending
+# Handoff: Phase 2E/2F/2G Closed at Their Architecture Gates; Phase 2H Closed — WEAK RANKING SIGNAL ONLY
 
-## 1. Goal and Guardrails
+**Current checkpoint:** Phase 2H (discriminative semantic endpoint scoring,
+initial implementation `65e7100`, final clean experiment `a754991`) is closed
+as `WEAK RANKING SIGNAL ONLY`. Gate 1 failed and
+Gate 2 was not triggered. Exactly one next intervention is justified: a bounded
+Feature Set C UD/syntactic ablation on the same frozen candidate universe,
+labels, folds, threshold, models, and metrics, stopping if parser integration
+becomes substantial. The two existing model families remain fixed and A/B are
+retained as comparators. The Phase 2G thinking-enabled generative rerun
+recommendation is superseded. See section 10.
 
-Phase 2E must demonstrate at least **4/5 semantic proposition recall** on the
-existing five-case development slice by decomposing Stage A into grounded
-evidence selection, source-close actor/event/effect/condition extraction,
-explicit causal direction, separate ontology normalization, and deterministic
-assembly. Exact recall and every slot recall remain independently inspectable.
+## 1. Architectural decision
 
-Do not weaken grounding, conditions, provenance, or trusted-relation checks;
-do not tune on the frozen Phase 2B held-out fixture; do not run V4 Pro to mask a
-Flash architecture failure; and do not proceed to candidate mapping, ledger
-promotion, persistence, fingerprints, or Phase 3 until the Stage A gate passes.
+Phase 2E clause-first v2 failed its preregistered Stage A gate. The
+proposition-first and clause-first architectures are closed; do not repair their
+parser, add fixture-specific aliases, tune their prompts further, or run V4 Pro
+through the same proposition boundary to rescue the result.
 
-## 2. Authoritative State
+Phase 2F then implemented a clean-room, source-preserving compiler from bronze
+transcript windows to source-anchored semantic mentions and general semantic
+edges. Its valid strong-model legacy gate failed at mention selection, after
+complete deterministic candidate coverage. Phase 2F is also closed. Do not
+begin canonical claims, League ontology normalization, strategic relations,
+fingerprints, production persistence, corpus backfill, Phase 3, or Flash
+optimization. Further work requires a new explicit goal to redesign Pass 1.
 
-- Publication clone: `/tmp/videoSorter-phase2e-publish`, branch `publish-main`.
-- Shared review worktree: `/tmp/videoSorter-main`; its Phase 2E source/test
-  files are synchronized with the publication clone, but its Git metadata is
-  read-only and it intentionally displays the implementation as local diffs.
-- Evidence database: `/home/bphan944/PersonalProjects/videoSorter/videos.db`.
-- GitHub `main` currently ends at `2f47f8f`. The unpublished series contains
-  these implementation commits plus this handoff update:
-  - `f1f38c4` — `Add clause-first evidence candidate selection`
-  - `6624221` — `Retain clause candidates in Phase 2E artifacts`
-  - `fc80ade` — `Measure Phase 2E clause catalog coverage`
+Architectural source of truth: Notion page **Ground-Up Semantic Compiler
+Architecture — Source-Preserving Bronze → Strategic Knowledge**
+(`3bef8ba7-8bf3-8148-b4fd-e9ee584d3c30`) and its parent design page
+(`3bbf8ba7-8bf3-811d-9b96-cc7c4d2df5b4`).
 
-The visible primary workspace is on an unrelated homework branch with user
-changes. Do not copy, reset, commit, or otherwise disturb that branch.
+## 2. Authoritative Phase 2E result
 
-## 3. Implemented Architecture
+Valid Flash artifact:
+`/tmp/phase2e-clause-first-v2-valid-run1.json`
 
-`pipeline/proposition_extract.py` now uses prompt version
-`phase2e-clause-first-v2`:
+The artifact's windows, catalogs, and reviewed expectations were regenerated
+and matched exactly against commit
+`1b3063edd84237c32a391564e461416ec992c308`, the configured development
+fixture, and the configured local database during Phase 2F reconciliation.
 
-1. Deterministically enumerate exact source-local clause candidates with
-   stable IDs (`insight:cNNN` / `transcript:cNNN`). Sentence/discourse
-   boundaries are primary; punctuation-poor regions use overlapping 32-token
-   windows with stride 16. Catalogs are capped at 20 candidates per source by
-   deterministic even coverage.
-2. Flash selects one or two candidate IDs from one source. It cannot generate
-   evidence text or offsets.
-3. Code validates IDs, derives exact local/transcript-absolute offsets, merges
-   only overlap or whitespace adjacency, and preserves real gaps.
-4. Actor, event, effect, and condition are selected as exact source spans;
-   condition supports safe null/`NONE`.
-5. Causal direction is explicitly classified.
-6. Ontology normalization runs only after the source-semantic frame exists.
-7. Final proposition assembly is deterministic and fails closed.
-
-Every success, abstention, malformed response, and provider failure retains
-the candidate catalog plus per-stage raw/parsed output, selected spans,
-recovered slots, direction, normalization, frames, and assembled propositions.
-
-`pipeline/phase2d_evaluation.py` additionally measures deterministic candidate
-catalog coverage before model selection. A reviewed proposition is covered
-only when one or two unique, grounded candidates from one source can contain
-all exact reviewed source fields after the same production coalescing logic.
-Duplicate IDs and fabricated offsets fail closed. This diagnostic is separate
-from semantic model credit.
-
-## 4. Verification
-
-- Focused nine-module Phase 2 suite: **237 tests passed**.
-- Broad suite: **419 tests and 128 subtests passed**
-  (`419 passed, 128 subtests passed in 20.10s`).
-- The actual five eligible transcript cases have deterministic candidate
-  catalog coverage **5/5**:
-  - wave reset: `transcript:c009`
-  - push/poke: `transcript:c005`
-  - sweeper: `transcript:c004` + `transcript:c006`
-  - mid push: `transcript:c006` + `transcript:c007`
-  - hook risk: `transcript:c003` + `transcript:c008`
-
-This proves candidate generation preserves every reviewed mechanism under the
-one/two-ID contract. It does **not** prove Flash will select or decompose those
-candidates correctly.
-
-## 5. Model-Quality Evidence
-
-The retained v1 artifact remains the latest valid model-quality result:
-
-- `/tmp/phase2e-dev-flash-transcript-span-first-network-final.json`
-- inner `content_sha256`:
-  `e3a769b61dc4699d6e65bdc5572eb86e1741832abe1c84839a68e98564f55017`
+- canonical inner `content_sha256`:
+  `04c185aaf324251b4733e76c87b2c71ea3946497f79a8956f268e88f28e2e17b`
 - file SHA-256:
-  `6527419b5b905964e42e6c4cbebc9b6a200ce03710e4f6d2f57161a5c1035fd8`
-- result: semantic **0/5**, exact **0/5**, evidence **2/5**,
-  direction **1/5**, all other required slots **0/5**.
+  `02725fb163ef752c98f51a070652ef5418a5b0d4916363d1c61c3071e957c808`
+- semantic proposition recall: **0/5**
+- exact decomposition recall: **0/5**
+- every required semantic slot: **0/5**
+- deterministic candidate-catalog coverage: **5/5**
+- unsupported or invented slots: **0**
+- five raw provider outputs; **0** completed eligible cases and **5**
+  `ValueError` failures at evidence localization;
+- two additional fixture cases unavailable because their lexical source-window
+  resolutions were ambiguous; downstream semantic stages never ran.
 
-That valid v1 result justified the lower-level clause-first v2 architecture.
-It is not evidence about v2 quality.
+All five raw outputs omitted the required source prefix (`c009` rather than
+`transcript:c009`). That envelope defect makes the production parser reject the
+selections, but diagnostic prefix canonicalization is sufficient to locate the
+semantic loss without granting model credit:
 
-The newest v2 retry artifact is:
+- wave reset: reviewed mechanism selected;
+- push/poke: reviewed mechanism plus one irrelevant clause selected;
+- sweeper: wrong clause pair;
+- mid push: wrong clause pair;
+- hook risk: wrong clause pair.
 
-- `/tmp/phase2e-clause-first-v2-catalog-network-retry.json`
-- inner `content_sha256`:
-  `ecfce104b38fe57e3f8db767057254177a150b93a377b05ab1f12781fe61f0b2`
-- file SHA-256:
-  `7e1a4cbb62bf638ff3d83b2106ab7a8682837f2f2ef00bbab1afa89ff1b7b957`
-- candidate catalog coverage: **5/5**, complete
-- all five eligible calls failed at evidence localization with
-  `ProviderCallError` before raw model output.
+Official parse-valid clause selection is **0/5**. After diagnostic-only prefix
+expansion, reviewed-mechanism containment is **2/5**; exact/minimal selection
+would be at most **1/5** because push/poke included irrelevant `c008`.
+Therefore parser robustness is not the central failure and fixing the prefix
+would not repair the architecture.
 
-Therefore this retry is an inspectable infrastructure-failure artifact, **not
-a valid 0/5 v2 quality result**. Restricted outbound networking is the current
-remaining gate. Earlier v2 network-failure artifacts are likewise invalid for
-quality claims.
+## 3. Known first-loss boundary
 
-## 6. Next Justified Action
+```text
+DETERMINISTIC SOURCE COVERAGE
+        5/5
+          ↓
+DIAGNOSTIC REVIEWED-MECHANISM CONTAINMENT
+        2/5 (exact/minimal <= 1/5)
+          ↓
+PROPOSITION EXTRACTION
+        unusable
+```
 
-1. In a network-capable run, execute Flash transcript-only on the unchanged
-   five-case development fixture and retain the JSON artifact.
-2. If the first valid v2 run reaches 4–5/5 semantic recall, perform a clean
-   second run to prove reproducibility, then report the complete Phase 2E gate.
-3. If it reaches 3/5, make only one principled repair supported by a localized
-   slot bottleneck. If it reaches 0–2/5, do not keep tuning this decomposition;
-   move to entity/action/consequence mention selection and pairwise causality.
-4. Push `publish-main:main` once GitHub is reachable. Update Notion only after
-   its connector is reauthenticated; the previous token was expired.
+Record this precisely:
 
-Do not claim PASS, TARGETED REPAIR, or ARCHITECTURE STILL FAILING for v2 until
-a valid provider run exists. Do not use the network-failure zeros as semantic
-recall evidence.
+- candidate generation succeeded;
+- clause selection failed;
+- the first semantic loss boundary is known;
+- Phase 2E is an architecture failure, not an unfinished experiment.
+
+## 4. Preserved historical negative evidence
+
+The valid artifact supersedes only the earlier statement that v2 quality was
+pending. It does not replace or reclassify prior evidence:
+
+- valid span-first v1 model-quality failure:
+  `/tmp/phase2e-dev-flash-transcript-span-first-network-final.json`; inner hash
+  `e3a769b61dc4699d6e65bdc5572eb86e1741832abe1c84839a68e98564f55017`;
+  file hash
+  `6527419b5b905964e42e6c4cbebc9b6a200ce03710e4f6d2f57161a5c1035fd8`;
+  semantic/exact **0/5**, evidence **2/5**, direction **1/5**, all other
+  required slots **0/5**.
+- clause-first v2 provider-failure retry:
+  `/tmp/phase2e-clause-first-v2-catalog-network-retry.json`; inner hash
+  `ecfce104b38fe57e3f8db767057254177a150b93a377b05ab1f12781fe61f0b2`;
+  file hash
+  `7e1a4cbb62bf638ff3d83b2106ab7a8682837f2f2ef00bbab1afa89ff1b7b957`;
+  catalog coverage **5/5**, but all eligible calls failed with
+  `ProviderCallError` before raw output. This remains infrastructure evidence,
+  not a quality result.
+
+## 5. Repository state and isolation
+
+- GitHub `main` at Phase 2F start:
+  `1b3063edd84237c32a391564e461416ec992c308`.
+- Authoritative clean clone at Phase 2F start:
+  `/tmp/videoSorter-phase2e-publish`.
+- Evidence database:
+  `/home/bphan944/PersonalProjects/videoSorter/videos.db`.
+- The visible primary workspace is on an unrelated homework branch with user
+  changes. Do not reset, overwrite, copy Phase 2 files into, or commit those
+  changes.
+- Preserve all Phase 2D/2E implementation, tests, fixtures, and artifacts as
+  historical evidence. Phase 2F uses a separate module boundary.
+- Audit limitation: the valid v2 JSON is temporary and does not embed a commit,
+  timestamp, fixture hash, or database hash. Its current linkage was verified
+  by regeneration, not by the artifact hash alone. Phase 2F artifacts must
+  embed revision and input-content hashes.
+
+## 6. Phase 2F lower-boundary contract
+
+The new target is:
+
+```text
+bronze transcript
+  -> deterministic source segmentation/context
+  -> source-anchored mention candidates
+  -> constrained mention selection and typing
+  -> bounded candidate mention pairs
+  -> general semantic edge classification
+  -> proof-carrying source-semantic IR graph
+```
+
+Bronze is immutable. Model-supplied arbitrary offsets are untrusted;
+deterministic code resolves selected IDs to exact spans. Conditions, time,
+negation, modality, ambiguity, and unresolved references are first-class.
+Every node and edge must trace to exact source evidence. `UNKNOWN`,
+`AMBIGUOUS`, `INSUFFICIENT_EVIDENCE`, and no-relation are valid outputs.
+
+Pass 1 must not contain League strategic concepts such as `access`,
+`continuity`, `tempo`, `initiative`, or `wave_obligation`. It must not emit a
+mandatory actor/predicate/effect/condition tuple.
+
+## 7. Evaluation discipline
+
+- Retain the five Phase 2E cases as a legacy failure regression set, not the
+  only benchmark.
+- Keep `data/relation_extraction_phase2b_v0.json` frozen and unchanged.
+- Build non-overlapping semantic-IR `DEV` and `FROZEN_EVAL` fixtures; fail
+  closed when overlap cannot be verified.
+- Measure deterministic mention-catalog and candidate-edge-pair coverage before
+  model selection/classification.
+- Tune only on DEV. Preregister the representation gate before one frozen run.
+- Use a strong configured reference model to test representation viability;
+  cheap-model optimization is a future goal.
+- Provider failure and model-quality failure remain distinct in artifacts and
+  denominators.
+
+Final Phase 2F recommendation must be exactly one of:
+
+```text
+SEMANTIC IR VIABLE — READY TO DESIGN PASS 2
+SEMANTIC IR VIABLE WITH SPECIFIC LIMITATIONS — REPAIR BEFORE PASS 2
+SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
+```
+
+## 8. Phase 2F closed at the source-semantic representation gate
+
+The clean-room Pass 0/Pass 1 implementation now lives in separate
+`pipeline/semantic_*` modules and covers typed nodes/edges, deterministic
+mentions, qualifiers, coreference, pairwise relations, graph orchestration,
+proof-carrying run artifacts, semantic-checksum evaluation, and isolated pool
+construction. Independent adversarial reviews have passed the source, schema,
+mention, qualifier, coreference, edge, compiler, artifact, evaluator, and pool
+boundaries after their findings were repaired. The current non-browser suite
+passes 574 tests and 249 subtests; `tests/test_auth.py` remains an unrelated
+Chromium import-time environment problem.
+
+The representative pool contains 300 exact windows from 300 distinct videos,
+covers every declared phenomenon at least eight times, and has content SHA-256
+`9b89c6d6c6c8070eba48d6db47254e156c1b2591c1480a60f98a1e8d789491c2`.
+External reproduction against `videos.db` and the Phase 2B/2D exclusions
+matched exactly.
+
+The repaired legacy benchmark contains 33 reviewed mentions, 24 reviewed
+edges, 10 grounded qualifiers, 8 unresolved-reference judgments, and 75
+semantic-checksum questions. It is locked at content SHA-256
+`a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd`;
+its exact-source manifest is
+`cf86dde955f4cbeee091f38aab8293256b0c48f809c969384185a330ee511241`.
+The first strong-model configuration and strict five-case thresholds are
+preregistered in the implementation plan. A clean committed attempt at
+`a0feefd50013722c943976a9131eb545f364178c` reached the provider boundary, but
+all 30 mention calls failed as `MentionProviderError:URLError` because the
+execution environment could not resolve `api.deepseek.com`. It returned no
+model bytes and is not a semantic-quality run. The complete reconstructible
+negative artifact is retained at
+`data/phase2f_artifacts/phase2f-legacy-pro-run1.tar.gz` (SHA-256
+`e6c2122a2b91c2b70d9775f2c108c26c82cdfff2f5cea9b3c5f60dbbc4146330`).
+After network access was enabled, the first valid strong-model legacy-development
+run on the locked `LEGACY_FAILURE` split completed at clean revision
+`b5317c6bd90572e052ab85f399e339c4de83a4e8` against the official endpoint with
+`deepseek-v4-pro`. It is a genuine semantic-quality failure, not provider
+evidence. Deterministic mention coverage was 33/33, but reviewed exact mention
+selection and typing were 0/33; qualifier recall was 0/10, edge recall 0/24,
+reference recovery 0/8, and semantic checksum 0/75. All 1,949 model calls
+returned bytes and there were zero provider failures. Safe diagnostic removal
+of one complete Markdown fence still recovers 0/33 reviewed mentions; only one
+reviewed candidate ID appears anywhere in all retained raw mention output.
+
+The first semantic loss is therefore:
+
+```text
+DETERMINISTIC EXACT MENTION CATALOG        33/33
+        ↓
+FLAT MODEL-FACING MENTION SELECTION         0/33
+        ↓
+DOWNSTREAM REVIEWED SOURCE SEMANTICS        0/75
+```
+
+The immutable run is retained at
+`data/phase2f_artifacts/phase2f-legacy-pro-run2.tar.gz` (archive SHA-256
+`b17cde9d7dc909c317aac81be08e9ed4860f91231d5568aeb6ee515a1fd67183`, aggregate
+inner/file SHA-256 `b0a030765217f2dcb52634d31eec171b307541308012945f87864cf7d5697492` /
+`ad3801a9fc23a23837fe0ad078273a2744fb9640bbd826172d359af4654cf547`). The old
+interface exposed 3,248–3,344 overlapping n-grams per window in six 600-item
+flat partitions, produced 43k–143k-character prompts, and encouraged clause-sized
+proxy spans; 11/30 responses also truncated. Parser tolerance does not repair
+the semantic miss.
+
+Per the preregistered stop rule, do not build the broader reviewed benchmark or
+inspect/run FROZEN_EVAL yet. A general Pass 1A development repair is now
+implemented and independently approved: keep the exhaustive catalog as the
+coverage oracle, but group all
+end alternatives by exact source-start anchor, expose exactly one anchor per
+request with compact aliases and exact offsets, ask only for atomic mentions
+beginning at those anchors, hide heuristic type hints, and safely accept only a
+single complete JSON fence. No completed repaired-run artifact exists. A full
+rerun process was stopped during its first case and the atomic runner published
+nothing; that process note is not representation evidence. Structural review
+of the unevaluated repair cannot overturn the valid 0/33 and 0/75 strong-model
+result.
+
+Phase 2F is now closed at the source-semantic representation gate. The final
+report is [docs/phase2f-semantic-ir-stop-gate.md](docs/phase2f-semantic-ir-stop-gate.md).
+Formal DEV/FROZEN gold was not created, frozen labels were not inspected, and
+the frozen run was not consumed because the preregistered legacy gate failed.
+Do not begin Pass 2 or any later compiler pass without a new explicit goal.
+
+```text
+SEMANTIC IR NOT VIABLE — REDESIGN PASS 1
+```
+
+## 9. Phase 2G endpoint-recovery ablation closed
+
+Phase 2G replaced source-text regeneration with compact candidate-ID selection
+and held the 33 reviewed endpoints fixed across Raw Bronze, Mechanical Silver,
+and Resolved Silver. The experiment is implemented at clean commit `64baf2b`.
+The final report is
+[docs/phase2g-endpoint-recovery-ablation.md](docs/phase2g-endpoint-recovery-ablation.md).
+
+Two clean 15-call runs completed against the official DeepSeek endpoint with
+`deepseek-v4-pro`, thinking disabled, and no provider failures. Deterministic
+coverage stayed 33/33. No condition passed. Across the two runs, endpoint
+recall ranged from 4/33 to 10/33, precision from 1.3% to 11.3%, reviewed
+reference-status accuracy was always 0/8, and broad wrong-candidate selection
+dominated. Mechanical and Resolved Silver produced no stable material lift.
+Every known selection remained exactly traceable to Bronze.
+
+The clean rerun reproduced the failed gate and diagnosis but not exact score or
+failure distributions; this negative reproducibility evidence is retained.
+Phase 2G is therefore closed as:
+
+```text
+TARGETED NEXT INTERVENTION
+DIAGNOSIS: MODEL-CAPABILITY BOTTLENECK
+```
+
+Exactly one next action is authorized: rerun the frozen candidate-ID benchmark
+with the same `deepseek-v4-pro` teacher and thinking enabled. Do not tune the
+prompt, candidate catalog, Silver fixture, reviewed endpoints, parser, ontology,
+or downstream graph stages before that intervention.
+
+## 10. Phase 2H discriminative endpoint scoring closed
+
+Phase 2H (initial implementation `65e7100`, corrected clean experiment
+`a754991`) replaced generative recovery with a fully offline,
+deterministic candidate-level binary KEEP/DROP endpoint scorer over the exact
+frozen Phase 2F/2G candidate universe: 5-window grouped leave-one-window-out,
+16,624 candidates, 33 KEEP, 16,591 DROP, 33/33 coverage. Fixed threshold 0.5;
+class-balanced L2 logistic and conservative LightGBM on Feature Set A
+(geometry/provenance) and Feature Set B (A plus bounded lexical/cue features).
+No generative calls, no syntax/UD work, no roles, no edges, and no graph work.
+The final report is
+[docs/phase2h-discriminative-endpoint-scoring.md](docs/phase2h-discriminative-endpoint-scoring.md).
+
+Final status:
+
+```text
+WEAK RANKING SIGNAL ONLY
+```
+
+Gate 1 failed; Gate 2 was not triggered. The signal is real but weak and
+inconsistent: logistic B reaches the best pooled ranking (P 8.772%, R 30.303%,
+AP 0.081275, AUC 0.939701, R@10 18.182%, median gold rank 92); logistic A
+reaches 78.788% recall only by flooding 1,907 selections at 1.363% precision;
+LightGBM B reaches P 2.757%, R 33.333%, AP 0.050952, AUC 0.932765, R@10
+12.121%, median gold rank 157; LightGBM A reaches P 2.513%, R 30.303%, AP
+0.026943, AUC 0.861030. Only 4/33 gold endpoints are selected by all four
+cells, 7/33 by none, and every B/LightGBM true positive lies inside logistic
+A's 26-hit recall set. LightGBM did not establish nonlinear superiority.
+
+Reproducibility: two clean runs at `a754991` (`repository_dirty: false`)
+produce identical dataset, folds, metrics, feature findings, and error
+taxonomies; definition SHA-256
+`75dfaca522195ccd953825317c72e9780781c6c2b45b19f2655638d544c4a459`; benchmark
+content SHA-256
+`a17674b6e2c491f0d7a1600dde0cfb8cc533d1d17db8633d8d94b2de9a57c1dd`. Archives:
+`data/phase2h_artifacts/phase2h-endpoint-scoring-run1.tar.gz` (SHA-256
+`22aaab162f6122691f577bc95746a0b7b1da9834706766b746a29737a5e46380`) and
+`run2.tar.gz` (SHA-256
+`02b3e62030169c3c394b10ca3440ea1433bd270d2fe207f68ac1d7a6e165d817`).
+
+Testing/review: focused Phase 2H suite passes 46 tests + 16 subtests; a fresh
+independent review of the corrected state returned APPROVE; the broad non-auth
+suite passes 681 tests + 366 subtests.
+
+Exactly one next intervention is justified: a bounded Feature Set C
+UD/syntactic ablation with the same frozen candidate universe, labels, folds,
+threshold, two model families, and metrics, retaining A/B as frozen
+comparators and stopping if parser integration becomes substantial. Do not
+expand the data or run generative interventions now. The
+Phase 2G thinking-enabled generative rerun recommendation is superseded by
+this result; Phase 2G history and its diagnosis remain preserved.
+
+## 11. Phase 2I UD / syntactic feature ablation closed
+
+Phase 2I is implemented at clean commit `9a88c3a`. It added only Feature Set C:
+the frozen Phase 2H geometry + lexical matrix plus deterministic Stanza 1.14.0
+English EWT UD/syntactic evidence. Bronze text, all 16,624 candidate rows, 33
+KEEP labels, 33/33 endpoint coverage, five grouped folds, threshold 0.5, seed,
+model configurations, and the archived B predictions remained unchanged. No
+generative model, candidate-bound change, SRL, role model, semantic edge, graph,
+ontology, or Phase 3 work was performed. The final report is
+[docs/phase2i-ud-syntactic-feature-ablation.md](docs/phase2i-ud-syntactic-feature-ablation.md).
+
+Final status:
+
+```text
+SYNTACTIC SIGNAL FOUND
+```
+
+Logistic C regressed relative to Logistic B: P 5.882%, R 18.182%, F1 0.08889,
+AP 0.049788, AUC 0.929188, R@10 4/33, median rank 89, and 102 selections.
+LightGBM C supplied the positive evidence: versus LightGBM B, precision rose
+from 2.757% to 7.692%, recall from 33.333% to 36.364%, F1 from 0.05093 to
+0.12698, AUC from 0.932765 to 0.950458, median gold rank improved from 157 to
+96, mean rank from 226.24 to 170.09, and selections fell from 399 to 156. AP
+fell from 0.050952 to 0.041251 and R@10 remained 4/33, so top-of-list ranking
+is still unstable.
+
+The LightGBM gains were distributed rather than isolated: precision, F1, AUC,
+selection efficiency, and mean rank improved in all five held-out windows.
+Syntax accounted for 31.5%–83.1% of gain by fold and reduced generic action,
+generic entity, filler, cue-prior, and overlap false positives. Five of the
+seven universally missed Phase 2H endpoints moved upward but none crossed the
+fixed threshold. Parser projection produced 597 EXACT and 16,027
+TOKEN_ALIGNED candidates, with no partial, unaligned, ambiguous-status, or
+objective parser/alignment errors.
+
+The signal is a five-window proof, not a production model decision. Severe
+train/held-out AP gaps and 132–187 held-out syntax OOV values per fold remain.
+A fresh independent post-fix review returned `ACCEPT`. The Phase 2I syntax and
+CLI suite passed 74 tests; the endpoint/artifact suite passed 49 tests and 8
+subtests after two corrected expectation checks passed 2 tests and 5 subtests;
+the frozen Phase 2H regression passed 46 tests and 16 subtests; and six new
+adversarial provenance/JSON/Git/manifest checks passed.
+
+Two clean official runs matched on deterministic inputs, parser tables,
+candidate scores/ranks, metrics, deltas, diagnostics, importances, and content
+hashes. Retained archives:
+
+- `data/phase2i_artifacts/phase2i-syntax-features-run1.tar.gz`, SHA-256
+  `ed1c489c8ce273adb59b6321017d03c89015c8afad2f3e3e6cade813458cc4ad`;
+- `data/phase2i_artifacts/phase2i-syntax-features-run2.tar.gz`, SHA-256
+  `6fd83bf9f0bfafbf58f43eac3b3203fc2a1ac7e0292bf6fad52b36f6fe89afb5`.
+
+Exactly one next intervention is justified: expand the reviewed candidate-level
+dataset with substantially more independent source windows while preserving
+group-level source isolation. Do not begin it without a new explicit goal. Do
+not tune the current models, redesign candidate bounds, add SRL, train semantic
+edges, or start Phase 3 first.

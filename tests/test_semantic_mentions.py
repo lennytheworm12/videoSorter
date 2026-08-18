@@ -1,0 +1,358 @@
+import json
+from dataclasses import replace
+import unittest
+
+from pipeline.semantic_mentions import (
+    MENTION_MAX_FOCAL_STARTS_PER_REQUEST,
+    MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+    MentionSelection,
+    candidate_coverage,
+    assemble_semantic_nodes,
+    generate_mention_candidates,
+    mention_selection_prompt,
+    parse_mention_selection,
+    partition_candidate_catalog,
+    select_mentions,
+    select_mention_catalog,
+)
+from pipeline.semantic_source import BronzeSource, window_from_exact_span
+
+
+def _window(text: str):
+    source = BronzeSource("transcript:test", text)
+    return window_from_exact_span(source, 0, len(text))
+
+
+class SemanticMentionTests(unittest.TestCase):
+    def test_catalog_contains_exact_pronoun_ability_event_action_state_and_time(self):
+        window = _window("When Lux misses Q, you can walk forward because she can't stop your advance.")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",), ability_aliases=("Lux Q", "Q"))
+        texts = {item.source_text: set(item.type_hints) for item in catalog}
+        self.assertIn("Lux", texts)
+        self.assertIn("misses Q", texts)
+        self.assertIn("you", texts)
+        self.assertIn("walk forward", texts)
+        self.assertIn("can't stop your advance", texts)
+        self.assertIn("When Lux misses Q", texts)
+        self.assertIn("ENTITY", texts["you"])
+        self.assertIn("ABILITY_OR_RESOURCE", texts["Q"])
+
+    def test_repeated_identical_phrase_produces_distinct_exact_candidates(self):
+        window = _window("ward bush, then ward bush again.")
+        catalog = generate_mention_candidates(window)
+        wards = [item for item in catalog if item.source_text == "ward bush"]
+        self.assertEqual(len(wards), 2)
+        self.assertNotEqual(wards[0].candidate_id, wards[1].candidate_id)
+        self.assertNotEqual(wards[0].start, wards[1].start)
+
+    def test_catalog_is_deterministic_and_source_anchored(self):
+        window = _window("If Q misses, don't walk up.")
+        first = generate_mention_candidates(window)
+        second = generate_mention_candidates(window)
+        self.assertEqual(first, second)
+        for candidate in first:
+            candidate.validate(window)
+
+    def test_catalog_covers_long_source_mentions_up_to_versioned_pass0_bound(self):
+        text = " ".join(f"word{index}" for index in range(20))
+        window = _window(text)
+        catalog = generate_mention_candidates(window)
+        self.assertIn(text, {item.source_text for item in catalog})
+        with self.assertRaises(ValueError):
+            generate_mention_candidates(window, max_ngram_words=10)
+
+    def test_catalog_does_not_treat_pass0_segments_as_semantic_boundaries(self):
+        text = " ".join(f"word{index}" for index in range(70))
+        window = _window(text)
+        self.assertGreater(len(window.segments), 1)
+        phrase = "word30 word31 word32 word33"
+        candidate = next(
+            item for item in generate_mention_candidates(window)
+            if item.source_text == phrase
+        )
+        self.assertGreater(len(candidate.segment_ids), 1)
+        candidate.validate(window)
+
+    def test_cross_segment_aliases_retain_every_intersecting_segment(self):
+        long_alias = " ".join(f"word{index}" for index in range(33))
+        for text, alias in (
+            ("Alpha. Beta moves.", "Alpha. Beta moves."),
+            (long_alias + " tail", long_alias),
+        ):
+            with self.subTest(alias=alias):
+                window = _window(text)
+                self.assertGreater(len(window.segments), 1)
+                candidate = next(
+                    item for item in generate_mention_candidates(
+                        window, entity_aliases=(alias,),
+                    ) if item.source_text == alias
+                )
+                self.assertGreater(len(candidate.segment_ids), 1)
+                candidate.validate(window)
+
+    def test_candidate_identity_and_runtime_shapes_are_fail_closed(self):
+        window = _window("walk forward")
+        candidate = next(item for item in generate_mention_candidates(window) if item.source_text == "walk")
+        for invalid in (
+            replace(candidate, candidate_id="forged"),
+            replace(candidate, start=False),
+            replace(candidate, type_hints=list(candidate.type_hints)),
+            replace(candidate, segment_ids=()),
+            replace(candidate, version="old"),
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                invalid.validate(window)
+
+    def test_partition_drops_nothing(self):
+        catalog = generate_mention_candidates(_window("one two three four five six seven"))
+        parts = partition_candidate_catalog(catalog, max_candidates=5)
+        self.assertEqual(tuple(item for part in parts for item in part), catalog)
+        self.assertTrue(all(
+            len({item.start for item in part}) <= MENTION_MAX_FOCAL_STARTS_PER_REQUEST
+            for part in parts
+        ))
+        locations = {
+            start: {index for index, part in enumerate(parts) for item in part if item.start == start}
+            for start in {item.start for item in catalog}
+        }
+        self.assertTrue(all(len(indices) == 1 for indices in locations.values()))
+
+    def test_focal_prompt_uses_offsets_compact_aliases_and_no_type_hints(self):
+        window = _window("ward bush, then ward bush again")
+        catalog = generate_mention_candidates(window)
+        first = partition_candidate_catalog(catalog, max_candidates=100)[0]
+        prompt = mention_selection_prompt(window, first)
+        candidates = json.loads(
+            prompt.split("CANDIDATES:\n", 1)[1].split("\nSelect every", 1)[0]
+        )
+        self.assertTrue(all(set(item) == {"id", "focus", "start", "end", "text"} for item in candidates))
+        self.assertEqual(candidates[0]["id"], "c001")
+        self.assertNotIn("type_hints", prompt)
+        self.assertNotIn(first[0].candidate_id, prompt)
+        ward_entries = [item for item in candidates if item["text"] == "ward"]
+        self.assertEqual(len({(item["start"], item["end"]) for item in ward_entries}), len(ward_entries))
+
+    def test_local_aliases_nested_mentions_and_single_json_fence_are_resolved(self):
+        window = _window("Lux walks forward")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",))
+        partition = partition_candidate_catalog(catalog, max_candidates=100)[0]
+        aliases = {item.source_text: f"c{index:03d}" for index, item in enumerate(partition, 1)}
+        raw = json.dumps({"status": "OK", "mentions": [
+            {"candidate_id": aliases["Lux"], "node_type": "ENTITY", "confidence": 0.9, "ambiguity": "NONE"},
+            {"candidate_id": aliases["Lux walks"], "node_type": "EVENT", "confidence": 0.6,
+             "ambiguity": "NONE"},
+        ]})
+        status, mentions, _ = parse_mention_selection(f"```json\n{raw}\n```", partition)
+        self.assertEqual(status, "OK")
+        self.assertEqual({item.candidate_id for item in mentions}, {
+            next(item.candidate_id for item in partition if item.source_text == "Lux"),
+            next(item.candidate_id for item in partition if item.source_text == "Lux walks"),
+        })
+        self.assertEqual({item.ambiguity for item in mentions}, {"NONE"})
+        invalid_ambiguity = raw.replace('"ambiguity": "NONE"', '"ambiguity": "MULTIPLE_CANDIDATES"', 1)
+        with self.assertRaisesRegex(ValueError, "ambiguity state"):
+            parse_mention_selection(invalid_ambiguity, partition)
+        global_id = raw.replace(aliases["Lux"], next(
+            item.candidate_id for item in partition if item.source_text == "Lux"
+        ), 1)
+        with self.assertRaisesRegex(ValueError, "unknown candidate ID"):
+            parse_mention_selection(global_id, partition)
+        with self.assertRaisesRegex(ValueError, "malformed JSON"):
+            parse_mention_selection(f"```json\n{raw}\n``` trailing", partition)
+        with self.assertRaisesRegex(ValueError, "malformed JSON"):
+            parse_mention_selection(
+                f"```json\n{raw}\n```", partition,
+                prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+            )
+
+    def test_parse_selection_accepts_unresolved_pronoun_without_guessing_reference(self):
+        window = _window("When Lux misses Q, she cannot stop you.")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",), ability_aliases=("Q",))
+        by_text = {item.source_text: item for item in catalog}
+        raw = json.dumps({"status": "OK", "mentions": [{
+            "candidate_id": by_text["she"].candidate_id,
+            "node_type": "ENTITY",
+            "confidence": 0.55,
+            "ambiguity": "AMBIGUOUS",
+        }]})
+        status, mentions, _ = parse_mention_selection(
+            raw, catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+        )
+        self.assertEqual(status, "OK")
+        self.assertEqual(mentions[0].ambiguity, "AMBIGUOUS")
+
+    def test_parse_rejects_unknown_id_type_duplicate_key_and_bad_confidence(self):
+        catalog = generate_mention_candidates(_window("walk forward"))
+        base = {"status": "OK", "mentions": [{
+            "candidate_id": catalog[0].candidate_id, "node_type": "ACTION", "confidence": 0.9,
+            "ambiguity": "NONE",
+        }]}
+        variants = []
+        unknown = json.loads(json.dumps(base)); unknown["mentions"][0]["candidate_id"] = "missing"
+        variants.append(json.dumps(unknown))
+        bad_type = json.loads(json.dumps(base)); bad_type["mentions"][0]["node_type"] = "ACCESS"
+        variants.append(json.dumps(bad_type))
+        bad_conf = json.loads(json.dumps(base)); bad_conf["mentions"][0]["confidence"] = 2
+        variants.append(json.dumps(bad_conf))
+        variants.append('{"status":"OK","status":"NONE","mentions":[]}')
+        for raw in variants:
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                parse_mention_selection(
+                    raw, catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+                )
+
+    def test_non_ok_status_cannot_smuggle_mentions(self):
+        catalog = generate_mention_candidates(_window("walk"))
+        raw = json.dumps({"status": "AMBIGUOUS", "mentions": [{
+            "candidate_id": catalog[0].candidate_id, "node_type": "ACTION", "confidence": 0.5,
+            "ambiguity": "AMBIGUOUS",
+        }]})
+        with self.assertRaises(ValueError):
+            parse_mention_selection(
+                raw, catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY,
+            )
+
+    def test_provider_failure_is_distinct_from_parse_failure(self):
+        window = _window("walk forward")
+        catalog = generate_mention_candidates(window)
+        focal = partition_candidate_catalog(catalog)[0]
+
+        def fail(**kwargs):
+            raise RuntimeError("offline")
+
+        provider = select_mentions(window, focal, fail)
+        parsed = select_mentions(window, focal, lambda **kwargs: "not json")
+        self.assertTrue(provider.failure.startswith("MentionProviderError:"))
+        self.assertEqual(parsed.failure, "ValueError")
+        self.assertEqual(parsed.raw_output, "not json")
+        with self.assertRaisesRegex(ValueError, "too many source anchors"):
+            select_mentions(window, catalog, fail)
+
+        aggregate = select_mention_catalog(
+            window, catalog, fail, model="reference", configuration={},
+        )
+        forged_partition = replace(
+            aggregate.partition_results[0], raw_output="forged provider bytes",
+        )
+        forged = replace(
+            aggregate,
+            partition_results=(forged_partition,) + aggregate.partition_results[1:],
+        )
+        with self.assertRaisesRegex(ValueError, "provider failure evidence"):
+            assemble_semantic_nodes(window, forged)
+
+    def test_coverage_is_reported_by_family(self):
+        window = _window("When Lux misses Q, walk forward.")
+        catalog = generate_mention_candidates(window)
+        spans = []
+        for text, node_type in (("Lux", "ENTITY"), ("Q", "ABILITY_OR_RESOURCE"), ("walk forward", "ACTION")):
+            start = window.text.index(text)
+            spans.append((start, start + len(text), node_type))
+        report = candidate_coverage(catalog, spans, window=window)
+        self.assertEqual(report["entity"]["recall"], 1.0)
+        self.assertEqual(report["ability_resource"]["recall"], 1.0)
+        self.assertEqual(report["action_event"]["recall"], 1.0)
+        self.assertEqual(report["negation"], {"hit_count": 0, "denominator": 0, "recall": 0.0})
+
+    def test_arbitrary_qualifiers_and_duplicate_typing_are_rejected(self):
+        catalog = generate_mention_candidates(_window("walk forward"))
+        item = catalog[0]
+        with self.assertRaises(ValueError):
+            parse_mention_selection(json.dumps({"status": "OK", "mentions": [{
+                "candidate_id": item.candidate_id, "node_type": "ACTION", "confidence": 0.8,
+                "ambiguity": "NONE", "qualifiers": {"concept": "access"},
+            }]}), catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY)
+        with self.assertRaisesRegex(ValueError, "duplicate candidate"):
+            parse_mention_selection(json.dumps({"status": "OK", "mentions": [
+                {"candidate_id": item.candidate_id, "node_type": "ACTION", "confidence": 0.8, "ambiguity": "NONE"},
+                {"candidate_id": item.candidate_id, "node_type": "EVENT", "confidence": 0.7, "ambiguity": "UNKNOWN"},
+            ]}), catalog, prompt_version=MENTION_SELECTION_PROMPT_VERSION_LEGACY)
+
+    def test_partition_aggregation_retains_catalog_failures_and_builds_exact_nodes(self):
+        window = _window("Lux walks forward then she stops")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",))
+
+        def choose(**kwargs):
+            ids = [entry["id"] for entry in json.loads(kwargs["user"].split("CANDIDATES:\n", 1)[1].split("\nSelect", 1)[0])]
+            return json.dumps({"status": "OK", "mentions": [{
+                "candidate_id": ids[0], "node_type": "ENTITY", "confidence": 0.75, "ambiguity": "NONE",
+            }]})
+
+        result = select_mention_catalog(
+            window, catalog, choose, model="reference-model", configuration={"temperature": 0},
+            max_candidates=10,
+        )
+        self.assertEqual(result.status, "OK")
+        self.assertEqual(result.catalog, catalog)
+        self.assertGreater(len(result.partition_results), 1)
+        nodes = assemble_semantic_nodes(window, result)
+        self.assertEqual(len(nodes), len(result.partition_results))
+        self.assertTrue(all(node.confidence == 0.75 for node in nodes))
+        self.assertTrue(all(node.source_span.text == window.text[node.source_span.start:node.source_span.end] for node in nodes))
+        request = json.loads(result.partition_results[0].request_json)
+        self.assertEqual(request["system"].split(".")[0], "Return strict JSON only")
+        self.assertEqual(request["temperature"], 0.0)
+        self.assertEqual(request["max_tokens"], 2048)
+
+    def test_partition_abstention_remains_partial_and_aggregate_tampering_rejects(self):
+        window = _window("Lux walks forward then she stops")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",))
+        calls = 0
+
+        def partial(**kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                candidate_id = json.loads(
+                    kwargs["user"].split("CANDIDATES:\n", 1)[1].split("\nSelect", 1)[0]
+                )[0]["id"]
+                return json.dumps({"status": "OK", "mentions": [{
+                    "candidate_id": candidate_id, "node_type": "ENTITY",
+                    "confidence": 0.1, "ambiguity": "NONE",
+                }]})
+            return json.dumps({"status": "AMBIGUOUS", "mentions": []})
+
+        result = select_mention_catalog(
+            window, catalog, partial, model="reference", configuration={}, max_candidates=10,
+        )
+        self.assertEqual(result.status, "PARTIAL")
+        self.assertTrue(result.abstentions)
+        forged = replace(result, mentions=(MentionSelection(
+            result.mentions[0].candidate_id, "ACTION", 0.99, "NONE",
+        ),))
+        with self.assertRaisesRegex(ValueError, "contradict"):
+            assemble_semantic_nodes(window, forged)
+
+        partition = result.partition_results[0]
+        forged_mention = MentionSelection(partition.mentions[0].candidate_id, "ACTION", 0.99, "NONE")
+        forged_partition = replace(
+            partition, mentions=(forged_mention,),
+            parsed_output={"status": "OK", "mentions": [{
+                "candidate_id": forged_mention.candidate_id, "node_type": "ACTION",
+                "confidence": 0.99, "ambiguity": "NONE",
+            }]},
+        )
+        forged_results = (forged_partition,) + result.partition_results[1:]
+        forged_run = replace(result, partition_results=forged_results, mentions=(forged_mention,))
+        with self.assertRaisesRegex(ValueError, "raw output contradicts"):
+            assemble_semantic_nodes(window, forged_run)
+
+    def test_selection_rejects_candidates_from_another_window(self):
+        first = _window("walk")
+        second = _window("stop")
+        catalog = generate_mention_candidates(first)
+        with self.assertRaises(ValueError):
+            select_mentions(second, catalog, lambda **kwargs: "{}")
+
+    def test_unicode_percent_and_possessive_alias_candidates(self):
+        window = _window("Lux's chance is 15% near éclair, not éLuxé.")
+        catalog = generate_mention_candidates(window, entity_aliases=("Lux",))
+        texts = {item.source_text for item in catalog}
+        self.assertIn("Lux", texts)
+        self.assertIn("15%", texts)
+        self.assertIn("éclair", texts)
+        self.assertNotIn("éLux", texts)
+
+
+if __name__ == "__main__":
+    unittest.main()

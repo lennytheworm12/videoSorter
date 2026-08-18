@@ -396,6 +396,26 @@ Answer using the source evidence and, when present, the explicitly labeled
 derived strategic context above.
 """.strip()
 
+LOL_OVERVIEW_ANSWER = """
+League of Legends is a five-versus-five multiplayer strategy game where each player controls a champion with unique abilities. Most games are played on a map called Summoner's Rift, where teams earn gold and experience, fight over objectives, destroy towers, and try to break the enemy team's Nexus to win.
+
+The game is built around roles: top lane, jungle, mid lane, ADC, and support. Each role affects the map differently, so good play is not only about fighting well. It also involves farming, trading, wave control, vision, objective setup, teamfighting, and understanding each team's win condition.
+
+In this project, the coaching assistant uses League coaching videos and guide data to answer practical gameplay questions, such as how to play a matchup, how to identify a win condition, or how to make better macro decisions.
+""".strip()
+
+
+def _is_lol_overview_question(question: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
+    return bool(
+        re.fullmatch(
+            r"(what is|what s|whats|explain|define|tell me about)\s+"
+            r"(league of legends|league|lol|the game league of legends)",
+            normalized,
+        )
+        or re.fullmatch(r"(what game is this|what is this game)", normalized)
+    )
+
 MATCHUP_SYSTEM = """
 You are a League of Legends coaching assistant. You have source-grounded
 insights about two champions extracted from a real coach's video library and,
@@ -1991,6 +2011,8 @@ def answer(
         else "semantic-local"
     )
     game = normalize_game(game)
+    if game == "lol" and _is_lol_overview_question(question):
+        return LOL_OVERVIEW_ANSWER
     if subject is None:
         subject = champion
 
@@ -2056,7 +2078,7 @@ def answer(
             temperature=0.2,
         )
         if show_sources:
-            generated += _sources_block(insights)
+            generated += "\n\n---\nSources:\n" + _sources_block(insights)
         return generated
 
     # Only auto-detect intent when the user hasn't manually specified a champion
@@ -2144,7 +2166,7 @@ def answer(
         generated = ability_block + "\n\n" + generated
 
     if show_sources:
-        generated += _sources_block(insights)
+        generated += "\n\n---\nSources:\n" + _sources_block(insights)
     return generated
 
 
