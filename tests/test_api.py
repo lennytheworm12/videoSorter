@@ -47,6 +47,30 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(sources[0], "Sources for Illaoi:")
         self.assertEqual(sources[-1], "  [0.1] row")
 
+    def test_split_answer_sources_handles_legacy_raw_metric_rows(self) -> None:
+        body, sources = _split_answer_sources(
+            "Answer text\n"
+            "[0.38 | conf 0.81 | src-w 2.13 | supabase] (macro_advice) Identify the win condition.\n"
+            "[0.44 | conf 0.63 | src-w 1.60 | discord] (principles) Always plan."
+        )
+
+        self.assertEqual(body, "Answer text")
+        self.assertEqual(len(sources), 2)
+        self.assertIn("(macro_advice)", sources[0])
+        self.assertIn("(principles)", sources[1])
+
+    def test_split_answer_sources_handles_metric_rows_without_newline(self) -> None:
+        body, sources = _split_answer_sources(
+            "Answer text."
+            "[0.38 | conf 0.81 | src-w 2.13 | supabase] (macro_advice) Identify the win condition. "
+            "[0.44 | conf 0.63 | src-w 1.60 | discord] (principles) Always plan."
+        )
+
+        self.assertEqual(body, "Answer text.")
+        self.assertEqual(len(sources), 2)
+        self.assertIn("(macro_advice)", sources[0])
+        self.assertIn("(principles)", sources[1])
+
     def test_validate_runtime_config_requires_supabase_auth_vars_when_auth_enabled(self) -> None:
         with mock.patch.dict(
             os.environ,
@@ -225,6 +249,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.metadata["backend_quality"], "strong")
         self.assertEqual(response.metadata["retrieval_mode"], "bm25-fallback")
         self.assertFalse(response.metadata["semantic_enabled"])
+
+    def test_query_answers_lol_overview_directly_without_sources(self) -> None:
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "headers": [],
+            "client": ("203.0.113.11", 1234),
+        }
+        request = Request(scope)
+        _QUERY_COUNT_BY_DAY_AND_IP.clear()
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BACKEND_LABEL": "Home backend",
+                "BACKEND_QUALITY": "strong",
+                "VECTOR_BACKEND": "sqlite",
+                "DAILY_QUERY_LIMIT": "100",
+            },
+            clear=False,
+        ):
+            response = query(QueryRequest(question="what is league of legends", game="lol"), request, {"id": "test"})
+
+        self.assertEqual(response.normalized_question, "What is League of Legends?")
+        self.assertIn("five-versus-five multiplayer strategy game", response.answer)
+        self.assertEqual(response.sources, [])
+        self.assertEqual(response.metadata["reasoning"], "Answered as a direct game overview instead of a coaching retrieval question")
 
     def test_enforce_daily_query_limit_blocks_after_limit(self) -> None:
         scope = {

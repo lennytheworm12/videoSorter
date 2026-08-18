@@ -4,22 +4,7 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { memo, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { basePath, fetchRuntimeConfig, hasSupabaseConfig, supabase } from "../lib/supabase";
-
-type QueryResponse = {
-  answer: string;
-  sources: string[];
-  normalized_question: string;
-  metadata: {
-    game: string;
-    subject?: string | null;
-    role?: string | null;
-    reasoning?: string | null;
-    backend_label?: string | null;
-    backend_quality?: string | null;
-    retrieval_mode?: string | null;
-    semantic_enabled?: boolean | null;
-  };
-};
+import { normalizeQueryResponse, parseSourceLine, type QueryResponse } from "../lib/query-response";
 
 type BackendKey = "primary" | "fallback";
 
@@ -67,17 +52,6 @@ type AuthStatus = "loading" | "signed_out" | "signed_in";
 type ListNode = {
   text: string;
   children: ListNode[];
-};
-
-type ParsedSource = {
-  metrics: string | null;
-  category: string | null;
-  text: string;
-};
-
-type SplitResponse = {
-  answer: string;
-  sources: string[];
 };
 
 const GAME_GUIDES = {
@@ -386,58 +360,6 @@ function renderAnswer(answer: string): ReactNode[] {
   flushParagraph();
   flushList();
   return nodes;
-}
-
-function parseSourceLine(line: string): ParsedSource {
-  const trimmed = line.trim();
-  if (/^sources/i.test(trimmed)) {
-    return { metrics: null, category: null, text: trimmed };
-  }
-
-  const match = trimmed.match(/^\[(.+?)\]\s+\((.+?)\)\s+(.+)$/);
-  if (match) {
-    return {
-      metrics: match[1],
-      category: match[2],
-      text: match[3]
-    };
-  }
-
-  return { metrics: null, category: null, text: trimmed };
-}
-
-function splitEmbeddedSources(answer: string): SplitResponse {
-  const match = answer.match(/\n+\s*---\s*\n\s*(Sources(?:[^\n]*)?)\n/i);
-  if (!match || match.index === undefined) {
-    return { answer, sources: [] };
-  }
-
-  const answerText = answer.slice(0, match.index).trimEnd();
-  const sourceText = answer
-    .slice(match.index)
-    .replace(/^\s*---\s*\n/, "")
-    .trim();
-  const sources = sourceText
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim().length > 0);
-
-  return { answer: answerText, sources };
-}
-
-function normalizeQueryResponse(response: QueryResponse): QueryResponse {
-  if (response.sources.length > 0) {
-    return response;
-  }
-  const split = splitEmbeddedSources(response.answer);
-  if (split.sources.length === 0) {
-    return response;
-  }
-  return {
-    ...response,
-    answer: split.answer,
-    sources: split.sources,
-  };
 }
 
 const ResultSection = memo(

@@ -522,6 +522,12 @@ textarea:focus {
   margin-top: 22px;
 }
 
+.answerGrid > .panel,
+.answer,
+.sources {
+  min-width: 0;
+}
+
 .normalized {
   color: var(--accent-dark) !important;
   font-style: italic;
@@ -542,6 +548,9 @@ textarea:focus {
 .answerText {
   font-size: 1.04rem;
   line-height: 1.68;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .answerText > :first-child {
@@ -612,6 +621,7 @@ textarea:focus {
   display: grid;
   align-content: start;
   gap: 16px;
+  overflow: hidden;
 }
 
 .sourcesHeader {
@@ -637,6 +647,7 @@ textarea:focus {
   max-height: 540px;
   overflow: auto;
   padding-right: 6px;
+  min-width: 0;
 }
 
 .sourceItem {
@@ -646,12 +657,14 @@ textarea:focus {
   border: 1px solid rgba(23, 32, 26, 0.1);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.45);
+  min-width: 0;
 }
 
 .sourceItem p {
   margin: 0;
   font-size: 0.94rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .sourceTopline {
@@ -669,6 +682,9 @@ textarea:focus {
   padding: 0.3rem 0.65rem;
   font-size: 0.72rem;
   line-height: 1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .sourceCategory {

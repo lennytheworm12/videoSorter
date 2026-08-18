@@ -312,6 +312,18 @@ def _is_detail_question(question: str) -> bool:
     )
 
 
+def is_lol_overview_question(question: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
+    return bool(
+        re.fullmatch(
+            r"(what is|what s|whats|explain|define|tell me about)\s+"
+            r"(league of legends|league|lol|the game league of legends)",
+            normalized,
+        )
+        or re.fullmatch(r"(what game is this|what is this game)", normalized)
+    )
+
+
 def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
     """
     Takes a raw player question and returns:
@@ -386,6 +398,16 @@ def normalize(question: str, game: str = DEFAULT_GAME) -> dict:
             "role": None,
             "insight_types": ["general_advice"],
             "reasoning": f"{game} currently uses raw question pass-through normalization",
+        }
+
+    if is_lol_overview_question(question):
+        return {
+            "normalized": "What is League of Legends?",
+            "champion": None,
+            "role": None,
+            "insight_types": ["game_overview"],
+            "intent": "game_overview",
+            "reasoning": "Answered as a direct game overview instead of a coaching retrieval question",
         }
 
     prompt = NORMALIZE_PROMPT.format(
