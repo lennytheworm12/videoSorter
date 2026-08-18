@@ -17,6 +17,7 @@ subtitles/
 .codex
 .codex/
 .ipynb_checkpoints/
+data/phase2i_assets/
 
 cookies.txt
 proxies.txt
