@@ -1284,6 +1284,39 @@ def validate_intermediate_response(
                 )
 
 
+def _exact_quote_occurrences_2k(source: str, quote: str) -> list[int]:
+    """Start offsets of all exact matches, NBSP-tolerant on fallback.
+
+    Exact byte-for-byte matches are preferred.  Archived ASR transcripts
+    sometimes contain non-breaking spaces (U+00A0) where a model quotes an
+    ASCII space; because that substitution is one-to-one and
+    length-preserving, the fallback search replaces U+00A0 with a regular
+    space in BOTH strings and yields identical offsets into the original
+    source.  Callers must canonicalize stored quotes to the exact source
+    slice so downstream byte-exact validation still holds.
+    """
+    matches: list[int] = []
+    start = 0
+    while True:
+        index = source.find(quote, start)
+        if index < 0:
+            break
+        matches.append(index)
+        start = index + len(quote)
+    if matches or "\u00a0" not in source:
+        return matches
+    source_normalized = source.replace("\u00a0", " ")
+    quote_normalized = quote.replace("\u00a0", " ")
+    start = 0
+    while True:
+        index = source_normalized.find(quote_normalized, start)
+        if index < 0:
+            break
+        matches.append(index)
+        start = index + len(quote_normalized)
+    return matches
+
+
 def import_intermediate_response(
     response: Mapping[str, Any],
     *,
@@ -1304,7 +1337,7 @@ def import_intermediate_response(
             for reference in item["source_references"]:
                 quote = reference["quote"]
                 occurrence_index = reference["occurrence_index"]
-                matches = _exact_quote_occurrences(source, quote)
+                matches = _exact_quote_occurrences_2k(source, quote)
                 if occurrence_index >= len(matches):
                     raise ArtifactError(
                         f"quote {quote!r} has only {len(matches)} exact "
@@ -1312,6 +1345,11 @@ def import_intermediate_response(
                         f"{occurrence_index} is out of range",
                     )
                 char_start = matches[occurrence_index]
+                # Canonicalize to the byte-exact source slice so stored
+                # evidence remains byte-for-byte verifiable.
+                quote = source[char_start:char_start + len(
+                    quote.replace("\u00a0", " "),
+                )]
                 references.append({
                     "quote": quote,
                     "source_range": {
