@@ -1,0 +1,284 @@
+{
+  "schema_version": "phase2k-full-transcript-ablation-intermediate-response-v1",
+  "case_id": "p2k:case:0008",
+  "condition": "B",
+  "payload_sha256": "afd91119f2779ba673b9c7cdf00cdcdc38115bb41b83fb12493de045ab60a2e1",
+  "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+  "fields": {
+    "actors_entities": [
+      {
+        "extraction_text": "Ambessa",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "Ambessa is by far better champion than Riven",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "Riven",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "against Riven like if",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "the student/player (you)",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "you feel like you're not able to progress the lane",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "reference_bindings": [
+      {
+        "extraction_text": "that -> Ambessa being a better champion than Riven",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "So that's already a good reason to ban it.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "it -> Ambessa",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "So that's already a good reason to ban it.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "you -> the student/player",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "you feel like you're not able to progress the lane",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "it -> Ambessa (in 'ban it for sure')",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "you should ban it for sure",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "I -> the student/player",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "Yeah, I might have to do that because against Riven like if",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "abilities_resources": [],
+    "events_actions": [
+      {
+        "extraction_text": "ban it for sure",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "you should ban it for sure",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "I might have to do that",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "Yeah, I might have to do that because against Riven like if",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "states": [
+      {
+        "extraction_text": "Ambessa is by far better champion than Riven",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "Ambessa is by far better champion than Riven",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "you feel like you're not able to progress the lane",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "you feel like you're not able to progress the lane",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "extraction_text": "if on top of that, you feel like you're not able to progress the lane",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "if on top of that, you feel like you're not able to progress the lane",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "recommended_advice": [
+      {
+        "extraction_text": "you should ban it for sure",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "you should ban it for sure",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "consequences_outcomes": [
+      {
+        "extraction_text": "So that's already a good reason to ban it.",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "So that's already a good reason to ban it.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "I might have to do that",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "Yeah, I might have to do that because against Riven like if",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "explicit_relationships": [
+      {
+        "extraction_text": "it refers to Ambessa in 'ban it'",
+        "relation_type": "REFERS_TO",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "So that's already a good reason to ban it.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "you refers to the student/player",
+        "relation_type": "REFERS_TO",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "you feel like you're not able to progress the lane",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "Feeling unable to progress the lane conditions the advice to ban Ambessa",
+        "relation_type": "CONDITION",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "But if on top of that, you feel like you're not able to progress the lane, then yeah, you should ban it for sure.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "The advice to ban Ambessa for sure is the result of the condition",
+        "relation_type": "RESULT",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "you should ban it for sure",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "uncertainty_unresolved": [
+      {
+        "extraction_text": "The student's reason stops at an unresolved/truncated condition: 'against Riven like if'",
+        "resolution_status": "unresolved",
+        "source_references": [
+          {
+            "quote": "against Riven like if",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "supporting_source_spans": [
+      {
+        "extraction_text": "Ambessa is by far better champion than Riven",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "Ambessa is by far better champion than Riven",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "So that's already a good reason to ban it.",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "So that's already a good reason to ban it.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "But if on top of that, you feel like you're not able to progress the lane, then yeah, you should ban it for sure.",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "But if on top of that, you feel like you're not able to progress the lane, then yeah, you should ban it for sure.",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "Yeah, I might have to do that because against Riven like if",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "Yeah, I might have to do that because against Riven like if",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "schema_version": "phase2k-full-transcript-ablation-intermediate-response-v1",
+  "case_id": "p2k:case:0002",
+  "condition": "B",
+  "payload_sha256": "545e27ac1f60afe5dbd72fb204133c4c0c77d1e719b5d601ebef7fae0038f235",
+  "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+  "fields": {
+    "actors_entities": [
+      {
+        "extraction_text": "atrox",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "atrox has 11 CS after this",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "darus",
+        "resolution_status": "vocabulary_supported",
+        "source_references": [
+          {
+            "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "reference_bindings": [
+      {
+        "extraction_text": "you",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "do you really think",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "I",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "this darus",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "he's giving a freeb",
+        "resolution_status": "unresolved",
+        "source_references": [
+          {
+            "quote": "he's giving a freeb",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "abilities_resources": [
+      {
+        "extraction_text": "T (Teleport)",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "if atrox T is back here",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "clo armor",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "with clo armor full HP",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "events_actions": [
+      {
+        "extraction_text": "atrox has 11 CS after this",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "atrox has 11 CS after this",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "states": [
+      {
+        "extraction_text": "atrox has 11 CS",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "atrox has 11 CS after this",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "atrox has clo armor and full HP",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "with clo armor full HP",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "extraction_text": "if atrox T is back here",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "if atrox T is back here",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "if at he's giving a freeb",
+        "resolution_status": "unresolved",
+        "source_references": [
+          {
+            "quote": "if at he's giving a freeb",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "recommended_advice": [],
+    "consequences_outcomes": [
+      {
+        "extraction_text": "atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "he's giving a freeb",
+        "resolution_status": "unresolved",
+        "source_references": [
+          {
+            "quote": "he's giving a freeb",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "explicit_relationships": [
+      {
+        "extraction_text": "atrox uses T",
+        "relation_type": "USES",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "if atrox T is back here",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "if atrox T is back here, then evaluate whether atrox with clo armor full HP will beat this darus",
+        "relation_type": "CONDITION",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "atrox with clo armor full HP does not beat this darus",
+        "relation_type": "NEGATES",
+        "resolution_status": "context_resolved",
+        "source_references": [
+          {
+            "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "uncertainty_unresolved": [
+      {
+        "extraction_text": "freeb",
+        "resolution_status": "unresolved",
+        "source_references": [
+          {
+            "quote": "giving a freeb",
+            "occurrence_index": 0
+          }
+        ]
+      },
+      {
+        "extraction_text": "if at",
+        "resolution_status": "unresolved",
+        "source_references": [
+          {
+            "quote": "if at he's giving a freeb",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ],
+    "supporting_source_spans": [
+      {
+        "extraction_text": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+        "resolution_status": "literal_explicit",
+        "source_references": [
+          {
+            "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+            "occurrence_index": 0
+          }
+        ]
+      }
+    ]
+  }
+}

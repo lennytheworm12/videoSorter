@@ -248,9 +248,12 @@ class ModelTransport:
 
 
 def condition_run_dir(args: argparse.Namespace, condition: str) -> Path:
-    base = getattr(args, "run_dir", None) or getattr(args, "run_base", None)
+    base = getattr(args, "run_dir", None)
     if base:
         return Path(base)
+    run_base = getattr(args, "run_base", None)
+    if run_base:
+        return Path(run_base) / CONDITION_RUN_DIRS[condition]
     return DEFAULT_PROD_SEL_DIR / CONDITION_RUN_DIRS[condition]
 
 
@@ -1147,7 +1150,13 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     case_ids = [pair["case_id"] for pair in frozen["payloads"]["cases"]]
     metrics = {
         condition: compute_condition_metrics(
-            reviews, condition=condition, case_ids=case_ids,
+            {
+                key: entry
+                for key, entry in reviews.items()
+                if f":{condition}:" in key
+            },
+            condition=condition,
+            case_ids=case_ids,
         )
         for condition in NEW_CONDITION_CODES
     }

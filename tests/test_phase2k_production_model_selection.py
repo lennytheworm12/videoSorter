@@ -554,6 +554,22 @@ class ProductionSelectionTests(unittest.TestCase):
             "NO_DEEPSEEK_CONFIGURATION_MEETS_PRODUCTION_GATE",
         )
 
+    def test_conditional_pass_is_never_auto_promoted(self) -> None:
+        conditional_only = {
+            "F": {"outcome": "FAIL"},
+            "FV": {"outcome": "CONDITIONAL_PASS"},
+            "P": {"outcome": "CONDITIONAL_PASS"},
+        }
+        result = select_production_model(
+            gates=conditional_only,
+            cost_per_target_seconds={"FV": 30.0, "P": 90.0},
+        )
+        self.assertEqual(
+            result["recommendation"],
+            "NO_DEEPSEEK_CONFIGURATION_MEETS_PRODUCTION_GATE",
+        )
+        self.assertEqual(result["conditional_candidates"], ["FV", "P"])
+
 
 class ResumeFlowTests(unittest.TestCase):
     def test_resume_does_not_rerun_and_appends_single_verifier(self) -> None:

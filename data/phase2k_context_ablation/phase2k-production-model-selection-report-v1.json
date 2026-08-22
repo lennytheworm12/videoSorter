@@ -1,0 +1,521 @@
+{
+ "schema_version": "phase2k-production-model-selection-report-v1",
+ "purpose": "Phase 2K production-model selection report over the frozen full-context benchmark.",
+ "pipeline_version": "phase2k-production-model-selection-v1",
+ "baseline_ox": {
+  "condition": "OX",
+  "total_strict_successes": 109,
+  "total_judgments": 110,
+  "per_field": {
+   "actors_entities": {
+    "successes": 10,
+    "total": 10
+   },
+   "reference_bindings": {
+    "successes": 10,
+    "total": 10
+   },
+   "abilities_resources": {
+    "successes": 10,
+    "total": 10
+   },
+   "events_actions": {
+    "successes": 9,
+    "total": 10
+   },
+   "states": {
+    "successes": 10,
+    "total": 10
+   },
+   "conditions": {
+    "successes": 10,
+    "total": 10
+   },
+   "recommended_advice": {
+    "successes": 10,
+    "total": 10
+   },
+   "consequences_outcomes": {
+    "successes": 10,
+    "total": 10
+   },
+   "explicit_relationships": {
+    "successes": 10,
+    "total": 10
+   },
+   "uncertainty_unresolved": {
+    "successes": 10,
+    "total": 10
+   },
+   "supporting_source_spans": {
+    "successes": 10,
+    "total": 10
+   }
+  },
+  "per_target": {
+   "p2k:case:0001": {
+    "successes": 10,
+    "total": 11
+   },
+   "p2k:case:0002": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0003": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0004": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0005": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0006": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0007": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0008": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0009": {
+    "successes": 11,
+    "total": 11
+   },
+   "p2k:case:0010": {
+    "successes": 11,
+    "total": 11
+   }
+  },
+  "unsupported_field_count": 0,
+  "major_unsupported_count": 0,
+  "grounding_failure_count": 0,
+  "unresolved_field_successes": null
+ },
+ "metrics_by_condition": {
+  "P": {
+   "condition": "P",
+   "total_strict_successes": 92,
+   "total_judgments": 110,
+   "per_field": {
+    "actors_entities": {
+     "successes": 7,
+     "total": 10
+    },
+    "reference_bindings": {
+     "successes": 7,
+     "total": 10
+    },
+    "abilities_resources": {
+     "successes": 9,
+     "total": 10
+    },
+    "events_actions": {
+     "successes": 9,
+     "total": 10
+    },
+    "states": {
+     "successes": 9,
+     "total": 10
+    },
+    "conditions": {
+     "successes": 10,
+     "total": 10
+    },
+    "recommended_advice": {
+     "successes": 9,
+     "total": 10
+    },
+    "consequences_outcomes": {
+     "successes": 8,
+     "total": 10
+    },
+    "explicit_relationships": {
+     "successes": 8,
+     "total": 10
+    },
+    "uncertainty_unresolved": {
+     "successes": 6,
+     "total": 10
+    },
+    "supporting_source_spans": {
+     "successes": 10,
+     "total": 10
+    }
+   },
+   "per_target": {
+    "p2k:case:0001": {
+     "successes": 10,
+     "total": 11
+    },
+    "p2k:case:0002": {
+     "successes": 8,
+     "total": 11
+    },
+    "p2k:case:0003": {
+     "successes": 10,
+     "total": 11
+    },
+    "p2k:case:0004": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0005": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0006": {
+     "successes": 7,
+     "total": 11
+    },
+    "p2k:case:0007": {
+     "successes": 8,
+     "total": 11
+    },
+    "p2k:case:0008": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0009": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0010": {
+     "successes": 11,
+     "total": 11
+    }
+   },
+   "unsupported_field_count": 4,
+   "major_unsupported_count": 3,
+   "grounding_failure_count": 0,
+   "unresolved_field_successes": 6
+  },
+  "F": {
+   "condition": "F",
+   "total_strict_successes": 103,
+   "total_judgments": 110,
+   "per_field": {
+    "actors_entities": {
+     "successes": 10,
+     "total": 10
+    },
+    "reference_bindings": {
+     "successes": 7,
+     "total": 10
+    },
+    "abilities_resources": {
+     "successes": 9,
+     "total": 10
+    },
+    "events_actions": {
+     "successes": 9,
+     "total": 10
+    },
+    "states": {
+     "successes": 9,
+     "total": 10
+    },
+    "conditions": {
+     "successes": 10,
+     "total": 10
+    },
+    "recommended_advice": {
+     "successes": 10,
+     "total": 10
+    },
+    "consequences_outcomes": {
+     "successes": 9,
+     "total": 10
+    },
+    "explicit_relationships": {
+     "successes": 10,
+     "total": 10
+    },
+    "uncertainty_unresolved": {
+     "successes": 10,
+     "total": 10
+    },
+    "supporting_source_spans": {
+     "successes": 10,
+     "total": 10
+    }
+   },
+   "per_target": {
+    "p2k:case:0001": {
+     "successes": 10,
+     "total": 11
+    },
+    "p2k:case:0002": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0003": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0004": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0005": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0006": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0007": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0008": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0009": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0010": {
+     "successes": 11,
+     "total": 11
+    }
+   },
+   "unsupported_field_count": 1,
+   "major_unsupported_count": 0,
+   "grounding_failure_count": 0,
+   "unresolved_field_successes": 10
+  },
+  "FV": {
+   "condition": "FV",
+   "total_strict_successes": 103,
+   "total_judgments": 110,
+   "per_field": {
+    "actors_entities": {
+     "successes": 9,
+     "total": 10
+    },
+    "reference_bindings": {
+     "successes": 8,
+     "total": 10
+    },
+    "abilities_resources": {
+     "successes": 10,
+     "total": 10
+    },
+    "events_actions": {
+     "successes": 9,
+     "total": 10
+    },
+    "states": {
+     "successes": 8,
+     "total": 10
+    },
+    "conditions": {
+     "successes": 10,
+     "total": 10
+    },
+    "recommended_advice": {
+     "successes": 10,
+     "total": 10
+    },
+    "consequences_outcomes": {
+     "successes": 9,
+     "total": 10
+    },
+    "explicit_relationships": {
+     "successes": 10,
+     "total": 10
+    },
+    "uncertainty_unresolved": {
+     "successes": 10,
+     "total": 10
+    },
+    "supporting_source_spans": {
+     "successes": 10,
+     "total": 10
+    }
+   },
+   "per_target": {
+    "p2k:case:0001": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0002": {
+     "successes": 10,
+     "total": 11
+    },
+    "p2k:case:0003": {
+     "successes": 10,
+     "total": 11
+    },
+    "p2k:case:0004": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0005": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0006": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0007": {
+     "successes": 9,
+     "total": 11
+    },
+    "p2k:case:0008": {
+     "successes": 11,
+     "total": 11
+    },
+    "p2k:case:0009": {
+     "successes": 10,
+     "total": 11
+    },
+    "p2k:case:0010": {
+     "successes": 11,
+     "total": 11
+    }
+   },
+   "unsupported_field_count": 1,
+   "major_unsupported_count": 0,
+   "grounding_failure_count": 0,
+   "unresolved_field_successes": 10
+  }
+ },
+ "gates": {
+  "P": {
+   "outcome": "FAIL",
+   "hard_fail_reasons": [
+    "major unsupported claim present"
+   ],
+   "gate_checks": {
+    "pass_total_ge_104": false,
+    "pass_key_fields_ge_9": false,
+    "conditional_total_ge_99": false,
+    "conditional_key_fields_ge_8": false,
+    "no_major_unsupported": false,
+    "no_grounding_failures": true,
+    "pass_unsupported_le_1": false,
+    "conditional_unsupported_le_2": false
+   }
+  },
+  "F": {
+   "outcome": "FAIL",
+   "hard_fail_reasons": [],
+   "gate_checks": {
+    "pass_total_ge_104": false,
+    "pass_key_fields_ge_9": false,
+    "conditional_total_ge_99": true,
+    "conditional_key_fields_ge_8": false,
+    "no_major_unsupported": true,
+    "no_grounding_failures": true,
+    "pass_unsupported_le_1": true,
+    "conditional_unsupported_le_2": true
+   }
+  },
+  "FV": {
+   "outcome": "CONDITIONAL_PASS",
+   "hard_fail_reasons": [],
+   "gate_checks": {
+    "pass_total_ge_104": false,
+    "pass_key_fields_ge_9": false,
+    "conditional_total_ge_99": true,
+    "conditional_key_fields_ge_8": true,
+    "no_major_unsupported": true,
+    "no_grounding_failures": true,
+    "pass_unsupported_le_1": true,
+    "conditional_unsupported_le_2": true
+   }
+  }
+ },
+ "verifier_usefulness": {
+  "delta_strict_successes": 0,
+  "improved_targets": 3,
+  "worsened_targets": 3,
+  "improved_substantive_fields": [
+   "reference_bindings",
+   "abilities_resources"
+  ],
+  "checks": {
+   "strict_improvement_ge_3": false,
+   "improves_ge_2_targets": true,
+   "worsens_le_1_target": false,
+   "improves_substantive_field": true,
+   "no_major_unsupported_increase": true,
+   "no_grounding_failure_increase": true
+  },
+  "decision": "VERIFIER_SCALING_NOT_JUSTIFIED"
+ },
+ "oracle_analysis": null,
+ "cost_accounting": {
+  "P": {
+   "model": "opencode-go/deepseek-v4-pro",
+   "calls_per_target": 1,
+   "total_calls": 10,
+   "completed_calls": 10,
+   "total_wall_clock_seconds": 1949.8,
+   "avg_latency_seconds_per_call": 195.0,
+   "wall_seconds_per_target": 195.0,
+   "total_retries": 0,
+   "total_parse_failures": 0,
+   "transports_used": [
+    "deepseek_api"
+   ],
+   "tokens": "unavailable via OpenCode CLI transport",
+   "provider_cost_usd": "unavailable"
+  },
+  "F": {
+   "model": "opencode-go/deepseek-v4-flash",
+   "calls_per_target": 1,
+   "total_calls": 10,
+   "completed_calls": 10,
+   "total_wall_clock_seconds": 2318.7,
+   "avg_latency_seconds_per_call": 231.9,
+   "wall_seconds_per_target": 231.9,
+   "total_retries": 0,
+   "total_parse_failures": 0,
+   "transports_used": [
+    "deepseek_api"
+   ],
+   "tokens": "unavailable via OpenCode CLI transport",
+   "provider_cost_usd": "unavailable"
+  },
+  "FV": {
+   "model": "opencode-go/deepseek-v4-flash",
+   "calls_per_target": 6,
+   "total_calls": 60,
+   "completed_calls": 60,
+   "total_wall_clock_seconds": 11839.1,
+   "avg_latency_seconds_per_call": 197.3,
+   "wall_seconds_per_target": 1183.9,
+   "total_retries": 4,
+   "total_parse_failures": 4,
+   "transports_used": [
+    "deepseek_api"
+   ],
+   "tokens": "unavailable via OpenCode CLI transport",
+   "provider_cost_usd": "unavailable"
+  }
+ },
+ "production_selection": {
+  "recommendation": "NO_DEEPSEEK_CONFIGURATION_MEETS_PRODUCTION_GATE",
+  "basis": "no condition reached PASS; closest conditional candidate is FV pending error review",
+  "conditional_candidates": [
+   "FV"
+  ],
+  "cost_comparison_used": false
+ },
+ "reviewer_kind": "agent",
+ "reviewer_identity": "0x-alpha-free (opencode-go), 2026-08-22; implementing agent as common reviewer across all conditions",
+ "content_sha256": "cc22d1148f517dae379d73b286cc6f67d62fbb91c7c367c6121276cdf9503583"
+}

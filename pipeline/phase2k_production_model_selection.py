@@ -554,8 +554,18 @@ def select_production_model(
         chosen_pool = passing
         basis = "PASS"
     elif conditional:
-        chosen_pool = conditional
-        basis = "CONDITIONAL_PASS (not automatically promoted; errors require review)"
+        # A CONDITIONAL_PASS is never automatically promoted; per the frozen
+        # contract its errors must be reviewed first.  Until such a review
+        # justifies promotion, no DeepSeek configuration meets the gate.
+        return {
+            "recommendation": "NO_DEEPSEEK_CONFIGURATION_MEETS_PRODUCTION_GATE",
+            "basis": (
+                "no condition reached PASS; closest conditional candidate "
+                f"is {conditional[0]} pending error review"
+            ),
+            "conditional_candidates": conditional,
+            "cost_comparison_used": False,
+        }
     else:
         return {
             "recommendation": "NO_DEEPSEEK_CONFIGURATION_MEETS_PRODUCTION_GATE",

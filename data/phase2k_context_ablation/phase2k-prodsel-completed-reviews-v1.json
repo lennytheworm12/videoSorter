@@ -1,0 +1,1990 @@
+{
+ "schema_version": "phase2k-production-model-selection-completed-reviews-v1",
+ "reviewer_kind": "agent",
+ "reviewer_identity": "0x-alpha-free (opencode-go), 2026-08-22; implementing agent as common reviewer across all conditions",
+ "completed_at": "2026-08-22T00:00:00Z",
+ "agent_scoping_statement": "One common AI reviewer (0x Alpha) scored all three conditions under the identical frozen contract, grading against session-level ground truth from the archived transcripts. Recoverable content that a condition left unresolved counts as PARTIAL; genuinely indeterminate tokens left unresolved are not penalized. Raw outputs are preserved for independent re-review.",
+ "reviews": {
+  "p2k:case:0001:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:uncertainty_unresolved": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:actors_entities": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:abilities_resources": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "MINOR",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:explicit_relationships": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:events_actions": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:consequences_outcomes": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:events_actions": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:states": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:actors_entities": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "MAJOR",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:consequences_outcomes": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:explicit_relationships": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:uncertainty_unresolved": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:actors_entities": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "MAJOR",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "MAJOR",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:uncertainty_unresolved": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:recommended_advice": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:uncertainty_unresolved": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:P:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:abilities_resources": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "MINOR",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:events_actions": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:events_actions": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:states": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:consequences_outcomes": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:events_actions": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:events_actions": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:F:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0001:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "MINOR",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:recommended_advice": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0002:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:events_actions": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:states": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:consequences_outcomes": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0003:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:abilities_resources": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:events_actions": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:states": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0004:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0005:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0006:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:actors_entities": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:reference_bindings": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0007:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0008:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:states": {
+   "correctness": "PARTIAL",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:recommended_advice": {
+   "correctness": "ABSENT_CORRECTLY",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0009:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:actors_entities": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:reference_bindings": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:abilities_resources": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:events_actions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:states": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:conditions": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:recommended_advice": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:consequences_outcomes": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:explicit_relationships": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:uncertainty_unresolved": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  },
+  "p2k:case:0010:FV:supporting_source_spans": {
+   "correctness": "CORRECT",
+   "unsupported_inference": "NONE",
+   "source_grounding": "GROUNDED",
+   "notes": []
+  }
+ },
+ "content_sha256": "1fa4c68344f48d8f914e6d6df46e85f9d58dca9e0bd4f9f3f21f8502b1e1fa85"
+}

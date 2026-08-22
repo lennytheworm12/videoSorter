@@ -1,0 +1,4199 @@
+{
+ "schema_version": "phase2k-production-model-selection-outputs-v1",
+ "purpose": "Validated Phase 2K production-model selection outputs for condition P.",
+ "condition": "P",
+ "requested_model": "opencode-go/deepseek-v4-pro",
+ "payloads_sha256": "789f37661e2239dce6346cddf2a6862b7a877d7bc2ed746afc839cf3f09dfde1",
+ "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+ "cases": [
+  {
+   "case_id": "p2k:case:0001",
+   "final_output": {
+    "content_sha256": "4386ae35ee43e2b7951a9af81d1738ea52198eeead2b8737980dc7aff96b0ff1",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0001",
+    "condition": "B",
+    "payload_sha256": "030a3f9feff18ad3a57161d677d25e146cee52de06fc2182e5f2ca3afd1c7b7d",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0001:B:actors_entities:0001",
+       "extraction_text": "I (the coach speaking)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:actors_entities:0002",
+       "extraction_text": "you (the player being coached)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:actors_entities:0003",
+       "extraction_text": "Karthus (the champion under discussion; context says carus)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "for carus you are never allowed to go Smite and exhaust again",
+         "source_range": {
+          "char_start": 4492,
+          "char_end": 4553
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0001",
+       "extraction_text": "you -> the player being coached",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0002",
+       "extraction_text": "I in 'I do' -> the player being coached",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0003",
+       "extraction_text": "I in 'I would' -> the coach",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0004",
+       "extraction_text": "this -> the Exhaust/Smite and rune setup under discussion",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0005",
+       "extraction_text": "flash -> Flash (summoner spell)",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0006",
+       "extraction_text": "exhaust -> Exhaust (summoner spell)",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0007",
+       "extraction_text": "SM -> Smite (summoner spell)",
+       "resolution_status": "vocabulary_supported",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0008",
+       "extraction_text": "Last Stand -> Last Stand (rune)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0009",
+       "extraction_text": "Harvest -> Dark Harvest (rune)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0010",
+       "extraction_text": "cheap shot -> Cheap Shot (rune)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0011",
+       "extraction_text": "ultimate Hunter -> Ultimate Hunter (rune)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:reference_bindings:0012",
+       "extraction_text": "eyeball -> Eyeball Collection (rune)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0001",
+       "extraction_text": "Flash (summoner spell; recommended by the coach)",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0002",
+       "extraction_text": "Exhaust (summoner spell; part of the player's current setup)",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0003",
+       "extraction_text": "SM (Smite; summoner spell; part of the player's current setup)",
+       "resolution_status": "vocabulary_supported",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0004",
+       "extraction_text": "Last Stand (rune the player loses by not taking it)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0005",
+       "extraction_text": "Harvest (Dark Harvest rune the player loses by not taking it)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0006",
+       "extraction_text": "cheap shot (Cheap Shot rune the player loses by not taking it)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0007",
+       "extraction_text": "Ultimate Hunter (rune the player probably has)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:abilities_resources:0008",
+       "extraction_text": "Eyeball Collection (rune the player probably has, from 'eyeball')",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0001:B:events_actions:0001",
+       "extraction_text": "The coach states he would play with Flash rather than Exhaust/Smite",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:events_actions:0002",
+       "extraction_text": "The player confirms he has Ultimate Hunter and Eyeball",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0001:B:states:0001",
+       "extraction_text": "the player is going Exhaust and Smite",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:states:0002",
+       "extraction_text": "the player has less fighting Power",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:states:0003",
+       "extraction_text": "the player is losing Last Stand",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:states:0004",
+       "extraction_text": "the player is losing Harvest",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:states:0005",
+       "extraction_text": "the player is losing cheap shot",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:states:0006",
+       "extraction_text": "the player has Ultimate Hunter and Eyeball",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0001:B:conditions:0001",
+       "extraction_text": "you're going exhaust SM (the condition under which the player has less fighting power)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0001:B:recommended_advice:0001",
+       "extraction_text": "Play with Flash rather than Exhaust/Smite",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0001:B:consequences_outcomes:0001",
+       "extraction_text": "Going Exhaust/Smite results in less fighting power",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0001:B:consequences_outcomes:0002",
+       "extraction_text": "Going Exhaust/Smite means losing Last Stand, Harvest, and cheap shot",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0001:B:explicit_relationships:0001",
+       "extraction_text": "you (the player) uses Exhaust and Smite",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ],
+       "relation_type": "USES"
+      },
+      {
+       "item_id": "p2k:case:0001:B:explicit_relationships:0002",
+       "extraction_text": "I (the coach) uses Flash in the recommended setup",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ],
+       "relation_type": "USES"
+      },
+      {
+       "item_id": "p2k:case:0001:B:explicit_relationships:0003",
+       "extraction_text": "going Exhaust/Smite causes less fighting power",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ],
+       "relation_type": "CAUSES"
+      },
+      {
+       "item_id": "p2k:case:0001:B:explicit_relationships:0004",
+       "extraction_text": "losing Last Stand, Harvest, and cheap shot causes less fighting power",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ],
+       "relation_type": "CAUSES"
+      },
+      {
+       "item_id": "p2k:case:0001:B:explicit_relationships:0005",
+       "extraction_text": "playing with Flash rather than Exhaust/Smite negates the Exhaust/Smite setup",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ],
+       "relation_type": "NEGATES"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0001:B:uncertainty_unresolved:0001",
+       "extraction_text": "SM (ASR-corrupted token; context suggests Smite)",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0001:B:supporting_source_spans:0001",
+       "extraction_text": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "play with flash because like you're going exhaust SM but you have less fighting Power because you're losing Last Stand you're losing Harvest you're losing cheap shot because you probably have ultimate Hunter eyeball right yeah I do right that doesn't mean this is bad like I would",
+         "source_range": {
+          "char_start": 4942,
+          "char_end": 5222
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 4942,
+        "char_end": 5222
+       }
+      },
+      {
+       "item_id": "p2k:case:0001:B:supporting_source_spans:0002",
+       "extraction_text": "for carus you are never allowed to go Smite and exhaust again",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "for carus you are never allowed to go Smite and exhaust again",
+         "source_range": {
+          "char_start": 4492,
+          "char_end": 4553
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 4492,
+        "char_end": 4553
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0001__P.json"
+  },
+  {
+   "case_id": "p2k:case:0002",
+   "final_output": {
+    "content_sha256": "e29e078c6217c5618391d063f8a5ce4a72de1ef47ccd62ea44c7c09ed4583efc",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0002",
+    "condition": "B",
+    "payload_sha256": "545e27ac1f60afe5dbd72fb204133c4c0c77d1e719b5d601ebef7fae0038f235",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0002:B:actors_entities:0001",
+       "extraction_text": "atrox",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "atrox has 11 CS after this",
+         "source_range": {
+          "char_start": 30545,
+          "char_end": 30571
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:actors_entities:0002",
+       "extraction_text": "darus",
+       "resolution_status": "vocabulary_supported",
+       "source_references": [
+        {
+         "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+         "source_range": {
+          "char_start": 30531,
+          "char_end": 30762
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0002:B:reference_bindings:0001",
+       "extraction_text": "you",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "do you really think",
+         "source_range": {
+          "char_start": 30649,
+          "char_end": 30668
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:reference_bindings:0002",
+       "extraction_text": "I",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because I don't think so",
+         "source_range": {
+          "char_start": 30738,
+          "char_end": 30762
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:reference_bindings:0003",
+       "extraction_text": "this darus",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+         "source_range": {
+          "char_start": 30531,
+          "char_end": 30762
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:reference_bindings:0004",
+       "extraction_text": "he's giving a freeb",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "he's giving a freeb",
+         "source_range": {
+          "char_start": 30578,
+          "char_end": 30597
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0002:B:abilities_resources:0001",
+       "extraction_text": "T (Teleport)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "if atrox T is back here",
+         "source_range": {
+          "char_start": 30625,
+          "char_end": 30648
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:abilities_resources:0002",
+       "extraction_text": "clo armor",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "with clo armor full HP",
+         "source_range": {
+          "char_start": 30675,
+          "char_end": 30697
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0002:B:events_actions:0001",
+       "extraction_text": "atrox has 11 CS after this",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "atrox has 11 CS after this",
+         "source_range": {
+          "char_start": 30545,
+          "char_end": 30571
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0002:B:states:0001",
+       "extraction_text": "atrox has 11 CS",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "atrox has 11 CS after this",
+         "source_range": {
+          "char_start": 30545,
+          "char_end": 30571
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:states:0002",
+       "extraction_text": "atrox has clo armor and full HP",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "with clo armor full HP",
+         "source_range": {
+          "char_start": 30675,
+          "char_end": 30697
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0002:B:conditions:0001",
+       "extraction_text": "if atrox T is back here",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "if atrox T is back here",
+         "source_range": {
+          "char_start": 30625,
+          "char_end": 30648
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:conditions:0002",
+       "extraction_text": "if at he's giving a freeb",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "if at he's giving a freeb",
+         "source_range": {
+          "char_start": 30572,
+          "char_end": 30597
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0002:B:consequences_outcomes:0001",
+       "extraction_text": "atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+         "source_range": {
+          "char_start": 30649,
+          "char_end": 30762
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:consequences_outcomes:0002",
+       "extraction_text": "he's giving a freeb",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "he's giving a freeb",
+         "source_range": {
+          "char_start": 30578,
+          "char_end": 30597
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0002:B:explicit_relationships:0001",
+       "extraction_text": "atrox uses T",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "if atrox T is back here",
+         "source_range": {
+          "char_start": 30625,
+          "char_end": 30648
+         }
+        }
+       ],
+       "relation_type": "USES"
+      },
+      {
+       "item_id": "p2k:case:0002:B:explicit_relationships:0002",
+       "extraction_text": "if atrox T is back here, then evaluate whether atrox with clo armor full HP will beat this darus",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+         "source_range": {
+          "char_start": 30531,
+          "char_end": 30762
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      },
+      {
+       "item_id": "p2k:case:0002:B:explicit_relationships:0003",
+       "extraction_text": "atrox with clo armor full HP does not beat this darus",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+         "source_range": {
+          "char_start": 30531,
+          "char_end": 30762
+         }
+        }
+       ],
+       "relation_type": "NEGATES"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0002:B:uncertainty_unresolved:0001",
+       "extraction_text": "freeb",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "giving a freeb",
+         "source_range": {
+          "char_start": 30583,
+          "char_end": 30597
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0002:B:uncertainty_unresolved:0002",
+       "extraction_text": "if at",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "if at he's giving a freeb",
+         "source_range": {
+          "char_start": 30572,
+          "char_end": 30597
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0002:B:supporting_source_spans:0001",
+       "extraction_text": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "look at atrox atrox has 11 CS after this if at he's giving a freeb right because this if yeah if atrox T is back here do you really think atrox with clo armor full HP will beat this darus probably not right because I don't think so",
+         "source_range": {
+          "char_start": 30531,
+          "char_end": 30762
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 30531,
+        "char_end": 30762
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0002__P.json"
+  },
+  {
+   "case_id": "p2k:case:0003",
+   "final_output": {
+    "content_sha256": "dc87f2ea475a5c1b762a65e0b1449f6586732957a4d56b70d2af9c9564d0bbab",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0003",
+    "condition": "B",
+    "payload_sha256": "0f8925410c0d30290caf854b7bc8e4dbe334825f14c3ee79eaed55d5e31cc1b3",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0003:B:actors_entities:0001",
+       "extraction_text": "Fiora",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "I would always go ignite versus Fiora",
+         "source_range": {
+          "char_start": 13322,
+          "char_end": 13359
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:actors_entities:0002",
+       "extraction_text": "Camille",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "flash is broken on Camille",
+         "source_range": {
+          "char_start": 13414,
+          "char_end": 13440
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:actors_entities:0003",
+       "extraction_text": "I (the speaker/coach)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I mean I would always go ignite versus Fiora",
+         "source_range": {
+          "char_start": 13315,
+          "char_end": 13359
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0003:B:reference_bindings:0001",
+       "extraction_text": "she (Fiora)",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Fiora because she heals",
+         "source_range": {
+          "char_start": 13354,
+          "char_end": 13377
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:reference_bindings:0002",
+       "extraction_text": "I (the speaker/coach)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I mean I would always go ignite versus Fiora",
+         "source_range": {
+          "char_start": 13315,
+          "char_end": 13359
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:reference_bindings:0003",
+       "extraction_text": "you (the addressed player/student)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "when you need heal cut",
+         "source_range": {
+          "char_start": 13502,
+          "char_end": 13524
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0003:B:abilities_resources:0001",
+       "extraction_text": "ignite",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "go ignite versus Fiora",
+         "source_range": {
+          "char_start": 13337,
+          "char_end": 13359
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:abilities_resources:0002",
+       "extraction_text": "flash",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "flash is broken on Camille",
+         "source_range": {
+          "char_start": 13414,
+          "char_end": 13440
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:abilities_resources:0003",
+       "extraction_text": "TP",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "go flash TP in most cases",
+         "source_range": {
+          "char_start": 13452,
+          "char_end": 13477
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:abilities_resources:0004",
+       "extraction_text": "heal cut",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when you need heal cut is fine",
+         "source_range": {
+          "char_start": 13502,
+          "char_end": 13532
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:abilities_resources:0005",
+       "extraction_text": "Fiora's healing (she heals)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "she heals more than [\u00a0__\u00a0] window",
+         "source_range": {
+          "char_start": 13368,
+          "char_end": 13401
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [],
+     "states": [
+      {
+       "item_id": "p2k:case:0003:B:states:0001",
+       "extraction_text": "Fiora heals more than [ __ ] window",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "she heals more than [\u00a0__\u00a0] window",
+         "source_range": {
+          "char_start": 13368,
+          "char_end": 13401
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0003:B:conditions:0001",
+       "extraction_text": "versus Fiora",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "go ignite versus Fiora",
+         "source_range": {
+          "char_start": 13337,
+          "char_end": 13359
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:conditions:0002",
+       "extraction_text": "in most cases",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "go flash TP in most cases",
+         "source_range": {
+          "char_start": 13452,
+          "char_end": 13477
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:conditions:0003",
+       "extraction_text": "when you need heal cut",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when you need heal cut is fine",
+         "source_range": {
+          "char_start": 13502,
+          "char_end": 13532
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0003:B:recommended_advice:0001",
+       "extraction_text": "always go ignite versus Fiora",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "I would always go ignite versus Fiora",
+         "source_range": {
+          "char_start": 13322,
+          "char_end": 13359
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:recommended_advice:0002",
+       "extraction_text": "go flash TP in most cases",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "I would go flash TP in most cases",
+         "source_range": {
+          "char_start": 13444,
+          "char_end": 13477
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0003:B:recommended_advice:0003",
+       "extraction_text": "ignite when you need heal cut is fine",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "ignite when you need heal cut is fine",
+         "source_range": {
+          "char_start": 13495,
+          "char_end": 13532
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0003:B:consequences_outcomes:0001",
+       "extraction_text": "ignite when you need heal cut is fine",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "ignite when you need heal cut is fine",
+         "source_range": {
+          "char_start": 13495,
+          "char_end": 13532
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0003:B:explicit_relationships:0001",
+       "extraction_text": "she refers to Fiora",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Fiora because she heals",
+         "source_range": {
+          "char_start": 13354,
+          "char_end": 13377
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      },
+      {
+       "item_id": "p2k:case:0003:B:explicit_relationships:0002",
+       "extraction_text": "Fiora heals more than [ __ ] window",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "she heals more than [\u00a0__\u00a0] window",
+         "source_range": {
+          "char_start": 13368,
+          "char_end": 13401
+         }
+        }
+       ],
+       "relation_type": "CAUSES"
+      },
+      {
+       "item_id": "p2k:case:0003:B:explicit_relationships:0003",
+       "extraction_text": "you need heal cut",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when you need heal cut is fine",
+         "source_range": {
+          "char_start": 13502,
+          "char_end": 13532
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0003:B:uncertainty_unresolved:0001",
+       "extraction_text": "she heals more than [ __ ] window",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "she heals more than [\u00a0__\u00a0] window",
+         "source_range": {
+          "char_start": 13368,
+          "char_end": 13401
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0003:B:supporting_source_spans:0001",
+       "extraction_text": "Target passage summoner spell advice",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "I mean I would always go ignite versus Fiora because she heals more than [\u00a0__\u00a0] window but I think flash is broken on Camille So I would go flash TP in most cases yeah but I think ignite when you need heal cut is fine because",
+         "source_range": {
+          "char_start": 13315,
+          "char_end": 13540
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 13315,
+        "char_end": 13540
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0003__P.json"
+  },
+  {
+   "case_id": "p2k:case:0004",
+   "final_output": {
+    "content_sha256": "8019a5ba99381d3a64b20315a9f65b84845f8b12a96f63a09637c05955edcac9",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0004",
+    "condition": "B",
+    "payload_sha256": "effd2af1dab440322eb312c3890f185eebb367bfd160599c604d9674fc0c5e79",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0004:B:actors_entities:0001",
+       "extraction_text": "Brier (Briar)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "if Brier doesn't win one one then you should go because you still want to invade",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54425
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:actors_entities:0002",
+       "extraction_text": "Talia (Taliyah)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54524,
+          "char_end": 54566
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:actors_entities:0003",
+       "extraction_text": "you (the coached Aatrox top laner)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54524,
+          "char_end": 54566
+         }
+        },
+        {
+         "quote": "if Brier doesn't win one one then you should go because you still want to invade",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54425
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0004:B:reference_bindings:0001",
+       "extraction_text": "you -> the coached Aatrox top laner",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "if Brier doesn't win one one then you should go because you still want to invade",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54425
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:reference_bindings:0002",
+       "extraction_text": "Brier -> Briar",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "if Brier doesn't win one one then you should go because you still want to invade",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54425
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:reference_bindings:0003",
+       "extraction_text": "Talia -> Taliyah",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54524,
+          "char_end": 54566
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:reference_bindings:0004",
+       "extraction_text": "it -> the invade/invasion",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "cuz you could make it winning",
+         "source_range": {
+          "char_start": 54488,
+          "char_end": 54517
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:reference_bindings:0005",
+       "extraction_text": "I -> the coach/speaker",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54524,
+          "char_end": 54566
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [],
+     "events_actions": [],
+     "states": [],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0004:B:conditions:0001",
+       "extraction_text": "If Brier does not win the 1v1, you should go.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "if Brier doesn't win one one then you should go",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54392
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:conditions:0002",
+       "extraction_text": "Just because Brier loses to does not mean you should not invade.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "just because Brier loses to doesn't mean you shouldn't invade",
+         "source_range": {
+          "char_start": 54426,
+          "char_end": 54487
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0004:B:recommended_advice:0001",
+       "extraction_text": "If Brier does not win the 1v1, go because you still want to invade.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "if Brier doesn't win one one then you should go because you still want to invade",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54425
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:recommended_advice:0002",
+       "extraction_text": "Do not decide not to invade just because Brier loses the 1v1; you could make it winning.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "just because Brier loses to doesn't mean you shouldn't invade cuz you could make it winning",
+         "source_range": {
+          "char_start": 54426,
+          "char_end": 54517
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0004:B:consequences_outcomes:0001",
+       "extraction_text": "Going can make the invade winning.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "cuz you could make it winning",
+         "source_range": {
+          "char_start": 54488,
+          "char_end": 54517
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:consequences_outcomes:0002",
+       "extraction_text": "The coach hopes Talia does not 2v1 the player.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54524,
+          "char_end": 54566
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0004:B:explicit_relationships:0001",
+       "extraction_text": "Brier not winning the 1v1 is the condition for you to go.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "if Brier doesn't win one one then you should go",
+         "source_range": {
+          "char_start": 54345,
+          "char_end": 54392
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      },
+      {
+       "item_id": "p2k:case:0004:B:explicit_relationships:0002",
+       "extraction_text": "Brier losing the 1v1 does not negate the reason to invade.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "just because Brier loses to doesn't mean you shouldn't invade",
+         "source_range": {
+          "char_start": 54426,
+          "char_end": 54487
+         }
+        }
+       ],
+       "relation_type": "NEGATES"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0004:B:uncertainty_unresolved:0001",
+       "extraction_text": "Brier loses to (missing opponent/object)",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "just because Brier loses to doesn't mean you shouldn't invade",
+         "source_range": {
+          "char_start": 54426,
+          "char_end": 54487
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0004:B:uncertainty_unresolved:0002",
+       "extraction_text": "2v one (ASR corruption/nonstandard spelling of 2v1)",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54524,
+          "char_end": 54566
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0004:B:supporting_source_spans:0001",
+       "extraction_text": "move then you should go if Brier doesn't win one one then you should go because you still want to invade just because Brier loses to doesn't mean you shouldn't invade cuz you could make it winning right I hope Talia does not 2v one you right but",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "move then you should go if Brier doesn't win one one then you should go because you still want to invade just because Brier loses to doesn't mean you shouldn't invade cuz you could make it winning right I hope Talia does not 2v one you right but",
+         "source_range": {
+          "char_start": 54321,
+          "char_end": 54566
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 54321,
+        "char_end": 54566
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0004__P.json"
+  },
+  {
+   "case_id": "p2k:case:0005",
+   "final_output": {
+    "content_sha256": "fec525dbfd33873d8f386c9a457c146b627394d3b5c5f935e5a96e6082ffd0b4",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0005",
+    "condition": "B",
+    "payload_sha256": "81971d4a3517e5e1c1754d3f5f467fc56b5fdb442f6840826e66cdae6c37751b",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0005:B:actors_entities:0001",
+       "extraction_text": "Syndra",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I'm way versus syndra",
+         "source_range": {
+          "char_start": 47585,
+          "char_end": 47606
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:actors_entities:0002",
+       "extraction_text": "Veigar (player)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I'm way versus syndra",
+         "source_range": {
+          "char_start": 47585,
+          "char_end": 47606
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:actors_entities:0003",
+       "extraction_text": "wave",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she loses the whole wave",
+         "source_range": {
+          "char_start": 55371,
+          "char_end": 55395
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0005:B:reference_bindings:0001",
+       "extraction_text": "she \u2192 Syndra",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "then does she get to farm no no she loses the whole wave then yes yes",
+         "source_range": {
+          "char_start": 55339,
+          "char_end": 55408
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:reference_bindings:0002",
+       "extraction_text": "her \u2192 Syndra",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:reference_bindings:0003",
+       "extraction_text": "you \u2192 Veigar (player)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:reference_bindings:0004",
+       "extraction_text": "we \u2192 unresolved",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0005:B:abilities_resources:0001",
+       "extraction_text": "Syndra's Q",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:abilities_resources:0002",
+       "extraction_text": "Syndra's E",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:abilities_resources:0003",
+       "extraction_text": "HP",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55501,
+          "char_end": 55525
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:abilities_resources:0004",
+       "extraction_text": "whole wave",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she loses the whole wave",
+         "source_range": {
+          "char_start": 55371,
+          "char_end": 55395
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0005:B:events_actions:0001",
+       "extraction_text": "she loses the whole wave",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she loses the whole wave",
+         "source_range": {
+          "char_start": 55371,
+          "char_end": 55395
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:events_actions:0002",
+       "extraction_text": "she uses Q",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:events_actions:0003",
+       "extraction_text": "she uses E",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:events_actions:0004",
+       "extraction_text": "you lose like 100 HP 150",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55501,
+          "char_end": 55525
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0005:B:states:0001",
+       "extraction_text": "she has no spell",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "but then she has no spell yeah",
+         "source_range": {
+          "char_start": 55526,
+          "char_end": 55556
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:states:0002",
+       "extraction_text": "you lose like 100 HP 150",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55501,
+          "char_end": 55525
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:states:0003",
+       "extraction_text": "she loses the whole wave",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she loses the whole wave",
+         "source_range": {
+          "char_start": 55371,
+          "char_end": 55395
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0005:B:conditions:0001",
+       "extraction_text": "now that she uses Q",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:conditions:0002",
+       "extraction_text": "if she uses E",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0005:B:recommended_advice:0001",
+       "extraction_text": "you should run at her now that she uses Q",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0005:B:consequences_outcomes:0001",
+       "extraction_text": "she loses the whole wave",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she loses the whole wave",
+         "source_range": {
+          "char_start": 55371,
+          "char_end": 55395
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:consequences_outcomes:0002",
+       "extraction_text": "you lose like 100 HP 150",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55501,
+          "char_end": 55525
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0005:B:consequences_outcomes:0003",
+       "extraction_text": "she has no spell",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "but then she has no spell yeah",
+         "source_range": {
+          "char_start": 55526,
+          "char_end": 55556
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0001",
+       "extraction_text": "she \u2192 Syndra",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "then does she get to farm no no she loses the whole wave then yes yes",
+         "source_range": {
+          "char_start": 55339,
+          "char_end": 55408
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      },
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0002",
+       "extraction_text": "her \u2192 Syndra",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      },
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0003",
+       "extraction_text": "you \u2192 Veigar (player)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      },
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0004",
+       "extraction_text": "she uses Q",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "so that's why you should run at her now that she uses Q",
+         "source_range": {
+          "char_start": 55409,
+          "char_end": 55464
+         }
+        }
+       ],
+       "relation_type": "USES"
+      },
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0005",
+       "extraction_text": "she uses E",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ],
+       "relation_type": "USES"
+      },
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0006",
+       "extraction_text": "if she uses E",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      },
+      {
+       "item_id": "p2k:case:0005:B:explicit_relationships:0007",
+       "extraction_text": "you lose like 100 HP 150 and she has no spell",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150 but then she has no spell yeah",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55556
+         }
+        }
+       ],
+       "relation_type": "RESULT"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0005:B:uncertainty_unresolved:0001",
+       "extraction_text": "we",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "because if she uses e right we then you lose like 100 HP 150",
+         "source_range": {
+          "char_start": 55465,
+          "char_end": 55525
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0005:B:supporting_source_spans:0001",
+       "extraction_text": "target passage span",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "then does she get to farm no no she loses the whole wave then yes yes so that's why you should run at her now that she uses Q because if she uses e right we then you lose like 100 HP 150 but then she has no spell yeah and then you swn her",
+         "source_range": {
+          "char_start": 55339,
+          "char_end": 55577
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 55339,
+        "char_end": 55577
+       }
+      },
+      {
+       "item_id": "p2k:case:0005:B:supporting_source_spans:0002",
+       "extraction_text": "Syndra matchup context",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "I'm way versus syndra",
+         "source_range": {
+          "char_start": 47585,
+          "char_end": 47606
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 47585,
+        "char_end": 47606
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0005__P.json"
+  },
+  {
+   "case_id": "p2k:case:0006",
+   "final_output": {
+    "content_sha256": "7d038c4ba7c200562ab0f2f50b7ff599d22a768d8141775ac31d6ac5d57a17bd",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0006",
+    "condition": "B",
+    "payload_sha256": "0065766a9ec6819c60fc3c256b5769e94a9f0550202438d1005b13f3e7c0178f",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0006:B:actors_entities:0001",
+       "extraction_text": "you",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:actors_entities:0002",
+       "extraction_text": "Mel",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "you are Mel",
+         "source_range": {
+          "char_start": 4189,
+          "char_end": 4200
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:actors_entities:0003",
+       "extraction_text": "other champions",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0006:B:reference_bindings:0001",
+       "extraction_text": "you refers to the player being coached",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:reference_bindings:0002",
+       "extraction_text": "it in it's a habit refers to the habit of stepping back or leaving the good position after farming",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:reference_bindings:0003",
+       "extraction_text": "this in this is a extremely bad freeze frame refers to the freeze-frame situation caused by the bad habit",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:reference_bindings:0004",
+       "extraction_text": "this in if this was refers to the same bad freeze-frame situation or ability use being shown",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0006:B:abilities_resources:0001",
+       "extraction_text": "your queue",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "your queue is to proc scorch and comet",
+         "source_range": {
+          "char_start": 4223,
+          "char_end": 4261
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:abilities_resources:0002",
+       "extraction_text": "scorch and comet",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0006:B:events_actions:0001",
+       "extraction_text": "you could just be here and land maybe two more ticks",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0006:B:states:0001",
+       "extraction_text": "you could just be here",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:states:0002",
+       "extraction_text": "this is a extremely bad freeze frame",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0006:B:conditions:0001",
+       "extraction_text": "when you pick up other champions",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:conditions:0002",
+       "extraction_text": "if this was",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0006:B:recommended_advice:0001",
+       "extraction_text": "it's a habit you don't want to have",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0006:B:recommended_advice:0002",
+       "extraction_text": "you could just be here and land maybe two more ticks",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0006:B:consequences_outcomes:0001",
+       "extraction_text": "when you pick up other champions this is a extremely bad freeze frame",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0006:B:explicit_relationships:0001",
+       "extraction_text": "when you pick up other champions this is a extremely bad freeze frame",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0006:B:uncertainty_unresolved:0001",
+       "extraction_text": "target passage cuts off at if this was, leaving the alternative ability condition unfinished",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0006:B:supporting_source_spans:0001",
+       "extraction_text": "Target passage and immediately preceding clause",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "because of course you are Mel and the main point of your queue is to proc scorch and comet",
+         "source_range": {
+          "char_start": 4171,
+          "char_end": 4261
+         }
+        },
+        {
+         "quote": "is to proc scorch and comet right but it's a habit you don't want to have because you could just be here and land maybe two more ticks right and on when you pick up other champions this is a extremely bad freeze frame because if this was",
+         "source_range": {
+          "char_start": 4234,
+          "char_end": 4471
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 4171,
+        "char_end": 4471
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0006__P.json"
+  },
+  {
+   "case_id": "p2k:case:0007",
+   "final_output": {
+    "content_sha256": "d9220e9a86a43b2e012f85399d968063861da8583b5466fcd84cdb85bf12d671",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0007",
+    "condition": "B",
+    "payload_sha256": "d2d52ae42c7e641aa80d8b07a398d951b7f9d01d0cae0f17bea4ad881046fb53",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0007:B:actors_entities:0001",
+       "extraction_text": "Nami",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9691,
+          "char_end": 9718
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:actors_entities:0002",
+       "extraction_text": "Samira (\"sa\")",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9691,
+          "char_end": 9718
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:actors_entities:0003",
+       "extraction_text": "you (Lucian/player being coached)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:actors_entities:0004",
+       "extraction_text": "they (enemy bot lane, Samira and Nami)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0001",
+       "extraction_text": "they \u2192 enemy bot lane (Samira and Nami)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0002",
+       "extraction_text": "you \u2192 player/student (Lucian)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0003",
+       "extraction_text": "this all in \u2192 the all-in/engage the enemy gives",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0004",
+       "extraction_text": "it \u2192 using Ignite now",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "why not do it now when they're going to probably potion and maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9631,
+          "char_end": 9718
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0005",
+       "extraction_text": "they \u2192 enemy bot lane (Samira and Nami)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "when they're going to probably potion and maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9649,
+          "char_end": 9718
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0006",
+       "extraction_text": "the sa \u2192 Samira",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9691,
+          "char_end": 9718
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0007",
+       "extraction_text": "she \u2192 Nami",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I don't know if she has W",
+         "source_range": {
+          "char_start": 9733,
+          "char_end": 9758
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:reference_bindings:0008",
+       "extraction_text": "I \u2192 coach/speaker",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I don't know if she has W",
+         "source_range": {
+          "char_start": 9733,
+          "char_end": 9758
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0007:B:abilities_resources:0001",
+       "extraction_text": "Ignite",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you would ignite twoo",
+         "source_range": {
+          "char_start": 9600,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:abilities_resources:0002",
+       "extraction_text": "Nami's W",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "I don't know if she has W",
+         "source_range": {
+          "char_start": 9733,
+          "char_end": 9758
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:abilities_resources:0003",
+       "extraction_text": "potion",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when they're going to probably potion",
+         "source_range": {
+          "char_start": 9649,
+          "char_end": 9686
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0007:B:events_actions:0001",
+       "extraction_text": "the enemy gives you an all-in on the freeze",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:events_actions:0002",
+       "extraction_text": "you ignite them",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you would ignite twoo",
+         "source_range": {
+          "char_start": 9600,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:events_actions:0003",
+       "extraction_text": "the enemies are going to potion",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when they're going to probably potion",
+         "source_range": {
+          "char_start": 9649,
+          "char_end": 9686
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:events_actions:0004",
+       "extraction_text": "Nami heals Samira",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9691,
+          "char_end": 9718
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0007:B:states:0001",
+       "extraction_text": "the wave is in a freeze",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:states:0002",
+       "extraction_text": "whether Nami has W available is uncertain",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "I don't know if she has W",
+         "source_range": {
+          "char_start": 9733,
+          "char_end": 9758
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0007:B:conditions:0001",
+       "extraction_text": "if they give you this all-in here on the freeze, then you would ignite",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:conditions:0002",
+       "extraction_text": "when they are going to potion and maybe Nami will heal Samira",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when they're going to probably potion and maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9649,
+          "char_end": 9718
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0007:B:recommended_advice:0001",
+       "extraction_text": "why not do it now when they're going to probably potion and maybe Nami will heal the sa",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "why not do it now when they're going to probably potion and maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9631,
+          "char_end": 9718
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0007:B:consequences_outcomes:0001",
+       "extraction_text": "you would ignite them on a later all-in on the freeze",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0007:B:consequences_outcomes:0002",
+       "extraction_text": "the enemies will probably potion and maybe Nami will heal Samira",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "when they're going to probably potion and maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9649,
+          "char_end": 9718
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0007:B:explicit_relationships:0001",
+       "extraction_text": "you use Ignite",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you would ignite twoo",
+         "source_range": {
+          "char_start": 9600,
+          "char_end": 9621
+         }
+        }
+       ],
+       "relation_type": "USES"
+      },
+      {
+       "item_id": "p2k:case:0007:B:explicit_relationships:0002",
+       "extraction_text": "Nami heals Samira",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9691,
+          "char_end": 9718
+         }
+        }
+       ],
+       "relation_type": "AFFECTS"
+      },
+      {
+       "item_id": "p2k:case:0007:B:explicit_relationships:0003",
+       "extraction_text": "the enemy all-in on the freeze is a condition for you to ignite",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "next time they give you this all in here on the freeze then you would ignite twoo",
+         "source_range": {
+          "char_start": 9540,
+          "char_end": 9621
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0007:B:uncertainty_unresolved:0001",
+       "extraction_text": "whether Nami has W available",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "I don't know if she has W",
+         "source_range": {
+          "char_start": 9733,
+          "char_end": 9758
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0007:B:supporting_source_spans:0001",
+       "extraction_text": "Target passage",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "now next time they give you this all in here on the freeze then you would ignite twoo right so why not do it now when they're going to probably potion and maybe Nami will heal the sa you know like I don't know if she has W",
+         "source_range": {
+          "char_start": 9536,
+          "char_end": 9758
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 9536,
+        "char_end": 9758
+       }
+      },
+      {
+       "item_id": "p2k:case:0007:B:supporting_source_spans:0002",
+       "extraction_text": "Context for Nami healing Samira",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "maybe Nami will heal the sa",
+         "source_range": {
+          "char_start": 9691,
+          "char_end": 9718
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 9691,
+        "char_end": 9718
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0007__P.json"
+  },
+  {
+   "case_id": "p2k:case:0008",
+   "final_output": {
+    "content_sha256": "326733d2acabe87e9d342f169fd794177589d7f69574e1593d4a7ff15e0ac39e",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0008",
+    "condition": "B",
+    "payload_sha256": "afd91119f2779ba673b9c7cdf00cdcdc38115bb41b83fb12493de045ab60a2e1",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0008:B:actors_entities:0001",
+       "extraction_text": "Ambessa",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Ambessa is by far better champion than Riven",
+         "source_range": {
+          "char_start": 75904,
+          "char_end": 75948
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:actors_entities:0002",
+       "extraction_text": "Riven",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "against Riven like if",
+         "source_range": {
+          "char_start": 76148,
+          "char_end": 76169
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:actors_entities:0003",
+       "extraction_text": "the student/player (you)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "you feel like you're not able to progress the lane",
+         "source_range": {
+          "char_start": 76019,
+          "char_end": 76069
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0008:B:reference_bindings:0001",
+       "extraction_text": "that -> Ambessa being a better champion than Riven",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "So that's already a good reason to ban it.",
+         "source_range": {
+          "char_start": 75953,
+          "char_end": 75995
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:reference_bindings:0002",
+       "extraction_text": "it -> Ambessa",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "So that's already a good reason to ban it.",
+         "source_range": {
+          "char_start": 75953,
+          "char_end": 75995
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:reference_bindings:0003",
+       "extraction_text": "you -> the student/player",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "you feel like you're not able to progress the lane",
+         "source_range": {
+          "char_start": 76019,
+          "char_end": 76069
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:reference_bindings:0004",
+       "extraction_text": "it -> Ambessa (in 'ban it for sure')",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "you should ban it for sure",
+         "source_range": {
+          "char_start": 76082,
+          "char_end": 76108
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:reference_bindings:0005",
+       "extraction_text": "I -> the student/player",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "Yeah, I might have to do that because against Riven like if",
+         "source_range": {
+          "char_start": 76110,
+          "char_end": 76169
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0008:B:events_actions:0001",
+       "extraction_text": "ban it for sure",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "you should ban it for sure",
+         "source_range": {
+          "char_start": 76082,
+          "char_end": 76108
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:events_actions:0002",
+       "extraction_text": "I might have to do that",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "Yeah, I might have to do that because against Riven like if",
+         "source_range": {
+          "char_start": 76110,
+          "char_end": 76169
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0008:B:states:0001",
+       "extraction_text": "Ambessa is by far better champion than Riven",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Ambessa is by far better champion than Riven",
+         "source_range": {
+          "char_start": 75904,
+          "char_end": 75948
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:states:0002",
+       "extraction_text": "you feel like you're not able to progress the lane",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you feel like you're not able to progress the lane",
+         "source_range": {
+          "char_start": 76019,
+          "char_end": 76069
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0008:B:conditions:0001",
+       "extraction_text": "if on top of that, you feel like you're not able to progress the lane",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "if on top of that, you feel like you're not able to progress the lane",
+         "source_range": {
+          "char_start": 76000,
+          "char_end": 76069
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0008:B:recommended_advice:0001",
+       "extraction_text": "you should ban it for sure",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you should ban it for sure",
+         "source_range": {
+          "char_start": 76082,
+          "char_end": 76108
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0008:B:consequences_outcomes:0001",
+       "extraction_text": "So that's already a good reason to ban it.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "So that's already a good reason to ban it.",
+         "source_range": {
+          "char_start": 75953,
+          "char_end": 75995
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0008:B:consequences_outcomes:0002",
+       "extraction_text": "I might have to do that",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Yeah, I might have to do that because against Riven like if",
+         "source_range": {
+          "char_start": 76110,
+          "char_end": 76169
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0008:B:explicit_relationships:0001",
+       "extraction_text": "it refers to Ambessa in 'ban it'",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "So that's already a good reason to ban it.",
+         "source_range": {
+          "char_start": 75953,
+          "char_end": 75995
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      },
+      {
+       "item_id": "p2k:case:0008:B:explicit_relationships:0002",
+       "extraction_text": "you refers to the student/player",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "you feel like you're not able to progress the lane",
+         "source_range": {
+          "char_start": 76019,
+          "char_end": 76069
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      },
+      {
+       "item_id": "p2k:case:0008:B:explicit_relationships:0003",
+       "extraction_text": "Feeling unable to progress the lane conditions the advice to ban Ambessa",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "But if on top of that, you feel like you're not able to progress the lane, then yeah, you should ban it for sure.",
+         "source_range": {
+          "char_start": 75996,
+          "char_end": 76109
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      },
+      {
+       "item_id": "p2k:case:0008:B:explicit_relationships:0004",
+       "extraction_text": "The advice to ban Ambessa for sure is the result of the condition",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "you should ban it for sure",
+         "source_range": {
+          "char_start": 76082,
+          "char_end": 76108
+         }
+        }
+       ],
+       "relation_type": "RESULT"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0008:B:uncertainty_unresolved:0001",
+       "extraction_text": "The student's reason stops at an unresolved/truncated condition: 'against Riven like if'",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "against Riven like if",
+         "source_range": {
+          "char_start": 76148,
+          "char_end": 76169
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0008:B:supporting_source_spans:0001",
+       "extraction_text": "Ambessa is by far better champion than Riven",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Ambessa is by far better champion than Riven",
+         "source_range": {
+          "char_start": 75904,
+          "char_end": 75948
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 75904,
+        "char_end": 75948
+       }
+      },
+      {
+       "item_id": "p2k:case:0008:B:supporting_source_spans:0002",
+       "extraction_text": "So that's already a good reason to ban it.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "So that's already a good reason to ban it.",
+         "source_range": {
+          "char_start": 75953,
+          "char_end": 75995
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 75953,
+        "char_end": 75995
+       }
+      },
+      {
+       "item_id": "p2k:case:0008:B:supporting_source_spans:0003",
+       "extraction_text": "But if on top of that, you feel like you're not able to progress the lane, then yeah, you should ban it for sure.",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "But if on top of that, you feel like you're not able to progress the lane, then yeah, you should ban it for sure.",
+         "source_range": {
+          "char_start": 75996,
+          "char_end": 76109
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 75996,
+        "char_end": 76109
+       }
+      },
+      {
+       "item_id": "p2k:case:0008:B:supporting_source_spans:0004",
+       "extraction_text": "Yeah, I might have to do that because against Riven like if",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "Yeah, I might have to do that because against Riven like if",
+         "source_range": {
+          "char_start": 76110,
+          "char_end": 76169
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 76110,
+        "char_end": 76169
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0008__P.json"
+  },
+  {
+   "case_id": "p2k:case:0009",
+   "final_output": {
+    "content_sha256": "cc1826e4ede979acfaa777cdde0f45f2e490c93bb1e5e92d3e97a5358e14d580",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0009",
+    "condition": "B",
+    "payload_sha256": "339ee522f1ade08695cfaff6718623551b618d76e04f2fab319787ad675fa84e",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0009:B:actors_entities:0001",
+       "extraction_text": "Mel",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56739,
+          "char_end": 56791
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:actors_entities:0002",
+       "extraction_text": "Poppy",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56606,
+          "char_end": 56630
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:actors_entities:0003",
+       "extraction_text": "you (player being coached)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "So, you chase.",
+         "source_range": {
+          "char_start": 56724,
+          "char_end": 56738
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0001",
+       "extraction_text": "it \u2192 Mel",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "then it's bot. Yes? Yeah.",
+         "source_range": {
+          "char_start": 56538,
+          "char_end": 56563
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0002",
+       "extraction_text": "She \u2192 Mel (in 'She's not a bot')",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "She's not a bot, because well, obviously, she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56564,
+          "char_end": 56630
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0003",
+       "extraction_text": "She \u2192 Mel (in 'She's not killing Poppy')",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56606,
+          "char_end": 56630
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0004",
+       "extraction_text": "She \u2192 Mel (in 'She's not on mid')",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "She's not on mid, because wave equals ward.",
+         "source_range": {
+          "char_start": 56631,
+          "char_end": 56674
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0005",
+       "extraction_text": "your \u2192 player being coached",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "But you don't play around waves being your ward.",
+         "source_range": {
+          "char_start": 56675,
+          "char_end": 56723
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0006",
+       "extraction_text": "you \u2192 player being coached (in 'you chase')",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "So, you chase.",
+         "source_range": {
+          "char_start": 56724,
+          "char_end": 56738
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:reference_bindings:0007",
+       "extraction_text": "this \u2192 chasing Mel when she shows mid",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56739,
+          "char_end": 56791
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [
+      {
+       "item_id": "p2k:case:0009:B:abilities_resources:0001",
+       "extraction_text": "wave",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "because wave equals ward.",
+         "source_range": {
+          "char_start": 56649,
+          "char_end": 56674
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:abilities_resources:0002",
+       "extraction_text": "ward",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "But you don't play around waves being your ward.",
+         "source_range": {
+          "char_start": 56675,
+          "char_end": 56723
+         }
+        }
+       ]
+      }
+     ],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0009:B:events_actions:0001",
+       "extraction_text": "You chase",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "So, you chase.",
+         "source_range": {
+          "char_start": 56724,
+          "char_end": 56738
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:events_actions:0002",
+       "extraction_text": "Mel is not killing Poppy",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56606,
+          "char_end": 56630
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:events_actions:0003",
+       "extraction_text": "you don't play around waves being your ward",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "But you don't play around waves being your ward.",
+         "source_range": {
+          "char_start": 56675,
+          "char_end": 56723
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0009:B:states:0001",
+       "extraction_text": "Mel is not bot",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "She's not a bot, because well, obviously, she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56564,
+          "char_end": 56630
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:states:0002",
+       "extraction_text": "Mel is not on mid",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "She's not on mid, because wave equals ward.",
+         "source_range": {
+          "char_start": 56631,
+          "char_end": 56674
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:states:0003",
+       "extraction_text": "Wave equals ward",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "because wave equals ward.",
+         "source_range": {
+          "char_start": 56649,
+          "char_end": 56674
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0009:B:conditions:0001",
+       "extraction_text": "If Mel is showing on mid",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56739,
+          "char_end": 56791
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0009:B:consequences_outcomes:0001",
+       "extraction_text": "She's not a bot",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "She's not a bot, because well, obviously, she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56564,
+          "char_end": 56630
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:consequences_outcomes:0002",
+       "extraction_text": "She's not on mid",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "She's not on mid, because wave equals ward.",
+         "source_range": {
+          "char_start": 56631,
+          "char_end": 56674
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0009:B:consequences_outcomes:0003",
+       "extraction_text": "this could be a good flip",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56739,
+          "char_end": 56791
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0009:B:explicit_relationships:0001",
+       "extraction_text": "Mel not killing Poppy causes the conclusion that Mel is not bot",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "She's not a bot, because well, obviously, she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56564,
+          "char_end": 56630
+         }
+        }
+       ],
+       "relation_type": "CAUSES"
+      },
+      {
+       "item_id": "p2k:case:0009:B:explicit_relationships:0002",
+       "extraction_text": "Wave equals ward causes the conclusion that Mel is not on mid",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "She's not on mid, because wave equals ward.",
+         "source_range": {
+          "char_start": 56631,
+          "char_end": 56674
+         }
+        }
+       ],
+       "relation_type": "CAUSES"
+      },
+      {
+       "item_id": "p2k:case:0009:B:explicit_relationships:0003",
+       "extraction_text": "Mel showing on mid is a condition for this being a good flip",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56739,
+          "char_end": 56791
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      },
+      {
+       "item_id": "p2k:case:0009:B:explicit_relationships:0004",
+       "extraction_text": "She refers to Mel",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "She's not a bot, because well, obviously, she's not killing Poppy.",
+         "source_range": {
+          "char_start": 56564,
+          "char_end": 56630
+         }
+        }
+       ],
+       "relation_type": "REFERS_TO"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0009:B:uncertainty_unresolved:0001",
+       "extraction_text": "this could be a good flip (speaker uncertainty: 'could' marks a possibility)",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56739,
+          "char_end": 56791
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0009:B:supporting_source_spans:0001",
+       "extraction_text": "then it's bot. Yes? Yeah. She's not a bot, because well, obviously, she's not killing Poppy. She's not on mid, because wave equals ward. But you don't play around waves being your ward. So, you chase. If Mel is showing on mid, this could be a good flip,",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "then it's bot. Yes? Yeah. She's not a bot, because well, obviously, she's not killing Poppy. She's not on mid, because wave equals ward. But you don't play around waves being your ward. So, you chase. If Mel is showing on mid, this could be a good flip,",
+         "source_range": {
+          "char_start": 56538,
+          "char_end": 56791
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 56538,
+        "char_end": 56791
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0009__P.json"
+  },
+  {
+   "case_id": "p2k:case:0010",
+   "final_output": {
+    "content_sha256": "573501bea93507986a75b646be8cd4be715dfe578482c3fc15234b31789578be",
+    "schema_version": "phase2k-full-transcript-ablation-extraction-output-v1",
+    "case_id": "p2k:case:0010",
+    "condition": "B",
+    "payload_sha256": "e2b7c553748c929dbc250ab80671d47d83bf86c3d1722759d85b1f4d973318bb",
+    "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+    "fields": {
+     "actors_entities": [
+      {
+       "item_id": "p2k:case:0010:B:actors_entities:0001",
+       "extraction_text": "you (the player being coached, playing Varus)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:actors_entities:0002",
+       "extraction_text": "this (the Blitzcrank/Kalista matchup/lane)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "reference_bindings": [
+      {
+       "item_id": "p2k:case:0010:B:reference_bindings:0001",
+       "extraction_text": "you -> the player being coached (Varus player)",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:reference_bindings:0002",
+       "extraction_text": "this -> the matchup/lane against Blitzcrank and Kalista",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:reference_bindings:0003",
+       "extraction_text": "it -> push",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "abilities_resources": [],
+     "events_actions": [
+      {
+       "item_id": "p2k:case:0010:B:events_actions:0001",
+       "extraction_text": "you do get push",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:events_actions:0002",
+       "extraction_text": "you could get it",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:events_actions:0003",
+       "extraction_text": "you could win",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "states": [
+      {
+       "item_id": "p2k:case:0010:B:states:0001",
+       "extraction_text": "now you don't win",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:states:0002",
+       "extraction_text": "there's an angle to get push",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:states:0003",
+       "extraction_text": "you're not meant to win this",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "conditions": [
+      {
+       "item_id": "p2k:case:0010:B:conditions:0001",
+       "extraction_text": "if you do get push",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:conditions:0002",
+       "extraction_text": "if there's an angle to get push",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "recommended_advice": [
+      {
+       "item_id": "p2k:case:0010:B:recommended_advice:0001",
+       "extraction_text": "if there's an angle to get push then you could get it then you could win",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "consequences_outcomes": [
+      {
+       "item_id": "p2k:case:0010:B:consequences_outcomes:0001",
+       "extraction_text": "you could win",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      },
+      {
+       "item_id": "p2k:case:0010:B:consequences_outcomes:0002",
+       "extraction_text": "you're not meant to win this",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "explicit_relationships": [
+      {
+       "item_id": "p2k:case:0010:B:explicit_relationships:0001",
+       "extraction_text": "getting push enables winning",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ],
+       "relation_type": "ENABLES"
+      },
+      {
+       "item_id": "p2k:case:0010:B:explicit_relationships:0002",
+       "extraction_text": "an angle to get push is a condition for getting push and winning",
+       "resolution_status": "context_resolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ],
+       "relation_type": "CONDITION"
+      }
+     ],
+     "uncertainty_unresolved": [
+      {
+       "item_id": "p2k:case:0010:B:uncertainty_unresolved:0001",
+       "extraction_text": "MH",
+       "resolution_status": "unresolved",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ]
+      }
+     ],
+     "supporting_source_spans": [
+      {
+       "item_id": "p2k:case:0010:B:supporting_source_spans:0001",
+       "extraction_text": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+       "resolution_status": "literal_explicit",
+       "source_references": [
+        {
+         "quote": "yeah and now you don't win but the one way that you can win is if you do get push so if there's an angle to get push then you could get it then you could win MH but you're not meant to win this you know but",
+         "source_range": {
+          "char_start": 23114,
+          "char_end": 23320
+         }
+        }
+       ],
+       "source_range": {
+        "char_start": 23114,
+        "char_end": 23320
+       }
+      }
+     ]
+    }
+   },
+   "raw_path": "raw/p2k:case:0010__P.json"
+  }
+ ],
+ "content_sha256": "71eb55dc1bbe00788d74594f8d4268a0deda97b32e73ec7a73ec92c2f4109997"
+}

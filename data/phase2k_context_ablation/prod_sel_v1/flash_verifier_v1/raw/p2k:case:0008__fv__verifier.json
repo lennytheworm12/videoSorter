@@ -1,0 +1,6 @@
+{
+  "schema_version": "phase2k-production-model-verifier-response-v1",
+  "case_id": "p2k:case:0008",
+  "selected_candidate_id": "candidate_3",
+  "rationale": "Candidate 3 best preserves source-supported semantics: it correctly resolves 'it' in the ban advice to Ambessa from the preceding comparison, preserves the conditional ban advice without treating the conditional feeling as an asserted state, accurately records the student's 'might have to do that' response, and handles the target's truncated 'because against Riven like if' by citing the full-transcript continuation rather than guessing. Its references, relationship bindings, and uncertainty markers are precise and grounded in the source."
+}
