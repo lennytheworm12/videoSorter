@@ -1,0 +1,70 @@
+{
+  "artifacts": {
+    "instructions": {
+      "content_sha256": "83cf0edbdf32153888a10d15c5500b4bb9114067f04b5e96b8a78a97cfaece6b",
+      "file_sha256": "2d152740fb5d45c4f7ddca760dad3e30e3131fffa44ffc8cd627064029a0fea1",
+      "path": "data/phase2j_context_ablation/phase2j-context-ablation-extraction-instructions-v2.json",
+      "schema_version": "phase2j-context-ablation-extraction-instructions-v2"
+    },
+    "payloads": {
+      "content_sha256": "b0c732421cd43e27fef8abdabf13d9dbb12022b553bdf4684bc8df6e79d9849f",
+      "file_sha256": "39cd3a1e1dd88ed8780efb3bfe3c79fa30c41056e7c70d36006283b35cc6f32c",
+      "path": "data/phase2j_context_ablation/phase2j-context-ablation-condition-payloads-v2.json",
+      "schema_version": "phase2j-context-ablation-condition-payloads-v2"
+    },
+    "selection": {
+      "content_sha256": "067ce2906f3e6b9b2a6556d026a8a902077c3bf1c0ff6e9b79b67c6d7b8266eb",
+      "file_sha256": "a22f3712fdae62511c91018485ad914c91e17e72d229f4d3d589a858e8fd77ca",
+      "path": "data/phase2j_context_ablation/phase2j-context-ablation-selection-v1.json",
+      "schema_version": "phase2j-context-ablation-selection-v1"
+    }
+  },
+  "content_sha256": "80d96ace7e0a49a5c094ac01d5d7aa8f8ead74a8004dd21fb2a6430758a437fe",
+  "input_hashes": {
+    "manifest": {
+      "canonical_parsed_sha256": "4d19b29db9bf7b31baca24b8b32ee1c082830bdf692309e2c65662cb313382b9",
+      "content_sha256": "4d19b29db9bf7b31baca24b8b32ee1c082830bdf692309e2c65662cb313382b9",
+      "file_sha256": "ea8139a2945c3217d1cde769f0ffd953c7731b3661056f77cabf1c3cf4a9f723",
+      "path": "data/phase2j/window-selection-manifest-v1.json",
+      "schema_version": "phase2j-window-selection-manifest-v1"
+    },
+    "reviewed_packet": {
+      "canonical_parsed_sha256": "c239070e107e0848e8d26918d33ece5fa978f9ce48e0f43a2e65b67cd622365d",
+      "content_sha256": "c239070e107e0848e8d26918d33ece5fa978f9ce48e0f43a2e65b67cd622365d",
+      "file_sha256": "149f6043f1547c9769ac24fcbe8c839195a9906a071c3accde866eff25a3362f",
+      "path": "data/phase2j/reviewed-endpoint-annotation-packet-v1.json",
+      "schema_version": "phase2j-endpoint-annotation-packet-v1"
+    },
+    "transcript_db": {
+      "file_sha256": "e91e879d77bf560b802e434f3ac06015d88c523d5e011fc1cbfe02d243394fca",
+      "path": "/home/bphan944/PersonalProjects/videoSorter-homework-archive/videos.db"
+    }
+  },
+  "mode": "ready_for_sol",
+  "purpose": "Phase 2J context-ablation build summary (no model calls).",
+  "schema_version": "phase2j-context-ablation-build-summary-v2",
+  "selected_case_ids": [
+    "p2ja:case:0001",
+    "p2ja:case:0002",
+    "p2ja:case:0003",
+    "p2ja:case:0004",
+    "p2ja:case:0005",
+    "p2ja:case:0006",
+    "p2ja:case:0007",
+    "p2ja:case:0008",
+    "p2ja:case:0009",
+    "p2ja:case:0010"
+  ],
+  "selected_window_ids": [
+    "pool:GKciadsuvlM:w00025-02893996a53ef809f95d",
+    "pool:wTxMNxJczec:w00160-1cbf79226c5b15917cf1",
+    "pool:AOxq_mddftk:w00070-c95460613f77ca936b6b",
+    "pool:CLFXg110j1E:w00282-4d9609f4f74990026b44",
+    "pool:n2RuZ0vwkE4:w00288-4d7b8fc17b8fcff31c07",
+    "pool:jDxTIHR0Jq0:w00022-9f512d74e6921ba711b0",
+    "pool:JEFr-hMEkPQ:w00050-b964f6fe25278236e19b",
+    "pool:euxH8dbAH7c:w00386-b134366e14fa5a758525",
+    "pool:DIWlwK1VArk:w00283-a3e96e923c748d643aa5",
+    "pool:ZYIPtq-OZDI:w00120-839f6a5e88b097fd4463"
+  ]
+}

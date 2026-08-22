@@ -1504,6 +1504,39 @@ preserving group-level source isolation. Do not begin that expansion without
 a new explicit goal. Do not tune models, redesign candidate bounds, add SRL,
 train semantic edges, or start Phase 3 first.
 
+## Phase 2J: Independent-Source Expansion — Closed at Coverage Gate
+
+Phase 2J selected 30 exact-Bronze windows from 30 independent video source
+groups, excluded all legacy Phase 2H/2I source videos, and persisted a
+source-isolated 24 `EXPANDED_DEV` / 6 `FROZEN_REPLICATION` split before
+annotation or scoring. Scorer-blind Human Pass A plus explicit Human/Sol Pass B
+adjudication produced 30/30 reviewed windows and 311 gold-eligible endpoints.
+
+The frozen 30,788-row candidate universe covered 263/311 exact gold spans
+(84.566%): 216/243 on Expanded DEV and 47/68 on Frozen Replication. All 48
+misses have a semantically identical frozen candidate with the same start and
+an end one character earlier. Reviewed spans retained 28 terminal periods and
+20 terminal commas that the candidate spans excluded. The gold contract did
+not define the punctuation-boundary convention.
+
+Final status:
+
+```text
+ANNOTATION CONTRACT NOT STABLE
+```
+
+No Phase 2J B/C parser or model evaluation ran, so no syntactic replication
+claim is made. Independent read-only review reproduced the source isolation,
+hash lineage, coverage arithmetic, deterministic generator binding, and
+punctuation-only diagnosis. The final report is
+[phase2j-independent-source-replication.md](phase2j-independent-source-replication.md).
+
+Exactly one next intervention is justified: perform a versioned, scorer-blind
+terminal-punctuation boundary correction, with human Pass-B re-adjudication
+limited to the 48 affected endpoints, then regenerate exact candidate coverage
+while keeping the candidate generator frozen. Do not begin it without a new
+explicit goal.
+
 ## Fresh Session Bootstrap
 
 ```text

@@ -1,14 +1,15 @@
-# Handoff: Phase 2E/2F/2G Closed at Their Architecture Gates; Phase 2H Closed — WEAK RANKING SIGNAL ONLY
+# Handoff: Phase 2J Stopped at the Human Annotation Checkpoint
 
-**Current checkpoint:** Phase 2H (discriminative semantic endpoint scoring,
-initial implementation `65e7100`, final clean experiment `a754991`) is closed
-as `WEAK RANKING SIGNAL ONLY`. Gate 1 failed and
-Gate 2 was not triggered. Exactly one next intervention is justified: a bounded
-Feature Set C UD/syntactic ablation on the same frozen candidate universe,
-labels, folds, threshold, models, and metrics, stopping if parser integration
-becomes substantial. The two existing model families remain fixed and A/B are
-retained as comparators. The Phase 2G thinking-enabled generative rerun
-recommendation is superseded. See section 10.
+**Current checkpoint:** Phase 2J has deterministically selected 30 new Bronze
+windows from 30 independently recorded video source groups and produced a
+blank scorer-blind two-pass annotation packet. The source-group split is fixed
+at 24 Expanded DEV / 6 Frozen Replication and remains `LOCKED`. No new gold,
+candidate-coverage result, B/C prediction, or Phase 2J disposition exists yet.
+Human Pass A is complete (30 windows / 166 endpoints); Pass B is completed in
+the `/phase2j-adjudicate/` route as the explicit five-check human audit
+attestation, and the canonical importer is ready. No reviewed packet exists
+until a completed `phase2j-adjudication-export-v2` is imported. See sections
+12–13.
 
 ## 1. Architectural decision
 
@@ -403,3 +404,303 @@ dataset with substantially more independent source windows while preserving
 group-level source isolation. Do not begin it without a new explicit goal. Do
 not tune the current models, redesign candidate bounds, add SRL, train semantic
 edges, or start Phase 3 first.
+
+## 12. Phase 2J pre-annotation checkpoint
+
+Phase 2J changes only data quantity and source independence. The current
+uncommitted checkpoint adds deterministic source selection, a locked 24/6
+source-group split, strict artifact/input hashes, and a scorer-blind two-pass
+annotation packet. The implementation and reviewer instructions are documented
+in [docs/phase2j-annotation-checkpoint.md](docs/phase2j-annotation-checkpoint.md).
+
+Official pre-annotation artifacts:
+
+- `data/phase2j/window-selection-manifest-v1.json`, canonical content SHA-256
+  `4d19b29db9bf7b31baca24b8b32ee1c082830bdf692309e2c65662cb313382b9`;
+- `data/phase2j/endpoint-annotation-packet-v1.json`, canonical content SHA-256
+  `3f766b08696ed512063d999c75877001d77b03db136f8edae78e631e1725c62a`.
+
+The manifest contains exactly 30 windows from 30 distinct `video:` source
+groups, excludes the three legacy upstream videos, fixes 24 groups as
+`EXPANDED_DEV` and 6 as `FROZEN_REPLICATION`, and binds 30,788 frozen candidate
+rows by count/hash only. The packet contains zero endpoint annotations and zero
+reviewer signatures. No parser, Feature B/C, Logistic, LightGBM, or scoring
+path ran.
+
+Validation: 34 focused Phase 2J tests pass after directly pinning the
+preregistered +8/+4/+2/+1 diversity arithmetic, seeded tie-break, ASR-band
+mapping, Pass-B provenance gate, clean `IN_REVIEW` transitions, immutable
+manifest/Bronze binding, and atomic reviewed-packet finalization. The combined
+Phase 2J/source/candidate run passes 78 tests plus 45 subtests; frozen Phase 2H
+regression passes 46 tests plus 16
+subtests; Phase 2I syntax tests pass 62 with 4 asset-dependent skips. A fresh
+independent audit returned `ACCEPT WITH NON-BLOCKING LIMITATIONS` and confirmed
+the artifacts are safe to hand to human review.
+
+Human review is available in the Notion workspace
+[Phase 2J — Human Endpoint Review Workspace](https://app.notion.com/p/3c0f8ba78bf38133b6e9c3b61e0db22e?pvs=204),
+which contains all 30 exact-Bronze windows, indexed tokens, editable endpoint
+tables, Pass A/Pass B properties, and scorer-blind queue/audit views.
+Reviewer-facing champion, role, and video-title clues are hidden: annotations
+must preserve literal Bronze mentions and may not resolve identities or repair
+ASR from metadata/game knowledge. Windows can be marked `AMBIGUOUS` when only
+some spans are defensible or `EXCLUDED` with no endpoints when ASR/context loss
+makes endpoint discovery unreliable. Notion entries remain human review
+material until imported and validated against the locked repository manifest.
+
+For Pass A, the local Quizlet-style span review route is now preferred:
+`http://localhost:3000/phase2j-review/`. It displays one Bronze window at a
+time; drag-selection snaps to token boundaries and opens an endpoint-type
+picker, with highlights, removal/undo, deck navigation, clean/ambiguous/
+excluded outcomes, packet-hash-bound browser autosave, and validated JSON
+backup export/import. The static page receives no split, candidate, model,
+champion, role, video-title, or Sol-review fields. From `apps/web`, validation
+passes 41 Jest tests and `npm run build`; serve the exported production UI with
+`python3 -m http.server 3000 --bind 0.0.0.0 --directory out` and open
+`http://localhost:3000/phase2j-review/` from the host browser. Its JSON export
+is review material and must be imported/validated before it can affect the
+canonical packet.
+
+A parallel `gpt-5.6-sol` high-reasoning review of the same 30 windows is sealed
+at `/tmp/phase2j-sol-high-independent-review-v1.json` until human Pass A is
+complete. It is audit/navigation material, never gold. Its 30 identities and
+338 exact token/Bronze spans validate; file SHA-256 is
+`6ef4ccbff8f9512b9119d314050acd5aaa87b927c37ee83372fcec92edd1cd8c`
+and canonical content SHA-256 is
+`8025d05c1bbe4f5b8c5c38d3689b96f69019087a3390e33cbfe98d2865ea0e53`.
+
+This is the historical pre-annotation checkpoint. It is superseded by the
+completed import and final coverage-gate closeout in section 14.
+
+## 13. Phase 2J-A post-Pass-A adjudication and canonical import gate (REVIEW MATERIAL)
+
+Human Pass A is complete (30 windows / 166 endpoints). The sealed
+`gpt-5.6-sol` High review is therefore **revealed for explicit human
+adjudication only**; it is a navigation/audit second opinion and is **never
+gold and never auto-promoted**. The human remains the baseline; every
+disagreement must be resolved explicitly before an export is accepted. The
+adjudication plus the explicit five-check human attestation **is** the Pass-B
+audit; Sol remains only a second opinion. At this historical checkpoint, the
+adjudication export remained `REVIEW_MATERIAL` until validation by the canonical
+importer below. The completed import and final gate are recorded in section 14.
+
+The deterministic sanitized packet is
+`data/phase2j/phase2j-adjudication-packet-v1.json` (content SHA-256
+`13aaa1a9d6ecdba2d16b722109373e26494467e1b14d21d26458b93c8750015b`), built by
+`uv run python scripts/build_phase2j_adjudication_packet.py` from the locked
+packet, the human export, and `/tmp/phase2j-sol-high-independent-review-v1.json`.
+It binds the human/Sol file hashes, strips reviewer identity and all
+model/candidate/packet-internal fields, and classifies 326 connected
+components: 49 exact agreements, 16 type disagreements, 87 boundary
+disagreements, 174 Sol-only, 0 Human-only (166 human / 338 Sol endpoints).
+
+The local adjudication route is `http://localhost:3000/phase2j-adjudicate/`
+(built by `cd apps/web && npm run build`, served from `out`). It reads only the
+generated packet at build time; the `/phase2j-review/` Pass A route is
+unchanged. The UI provides neutral Human/Sol overlays, per-component decisions
+(Human, Sol, custom exact span/type, or drop), `CLEAN`/`AMBIGUOUS`/`EXCLUDED`
+window outcomes with required notes, explicit “Keep my Pass A choices”,
+progress, autosave, JSON import/export, reset, and a global Pass-B audit
+attestation. Exports use schema `phase2j-adjudication-export-v2`; component
+decision state remains localStorage-compatible, while the five audit checks
+persist separately and are restored from a validated export. Exact-agreement
+components are pre-kept by default but remain editable and drop-able, because
+agreement is evidence, not proof. Export is blocked until every component in a
+`CLEAN` window is resolved, `AMBIGUOUS`/`EXCLUDED` windows carry a required
+note (`EXCLUDED` clears all endpoints), the resolved endpoint set is
+duplicate/overlap-free, and the five-check attestation (boundaries, omissions,
+roles, duplicates, ambiguity) is all true.
+
+The canonical importer (`pipeline/phase2j_adjudication_import.py` +
+`scripts/import_phase2j_adjudication.py`) rebuilds a separate reviewed packet
+from the locked blank packet, the locked manifest, the original human Pass-A
+session, the generated adjudication packet, and the completed export v2. It
+fails closed: it independently validates every input hash, schema,
+record/window/component order, Bronze slice, component decision and
+`resolved_by` semantics, derived endpoint fields, audit checks, and
+overlap-freedom. The default output is
+`data/phase2j/reviewed-endpoint-annotation-packet-v1.json`; the blank packet
+is never overwritten, and `release_gate` stays `LOCKED`. Sol enters only via
+an explicit human `KEEP_SOL_SET`/`CUSTOM` decision (`HUMAN`/`SHARED` map to
+`PASS_A`, `SOL`/`CUSTOM` map to `PASS_B`); `UNDETERMINED` maps to canonical
+`null` rather than inventing a type. `CLEAN` maps to `REVIEWED` + Pass B
+`COMPLETE`; `AMBIGUOUS` maps to `AMBIGUOUS` + Pass B `IN_PROGRESS` (non-gold);
+`EXCLUDED` maps to `EXCLUDED` + empty endpoints (non-gold).
+
+```bash
+python3 scripts/import_phase2j_adjudication.py \
+  --export /path/to/phase2j-adjudication-export-13aaa1a9.json
+
+python3 scripts/import_phase2j_adjudication.py \
+  --export /path/to/phase2j-adjudication-export-13aaa1a9.json \
+  --validate-only
+```
+
+Use `python3` to avoid `uv` network sync. After import, check the reviewed
+output and assess sizing; only eligible reviewed windows may proceed to
+candidate coverage.
+
+Test evidence: the new importer tests pass **18 tests**
+(`tests/test_phase2j_adjudication_import.py` + `tests/test_import_phase2j_adjudication_cli.py`);
+the adjudication web suite passes **29 focused Jest tests**, the full web
+suite passes **70 tests**, and `tsc`/`build` pass. Combined Python totals
+across the full Phase 2J suite have not been supplied and are not claimed
+here. See `docs/phase2j-annotation-checkpoint.md` sections 6.3–6.4 for
+commands and totals.
+
+This is the historical post-Pass-A gate. The completed import and final
+coverage-gate closeout are recorded in section 14.
+
+## 14. Phase 2J final closeout — exact-boundary gate failure
+
+Phase 2J is closed with the required disposition:
+
+`ANNOTATION CONTRACT NOT STABLE`
+
+The completed scorer-blind two-pass import produced 30/30 reviewed windows and
+311 gold-eligible endpoints, exceeding the 150-endpoint sizing target. The
+reviewed packet content SHA-256 is
+`c239070e107e0848e8d26918d33ece5fa978f9ce48e0f43a2e65b67cd622365d`.
+
+The frozen 30,788-candidate coverage gate found 263/311 exact matches
+(84.566%): Expanded DEV was 216/243 (88.889%) and Frozen Replication was 47/68
+(69.118%). The coverage artifact content SHA-256 is
+`1ac837aae4a4411837d2277f23ce613f531ffb5dec57e449e0a7fb4c14a2daa2`.
+
+All 48 misses are terminal-punctuation boundary mismatches: each has a frozen
+candidate with the same start and semantic text, ending exactly one character
+before the reviewed gold span (28 periods, 20 commas). There are no semantic
+no-overlap misses. The whitespace-token annotation workflow retained terminal
+punctuation while the frozen candidate generator excluded it, and the gold
+contract did not define the governing convention. Phase 2J therefore stopped
+before any B/C parser/model run; no syntactic replication claim is made.
+
+An independent read-only `gpt-5.6-sol` high-reasoning audit reproduced source
+isolation, hash lineage, eligibility, arithmetic, deterministic coverage, and
+the punctuation-only diagnosis, and accepted this disposition. Full evidence
+is in
+[docs/phase2j-independent-source-replication.md](docs/phase2j-independent-source-replication.md).
+
+Exactly one next intervention is justified: perform a versioned, scorer-blind
+terminal-punctuation boundary correction, with human Pass-B re-adjudication
+limited to the 48 affected endpoints, then regenerate exact candidate coverage
+while keeping the candidate generator frozen. Do not begin it without a new
+explicit goal.
+
+## 15. Phase 2K contextual reconstruction — live dataset complete, human review pending
+
+Phase 2K is now implemented as an isolated experiment over immutable Phase 2J
+inputs. Pass 1 is strictly text restoration: its JSON envelope contains only
+`clean_text`, explicit repairs, uncertainties, and provenance. Semantic
+endpoints, entities, events, relations, and champion bindings are excluded
+from mechanical cleanup and occur only after semantic-sufficiency diagnosis
+and deterministic adaptive context expansion.
+
+Implemented tooling covers ordered source retrieval, conservative mechanical
+repair, adaptive sufficiency decisions, source-faithful reconstruction,
+semantic polish, complete repair/binding provenance, ambiguity preservation,
+A/B/C/D human review, context-radius auditing, source-bound downstream target
+alignment, comparison-v2, and a gate-locked paired Phase 2F/Phase 2H evidence
+runner. The runner aborts atomically on typed provider failures, binds exact
+compiler aliases/config/input lineage, and deterministically replays Phase 2H
+folds, fit scope, scores, and metrics during validation.
+
+Current verification evidence:
+
+- downstream rerun/alignment/contract suite: **87 tests + 98 subtests passed**;
+- reconstruction/build-CLI suite after the v15 repair: **125 tests + 4
+  subtests passed**;
+- Phase 2K contract suite after updating the stale four-attempt fixture:
+  **31 tests + 50 subtests passed**;
+- rerun module and both CLIs pass `py_compile`;
+- focused provider, D-integrity, family-matching, alias, and tamper regressions
+  are included in `tests/test_phase2k_downstream_rerun.py`.
+
+This does **not** close Phase 2K. The authoritative live reconstruction dataset
+is now `/tmp/phase2k-live-v15-current`: it deep-validates with **30/30 D
+records generated, zero placeholders, and zero window failures**. The frozen
+Phase 2J input hash remains
+`36d7f02f7fc74ea6ecc9d72028aa58cfa9967cc7ed7a972ba864bce7a1f4004a`.
+The records SHA-256 is
+`c544c12b0527c1452b5b558a612c14b273c1f50e1eed8a4cbaaca1e800a0d5f8`,
+the blind human packet SHA-256 is
+`4ffaee566c428fae05f678752f4943fd7e26a5943bcf0ab2d3a15fe253c0c303`,
+and the blank transformation-audit SHA-256 is
+`0348773ece8959b68ee16177d44c8b0ad12fb3ba46fbc3babfc03673bf305ed3`.
+The live output contains 137 distinct raw provider responses.
+
+The v15 local repair conservatively omits only context-only proposals from
+normalized *target* bindings while preserving them in `raw_compact` and
+counting the omission. Mentions absent from both target and context still fail
+closed, and omitted bindings cannot license clean-text entities. Semantic
+polish remains strict; its v3 correction prompt now receives the exact actual
+text and exact source quote plus source-exact / reconstruction-derived repair
+instructions. Base provider prompts and response schemas are unchanged, so
+the existing cache remains reusable.
+
+The active gate is scorer-blind human review: 270 representation/radius items
+and 254 transformation operations (35 mechanical repairs, 37 contextual
+repairs, 23 entity bindings, 8 pronoun bindings, 4 reference bindings, 1
+ability binding, and 146 polished statements). Start the local client-only UI:
+
+```bash
+cd /home/bphan944/PersonalProjects/videoSorter
+cd apps/web
+npm run dev
+```
+
+Open `http://localhost:3000/phase2k-review` and import
+`/tmp/phase2k-live-v15-current/phase2k-human-review-packet-v2.json`. Open
+`http://localhost:3000/phase2k-audit` and import
+`/tmp/phase2k-live-v15-current/phase2k-transformation-audit-packet-v2.json`.
+Both routes keep packet data in the browser, autosave hash-bound progress, and
+refuse a final export until every required human field is complete.
+
+The build summary's transformation-audit hash is authoritative for the newly
+built blank audit. The current `--validate-only` summary reports that field as
+`null` when no finalized human audit exists; a zero exit still means the
+output directory passed deep validation.
+
+After both completed browser exports exist, run
+`scripts/finalize_phase2k_human_review.py`, require a `PASSED` human gate,
+finalize source-bound target alignment, run the paired unchanged
+generative/discriminative architectures, and produce the empirical diagnosis.
+Until those steps are complete, Phase 2K cannot answer whether earlier failure
+was primarily input representation, model capability, or candidate
+discrimination.
+
+## 16. Phase 2K v16 lexical cleanup — implementation complete, live rebuild pending
+
+Human review of the v15 packet is paused. A bounded champion-name lexical
+normalization layer is now implemented for Pass 1 without changing its
+text-restoration-only boundary. Exact word-boundary hints never mutate text;
+the provider must return every eligible occurrence as an explicit,
+Bronze-span-bound `DOMAIN_SPELLING` repair. Direct, guarded, and exact
+champion-metadata-licensed rules are versioned in
+`data/phase2k_support/league_lexical_vocabulary_v2.json`. General fuzzy
+matching is forbidden, and common false matches (`like`, `then`, `when`,
+`ward`, `well`) plus automatic `Soie -> Zoe` fail closed.
+
+Lineage is now pipeline v7, config v3, records v7, build summary v5,
+vocabulary v2, and mechanical base/correction prompts v4. The old v15 cache
+cannot satisfy the new mechanical lineage. Validation passes **168 tests + 54
+subtests** across reconstruction/CLI/contracts and **23 tests + 15 subtests**
+for downstream alignment compatibility. A deterministic scan of the 30
+frozen targets finds 17 eligible repairs across 7 windows.
+
+The next step is a fresh live build and deterministic validation:
+
+```bash
+.venv/bin/python scripts/build_phase2k_reconstruction.py \
+  --live \
+  --output-dir /tmp/phase2k-live-v16-current \
+  --cache-dir /tmp/phase2k-live-v10-sEzueV/cache
+
+.venv/bin/python scripts/build_phase2k_reconstruction.py \
+  --validate-only \
+  --output-dir /tmp/phase2k-live-v16-current
+```
+
+Do not resume browser review using the v15 packet hashes. After v16 validates
+with 30 windows and zero failures, import its new human-review and
+transformation-audit packets and continue the existing acceptance gates.

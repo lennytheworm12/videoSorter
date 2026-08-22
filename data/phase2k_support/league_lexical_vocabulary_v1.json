@@ -1,0 +1,42 @@
+{
+  "schema_version": "phase2k-league-lexical-vocabulary-v1",
+  "purpose": "Bounded League of Legends lexical snapshot used only as Pass 1 mechanical-cleanup hints (ability keys, common summoner spells, and basic domain tokens). It is intentionally not a semantic ontology and carries no ownership or champion-binding information.",
+  "scope_note": "No ownership inference, no champion/role/motif classification, and no strategic abstraction. Hints may only disambiguate local ASR surface forms.",
+  "ability_keys": [
+    "Q",
+    "W",
+    "E",
+    "R"
+  ],
+  "summoner_spells": [
+    "Barrier",
+    "Cleanse",
+    "Exhaust",
+    "Flash",
+    "Ghost",
+    "Heal",
+    "Ignite",
+    "Smite",
+    "Teleport"
+  ],
+  "basic_domain_tokens": [
+    "Baron",
+    "Bramble",
+    "Cannon",
+    "Dragon",
+    "Herald",
+    "Inhibitor",
+    "Jungle",
+    "Minion",
+    "Nexus",
+    "Rift",
+    "Scuttle",
+    "Turret",
+    "Vision",
+    "Wave",
+    "cs",
+    "gank",
+    "lane",
+    "wave"
+  ]
+}

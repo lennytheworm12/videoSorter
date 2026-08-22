@@ -1,0 +1,37 @@
+{
+  "content_sha256": "83cf0edbdf32153888a10d15c5500b4bb9114067f04b5e96b8a78a97cfaece6b",
+  "direct_extraction_only": true,
+  "fields": {
+    "ability_resource_references": "Explicit ability keys/names and resource references (mana, cooldowns, summoner spells, items, waves) that are mentioned in the target.",
+    "actors": "Entities that perform or undergo the described action, including explicit and context-resolved actors.",
+    "advice_action": "Explicit advice and recommended actions addressed to the player.",
+    "condition": "Any stated condition, requirement, or contingency for the described play.",
+    "consequence": "Stated results or follow-on effects of an action or event.",
+    "event": "The described game event(s), including mechanical and strategic occurrences.",
+    "supporting_source_ranges": "Exact supplied source character ranges that support the extracted semantic items.",
+    "uncertainty": "Explicit uncertainty, hedging, or unresolved information in the target."
+  },
+  "no_contextual_rewriting": true,
+  "no_mechanical_clean": true,
+  "no_semantic_polish": true,
+  "no_strategic_abstraction": true,
+  "output_rules": [
+    "Empty field lists are allowed when nothing is present.",
+    "unresolved and uncertainty items are allowed.",
+    "Unsupported guessing is forbidden.",
+    "Every item must carry extraction_text, resolution_status, and source_references; every source reference must carry an exact contiguous quote and a zero-based occurrence_index."
+  ],
+  "purpose": "Direct source-grounded semantic extraction of the isolated Bronze target.  Byte-identical for condition A and condition B.  No mechanical cleaning, contextual rewriting, semantic polish, or strategic abstraction is permitted.",
+  "reference_rule": "Every extracted item must cite at least one exact source reference carrying an exact contiguous quote and a zero-based occurrence_index.  The quote must occur verbatim in the supplied source; a deterministic importer resolves occurrence_index against all exact substring matches and computes the byte-exact [char_start, char_end) range.  Do not count, estimate, or return character offsets.  Condition A quotes are resolved against the supplied Bronze target; condition B quotes are resolved against the supplied full transcript.",
+  "resolution_rule": "literal_explicit: directly stated; context_resolved: resolved only from the supplied context; vocabulary_supported: resolved using the supplied vocabulary; unresolved: present but not resolvable.",
+  "resolution_statuses": [
+    "literal_explicit",
+    "context_resolved",
+    "vocabulary_supported",
+    "unresolved"
+  ],
+  "schema_version": "phase2j-context-ablation-extraction-instructions-v2",
+  "source_range_rule": "supporting_source_ranges items cite exact contiguous quotes with zero-based occurrence_index values on their source references; the importer derives the item source_range as the minimal bounding [char_start, char_end) range of the resolved references.",
+  "task": "Extract every item for each of the eight semantic fields from the supplied target.  Quote exact contiguous source slices and cite each quote's zero-based occurrence index.  Do not guess, do not invent actors, abilities, resources, events, conditions, advice/actions, consequences, or uncertainties that are not present in the supplied source.",
+  "version": "phase2j-context-ablation-extraction-instructions-v2"
+}

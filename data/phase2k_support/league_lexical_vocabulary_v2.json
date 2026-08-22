@@ -1,0 +1,291 @@
+{
+  "schema_version": "phase2k-league-lexical-vocabulary-v2",
+  "purpose": "Bounded League of Legends lexical snapshot used only as Pass 1 mechanical-cleanup hints (ability keys, common summoner spells, basic domain tokens, and explicit champion alias spelling rules). It is intentionally not a semantic ontology and carries no ownership or champion-binding information; champion alias rules are lexical spelling data only and never produce entities, bindings, events, or relations.",
+  "scope_note": "No ownership inference, no champion/role/motif classification, no champion binding, and no strategic abstraction. Champion alias hints are deterministic exact word-boundary spelling hints; guarded aliases require champion-shaped local syntax, metadata-licensed aliases require the supplied metadata value, and the never/uncertainty-only list must never be auto-repaired. Hints may only disambiguate local ASR surface forms in Pass 1 text restoration.",
+  "ability_keys": [
+    "Q",
+    "W",
+    "E",
+    "R"
+  ],
+  "summoner_spells": [
+    "Barrier",
+    "Cleanse",
+    "Exhaust",
+    "Flash",
+    "Ghost",
+    "Heal",
+    "Ignite",
+    "Smite",
+    "Teleport"
+  ],
+  "basic_domain_tokens": [
+    "Baron",
+    "Bramble",
+    "Cannon",
+    "Dragon",
+    "Herald",
+    "Inhibitor",
+    "Jungle",
+    "Minion",
+    "Nexus",
+    "Rift",
+    "Scuttle",
+    "Turret",
+    "Vision",
+    "Wave",
+    "cs",
+    "gank",
+    "lane",
+    "wave"
+  ],
+  "champion_alias_rules": {
+    "rules_schema_version": "phase2k-champion-alias-rules-v1",
+    "match": "exact_word_boundary",
+    "case_policy": "case_insensitive_matching_preserves_canonical_replacement",
+    "direct": [
+      {
+        "alias": "Kale",
+        "canonical": "Kayle",
+        "match_case": "initial_capital",
+        "note": "Capital-initial Kale surfaces are unconditional Kayle hints; lowercase 'kale' (grocery/vegetable usage) is never eligible. The capitalization guard is documented and encoded in this rule."
+      },
+      {
+        "alias": "Brier",
+        "canonical": "Briar",
+        "match_case": "case_insensitive"
+      },
+      {
+        "alias": "Milo",
+        "canonical": "Milio",
+        "match_case": "case_insensitive"
+      },
+      {
+        "alias": "Morana",
+        "canonical": "Morgana",
+        "match_case": "case_insensitive"
+      },
+      {
+        "alias": "raan",
+        "canonical": "Rakan",
+        "match_case": "case_insensitive"
+      },
+      {
+        "alias": "atrox",
+        "canonical": "Aatrox",
+        "match_case": "case_insensitive"
+      },
+      {
+        "alias": "Talia",
+        "canonical": "Taliyah",
+        "match_case": "case_insensitive"
+      },
+      {
+        "alias": "Nocturn",
+        "canonical": "Nocturne",
+        "match_case": "case_insensitive"
+      }
+    ],
+    "guarded": [
+      {
+        "alias": "pike",
+        "canonical": "Pyke",
+        "match_case": "case_insensitive",
+        "syntax": {
+          "anchors": [
+            {
+              "tokens": ["versus", "vs"],
+              "direction": "either",
+              "max_gap": 1
+            },
+            {
+              "tokens": [
+                "playing", "play", "played", "pick", "picked", "picks",
+                "picking", "ban", "banned", "bans", "draft", "drafted",
+                "counter", "counters", "main", "mains", "laning", "lane"
+              ],
+              "direction": "before",
+              "max_gap": 1
+            },
+            {
+              "tokens": ["support", "mid", "top", "jungle", "adc", "matchup", "mirror"],
+              "direction": "after",
+              "max_gap": 1
+            },
+            {
+              "kind": "comparative_than",
+              "direction": "before",
+              "max_gap": 0
+            }
+          ]
+        }
+      },
+      {
+        "alias": "rise",
+        "canonical": "Ryze",
+        "match_case": "case_insensitive",
+        "syntax": {
+          "anchors": [
+            {
+              "tokens": ["versus", "vs"],
+              "direction": "either",
+              "max_gap": 1
+            },
+            {
+              "tokens": [
+                "playing", "play", "played", "pick", "picked", "picks",
+                "picking", "ban", "banned", "bans", "draft", "drafted",
+                "counter", "counters", "main", "mains", "laning", "lane"
+              ],
+              "direction": "before",
+              "max_gap": 1
+            },
+            {
+              "tokens": ["support", "mid", "top", "jungle", "adc", "matchup", "mirror"],
+              "direction": "after",
+              "max_gap": 1
+            },
+            {
+              "kind": "comparative_than",
+              "direction": "before",
+              "max_gap": 0
+            }
+          ]
+        }
+      },
+      {
+        "alias": "rice",
+        "canonical": "Ryze",
+        "match_case": "case_insensitive",
+        "syntax": {
+          "anchors": [
+            {
+              "tokens": ["versus", "vs"],
+              "direction": "either",
+              "max_gap": 1
+            },
+            {
+              "tokens": [
+                "playing", "play", "played", "pick", "picked", "picks",
+                "picking", "ban", "banned", "bans", "draft", "drafted",
+                "counter", "counters", "main", "mains", "laning", "lane"
+              ],
+              "direction": "before",
+              "max_gap": 1
+            },
+            {
+              "tokens": ["support", "mid", "top", "jungle", "adc", "matchup", "mirror"],
+              "direction": "after",
+              "max_gap": 1
+            },
+            {
+              "kind": "comparative_than",
+              "direction": "before",
+              "max_gap": 0
+            }
+          ]
+        }
+      },
+      {
+        "alias": "Sig",
+        "canonical": "Ziggs",
+        "match_case": "case_insensitive",
+        "syntax": {
+          "anchors": [
+            {
+              "tokens": ["versus", "vs"],
+              "direction": "either",
+              "max_gap": 1
+            },
+            {
+              "tokens": [
+                "playing", "play", "played", "pick", "picked", "picks",
+                "picking", "ban", "banned", "bans", "draft", "drafted",
+                "counter", "counters", "main", "mains", "laning", "lane"
+              ],
+              "direction": "before",
+              "max_gap": 1
+            },
+            {
+              "tokens": ["support", "mid", "top", "jungle", "adc", "matchup", "mirror"],
+              "direction": "after",
+              "max_gap": 1
+            },
+            {
+              "kind": "comparative_than",
+              "direction": "before",
+              "max_gap": 0
+            }
+          ]
+        }
+      }
+    ],
+    "metadata_licensed": [
+      {
+        "alias": "darus",
+        "canonical": "Darius",
+        "match_case": "case_insensitive",
+        "metadata_field": "champion",
+        "metadata_value": "Darius",
+        "note": "Only eligible when the supplied champion metadata contains Darius; never inferred globally because Varus is a competing lexical possibility."
+      }
+    ],
+    "never": [
+      {
+        "alias": "like",
+        "canonical": "Pyke",
+        "policy": "never"
+      },
+      {
+        "alias": "then",
+        "canonical": "Shen",
+        "policy": "never"
+      },
+      {
+        "alias": "when",
+        "canonical": "Shen",
+        "policy": "never"
+      },
+      {
+        "alias": "ward",
+        "canonical": "Bard",
+        "policy": "never"
+      },
+      {
+        "alias": "well",
+        "canonical": "Rell",
+        "policy": "never"
+      },
+      {
+        "alias": "Soie",
+        "canonical": "Zoe",
+        "policy": "uncertainty_only",
+        "note": "Soie is never an automatic Zoe repair; it may only be recorded as a DOMAIN_TOKEN_UNCERTAIN uncertainty with Zoe among the alternatives."
+      }
+    ],
+    "champion_context_tokens": [
+      "Aatrox",
+      "Ahri",
+      "Bard",
+      "Briar",
+      "Darius",
+      "Draven",
+      "Garen",
+      "Jinx",
+      "Kayle",
+      "Lux",
+      "Milio",
+      "Morgana",
+      "Nocturne",
+      "Pyke",
+      "Rakan",
+      "Rell",
+      "Ryze",
+      "Shen",
+      "Taliyah",
+      "Viktor",
+      "Ziggs",
+      "Zoe"
+    ]
+  }
+}

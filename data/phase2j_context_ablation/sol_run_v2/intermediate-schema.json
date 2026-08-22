@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "pattern": "^p2ja:case:[0-9]{4}$",
+      "type": "string"
+    },
+    "condition": {
+      "enum": [
+        "A",
+        "B"
+      ],
+      "type": "string"
+    },
+    "fields": {
+      "additionalProperties": false,
+      "properties": {
+        "ability_resource_references": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "actors": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "advice_action": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "condition": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "consequence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "event": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "supporting_source_ranges": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "uncertainty": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "extraction_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution_status": {
+                "enum": [
+                  "literal_explicit",
+                  "context_resolved",
+                  "vocabulary_supported",
+                  "unresolved"
+                ],
+                "type": "string"
+              },
+              "source_references": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "occurrence_index": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "quote": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "occurrence_index"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "extraction_text",
+              "resolution_status",
+              "source_references"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "actors",
+        "ability_resource_references",
+        "event",
+        "condition",
+        "advice_action",
+        "consequence",
+        "uncertainty",
+        "supporting_source_ranges"
+      ],
+      "type": "object"
+    },
+    "instructions_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "payload_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "phase2j-context-ablation-sol-intermediate-v2",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "case_id",
+    "condition",
+    "payload_sha256",
+    "instructions_sha256",
+    "fields"
+  ],
+  "schema_version": "phase2j-context-ablation-sol-intermediate-v2",
+  "title": "Phase 2J context-ablation Sol intermediate response",
+  "type": "object"
+}
