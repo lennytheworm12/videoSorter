@@ -1,0 +1,36 @@
+{
+ "content_sha256": "c2b257486774acefd21393674dfe4e775dc881d45107505df1ff968342e9f975",
+ "schema_version": "phase2k-full-transcript-ablation-build-summary-v1",
+ "purpose": "Phase 2K full-transcript ablation build summary (no model calls).",
+ "mode": "ready_for_opencode",
+ "pipeline_version": "phase2k-full-transcript-ablation-v1",
+ "artifacts": {
+  "selection": {
+   "path": "/home/bphan944/PersonalProjects/videoSorter/data/phase2k_context_ablation/phase2k-context-ablation-selection-v1.json",
+   "content_sha256": "157a0af4d47a9f3ea5630a4c08bdd5d9446795c35859ed4adba59dc13e3ce7a7",
+   "schema_version": "phase2k-full-transcript-ablation-selection-v1"
+  },
+  "instructions": {
+   "path": "/home/bphan944/PersonalProjects/videoSorter/data/phase2k_context_ablation/phase2k-context-ablation-extraction-instructions-v1.json",
+   "content_sha256": "68292f489651a885f7e2bbb9b794844c3fdb0aa16bab9fcbc176712f655f03db",
+   "schema_version": "phase2k-full-transcript-ablation-extraction-instructions-v1"
+  },
+  "payloads": {
+   "path": "/home/bphan944/PersonalProjects/videoSorter/data/phase2k_context_ablation/phase2k-context-ablation-condition-payloads-v1.json",
+   "content_sha256": "789f37661e2239dce6346cddf2a6862b7a877d7bc2ed746afc839cf3f09dfde1",
+   "schema_version": "phase2k-full-transcript-ablation-condition-payloads-v1"
+  }
+ },
+ "selected_case_ids": [
+  "p2k:case:0001",
+  "p2k:case:0002",
+  "p2k:case:0003",
+  "p2k:case:0004",
+  "p2k:case:0005",
+  "p2k:case:0006",
+  "p2k:case:0007",
+  "p2k:case:0008",
+  "p2k:case:0009",
+  "p2k:case:0010"
+ ]
+}

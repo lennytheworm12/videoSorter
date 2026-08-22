@@ -1,0 +1,80 @@
+{
+ "content_sha256": "68292f489651a885f7e2bbb9b794844c3fdb0aa16bab9fcbc176712f655f03db",
+ "schema_version": "phase2k-full-transcript-ablation-extraction-instructions-v1",
+ "role": "You are extracting source-grounded semantic information from a League of Legends coaching transcript.",
+ "task_rules": [
+  "Use only information supported by the supplied source material and metadata.",
+  "The target passage is marked explicitly; extract meaning FOR THE TARGET PASSAGE.",
+  "Resolve pronouns, champion references, and ability ownership only when the supplied material supports the resolution.",
+  "Do not invent strategic conclusions that are merely plausible League advice.",
+  "Do not normalize results into higher-level strategic concepts such as access, continuity, initiative, beatdown, or conversion unless the coach explicitly states that concept.",
+  "Do not repair ASR corruption beyond what the supplied vocabulary and context support; record unrecoverable spans as unresolved.",
+  "Preserve uncertainty: use resolution_status 'unresolved' whenever a binding or span cannot be supported."
+ ],
+ "fields": {
+  "actors_entities": "Champions, players, and other entities the target passage is about. Preserve literal surface names when the source wording is used; mark context-resolved bindings explicitly.",
+  "reference_bindings": "Every pronoun or reference in the target passage and what it binds to. If a reference cannot be resolved from the supplied material, record it with resolution_status 'unresolved' instead of guessing.",
+  "abilities_resources": "Ability, summoner spell, item, and resource references, including whose ability each one is when the source supports ownership.",
+  "events_actions": "Concrete things that happened or were done in the game, as stated or entailed by the source.",
+  "states": "Game states that hold during the target passage: health, mana, cooldowns, position, wave states, objective states, and similar.",
+  "conditions": "Explicit or clearly implied conditions under which events, advice, or consequences hold ('if', 'when', 'until', 'unless' content).",
+  "recommended_advice": "Advice or recommended actions the coach actually gives in the target passage. Do not invent plausible League advice the coach did not state.",
+  "consequences_outcomes": "Stated or clearly implied consequences and outcomes of events, states, or (non-)compliance with advice.",
+  "explicit_relationships": "Typed relationships between extracted items using ONLY the supplied relation_types vocabulary. Each relationship must be supported by the source.",
+  "uncertainty_unresolved": "Spans or bindings the speaker or you are uncertain about, ASR corruptions that cannot be recovered, and references that remain unresolved. Preserving uncertainty is required; resolving it by guessing is forbidden.",
+  "supporting_source_spans": "The minimal source spans that jointly support the extraction for this target passage."
+ },
+ "relation_types": [
+  "ACTOR",
+  "TARGET",
+  "USES",
+  "AFFECTS",
+  "CAUSES",
+  "ENABLES",
+  "PREVENTS",
+  "REQUIRES",
+  "CONDITION",
+  "RESULT",
+  "BEFORE",
+  "AFTER",
+  "UNTIL",
+  "NEGATES",
+  "REFERS_TO"
+ ],
+ "resolution_statuses": [
+  "literal_explicit",
+  "context_resolved",
+  "vocabulary_supported",
+  "unresolved"
+ ],
+ "grounding_rules": [
+  "Every extracted item must cite at least one source reference.",
+  "A source reference is an exact contiguous 'quote' copied byte-for-byte from the condition's supplied source text plus a zero-based 'occurrence_index' counted among all exact non-overlapping substring matches of that quote in the condition source.",
+  "Never supply character offsets; deterministic tooling resolves your quotes to ranges.",
+  "Condition A source text is the supplied Bronze target passage. Condition B source text is the supplied full transcript.",
+  "For explicit_relationships items, relation_type MUST come from the supplied relation_types list.",
+  "For supporting_source_spans items, cite the exact quotes that cover the support."
+ ],
+ "response_contract": {
+  "shape": "Return ONLY one minified JSON object with exactly these keys: schema_version, case_id, condition, payload_sha256, instructions_sha256, fields.",
+  "header_rules": [
+   "schema_version must be exactly 'phase2k-full-transcript-ablation-intermediate-response-v1'.",
+   "case_id and condition must copy the payload values exactly.",
+   "payload_sha256 and instructions_sha256 must copy the payload hashes exactly."
+  ],
+  "fields_rules": [
+   "fields must contain exactly these keys: actors_entities, reference_bindings, abilities_resources, events_actions, states, conditions, recommended_advice, consequences_outcomes, explicit_relationships, uncertainty_unresolved, supporting_source_spans.",
+   "Each field value is a possibly-empty array of item objects.",
+   "Every item object has exactly the keys: extraction_text (non-empty string, max 2000 chars), resolution_status (one of literal_explicit, context_resolved, vocabulary_supported, unresolved), source_references (non-empty array).",
+   "Every source_reference object has exactly the keys: quote (non-empty exact substring of the condition source), occurrence_index (integer >= 0).",
+   "Items in the explicit_relationships field additionally have exactly one more key: relation_type (one of ACTOR, TARGET, USES, AFFECTS, CAUSES, ENABLES, PREVENTS, REQUIRES, CONDITION, RESULT, BEFORE, AFTER, UNTIL, NEGATES, REFERS_TO)."
+  ]
+ },
+ "forbidden_processing": [
+  "mechanical_clean",
+  "contextual_reconstruction",
+  "adaptive_context_expansion",
+  "semantic_polish",
+  "strategic_abstraction"
+ ]
+}
