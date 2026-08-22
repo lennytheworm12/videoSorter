@@ -361,6 +361,59 @@ class ParsingTests(unittest.TestCase):
                 payload=payload_b,
             )
 
+    def test_nbsp_quote_variant_resolves_to_exact_slice(self) -> None:
+        from pipeline.phase2k_full_transcript_ablation import (
+            _exact_quote_occurrences_2k,
+        )
+
+        source = "go ignite versus Fiora because she heals more than [ __ ] win"
+        self.assertEqual(
+            _exact_quote_occurrences_2k(source, "she heals more than [ __ ]"),
+            [31],
+        )
+        pair = None
+        for candidate in fixture()["payload_cases"]:
+            if "\u00a0" in candidate["A"]["target"]["bronze_text"]:
+                pair = candidate
+                break
+        if pair is not None:
+            payload = pair["A"]
+            bronze = payload["target"]["bronze_text"]
+            nbsp_token = bronze[bronze.find("[") : bronze.find("]") + 1]
+            assert "\u00a0" in nbsp_token
+            ascii_variant = nbsp_token.replace("\u00a0", " ")
+            response = {
+                "schema_version": INTERMEDIATE_SCHEMA_VERSION,
+                "case_id": payload["case_id"],
+                "condition": "A",
+                "payload_sha256": payload["content_sha256"],
+                "instructions_sha256": payload["instructions_sha256"],
+                "fields": {
+                    **{field: [] for field in SEMANTIC_FIELDS},
+                    "actors_entities": [{
+                        "extraction_text": "entity",
+                        "resolution_status": "literal_explicit",
+                        "source_references": [{
+                            "quote": ascii_variant,
+                            "occurrence_index": 0,
+                        }],
+                    }],
+                },
+            }
+            output = import_intermediate_response(
+                response,
+                case_id=payload["case_id"],
+                condition="A",
+                payload=payload,
+            )
+            reference = output["fields"]["actors_entities"][0][
+                "source_references"
+            ][0]
+            self.assertIn("\u00a0", reference["quote"])
+            start = reference["source_range"]["char_start"]
+            end = reference["source_range"]["char_end"]
+            self.assertEqual(bronze[start:end], reference["quote"])
+
     def test_extract_response_json_fences_and_failures(self) -> None:
         good = json.dumps({"a": 1})
         self.assertEqual(extract_response_json(good), {"a": 1})
@@ -376,6 +429,11 @@ class ParsingTests(unittest.TestCase):
             extract_response_json("this is not json")
         with self.assertRaises(ValueError):
             extract_response_json(good + " trailing text")
+        control_char = '{"quote": "line1\nline2"}'
+        self.assertEqual(
+            extract_response_json(control_char),
+            {"quote": "line1\nline2"},
+        )
 
 
 class ProvenanceTests(unittest.TestCase):

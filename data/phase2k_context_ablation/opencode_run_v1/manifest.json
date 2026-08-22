@@ -1,0 +1,228 @@
+{
+ "schema_version": "phase2k-full-transcript-ablation-opencode-run-v1",
+ "purpose": "Phase 2K full-transcript ablation OpenCode CLI run manifest.  The backend identity is requested/recorded but not cryptographically proven.",
+ "transport": "opencode_cli_v1",
+ "requested_model": "opencode-go/ox-alpha-free",
+ "model_variant": null,
+ "opencode_cli_version": "1.18.21",
+ "argv_template": [
+  "opencode",
+  "run",
+  "--model",
+  "opencode-go/ox-alpha-free"
+ ],
+ "prompt_transport": "stdin",
+ "wrapper_prompt_sha256": "b666bc2c6813552148e081d188a995b7ec46ccdd739664b022e6aefd8ed00a68",
+ "intermediate_schema_sha256": "3c0c247bc97b544ed5afc98f2644a9c74606b1e13365734ddd5aada9b1461577",
+ "pipeline_version": "phase2k-full-transcript-ablation-v1",
+ "payloads_sha256": "789f37661e2239dce6346cddf2a6862b7a877d7bc2ed746afc839cf3f09dfde1",
+ "instructions_sha256": "b91a51d44b72bf48334a7def4f9b2b7fc545bb1dba39ca75214ff38035efa5be",
+ "final_outputs": {
+  "path": "data/phase2k_context_ablation/phase2k-context-ablation-extraction-outputs-v1.json",
+  "file_sha256": "f8971a70852235ae0fef6327b6b204fe3bcf07ee1b912924df77bdaa749ad8f4",
+  "content_sha256": "f03b0bc863e29df94430105fe85af440840910f7d92511997d4cfea3d9ab3167",
+  "imported_at": "2026-08-22T14:47:53.228979+00:00"
+ },
+ "calls": [
+  {
+   "case_id": "p2k:case:0001",
+   "condition": "A",
+   "payload_sha256": "557fce70554f73ea9ee59920fc6f98d56b3124d10d01c154f90c60974e319657",
+   "prompt_sha256": "a8e4f648b1896494810c2d2ba9b424e2445361ec585352fb5ccb9902519343ed",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0001_A.json",
+   "raw_response_sha256": "d920c4f353d244e4f086be4456c09e37566e0c33f0137e74afc69a8d1ea0df5f",
+   "completed_at": "2026-08-22T10:37:15.497565+00:00"
+  },
+  {
+   "case_id": "p2k:case:0001",
+   "condition": "B",
+   "payload_sha256": "030a3f9feff18ad3a57161d677d25e146cee52de06fc2182e5f2ca3afd1c7b7d",
+   "prompt_sha256": "500a56c442a0b67788ce0ebf31665fb150ac6382a44b24ef2441963a2bf5c472",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0001_B.json",
+   "raw_response_sha256": "bd897bd5e4c8e7230ed48ec0a61e3ddcbc58520f0ae2189b9d6c8c49821bd4b9",
+   "completed_at": "2026-08-22T10:40:26.370672+00:00"
+  },
+  {
+   "case_id": "p2k:case:0002",
+   "condition": "A",
+   "payload_sha256": "0c27f545ab73c6cf03329144db3e77cc4662fcbfba497e7fb408e155534c8b1b",
+   "prompt_sha256": "9d48aa876a0ead04405f655fa71041964964bfe4a4b5a8baf98cb2b1175f5df0",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0002_A.json",
+   "raw_response_sha256": "da21211ce9fcf33c8defa151ab40d8347bb251708858a88cfc2eacf4687b4a1e",
+   "completed_at": "2026-08-22T10:42:01.078115+00:00"
+  },
+  {
+   "case_id": "p2k:case:0002",
+   "condition": "B",
+   "payload_sha256": "545e27ac1f60afe5dbd72fb204133c4c0c77d1e719b5d601ebef7fae0038f235",
+   "prompt_sha256": "3f3c98dc295bb9e22535f42b5dd50af6ca2434b5324cc753ababed3787b9836d",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0002_B.json",
+   "raw_response_sha256": "a7fd3aed97dbf9e791097f77fda642baf2c1dccb0290d56f5221a02e84446de7",
+   "completed_at": "2026-08-22T10:51:22.055725+00:00"
+  },
+  {
+   "case_id": "p2k:case:0003",
+   "condition": "A",
+   "payload_sha256": "324b66ffa0b39430118e1e486d65cbeea56da43861f6f7ca497662b7ba9b01b9",
+   "prompt_sha256": "c87330718ea37a20cfb6afb1798a3d39eb2c4a47e33be7742aad1e1d4faedda1",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0003_A.json",
+   "raw_response_sha256": "ee44b5ff77498857ea54d130cb93a2e60c3b442fa4151568b5a606ae0e93387d",
+   "completed_at": "2026-08-22T10:53:44.792038+00:00"
+  },
+  {
+   "case_id": "p2k:case:0003",
+   "condition": "B",
+   "payload_sha256": "0f8925410c0d30290caf854b7bc8e4dbe334825f14c3ee79eaed55d5e31cc1b3",
+   "prompt_sha256": "d0b8283531e3756d8b537e8424693fe0b2eff4061752f95f0df8cd509ab1c32d",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0003_B.json",
+   "raw_response_sha256": "feda166f069c702c5e637181f1b3831da8819f0608d0bcd7de95d95b8734363c",
+   "completed_at": "2026-08-22T11:01:14.027532+00:00"
+  },
+  {
+   "case_id": "p2k:case:0004",
+   "condition": "A",
+   "payload_sha256": "ffe689b5a3d383800d25af436f9cbe2261fd0d37e54fe5819c525768ebe12fd6",
+   "prompt_sha256": "bd522689ac0d51ade924fc2f724294c9a1d67fd3d4b1f0286537b4ccc3faffec",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0004_A.json",
+   "raw_response_sha256": "5333124300df2e753d34b1cc5e617ae10386cd5030b534c060db2e5c185d3f1c",
+   "completed_at": "2026-08-22T10:58:51.585394+00:00"
+  },
+  {
+   "case_id": "p2k:case:0004",
+   "condition": "B",
+   "payload_sha256": "effd2af1dab440322eb312c3890f185eebb367bfd160599c604d9674fc0c5e79",
+   "prompt_sha256": "f28c03ed438a859e669a98c579345b61c037a75fc4b2f4bab82c23ec8aad36e7",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0004_B.json",
+   "raw_response_sha256": "c5191356145c110590552564fec2e77abc135921aa712390a50bb31093edb00d",
+   "completed_at": "2026-08-22T11:15:56.363345+00:00"
+  },
+  {
+   "case_id": "p2k:case:0005",
+   "condition": "A",
+   "payload_sha256": "97a8412e97348a8b8e1f94b1d1a74f672fff025f70e541ce87a35ba543e3c212",
+   "prompt_sha256": "8a7a83070faa729846344419ef0c83b93a784bedc406c1aa62a911c091d9b414",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0005_A.json",
+   "raw_response_sha256": "b351a1aaad888a3e0b01825a2b8b9b7556295b2c30c0786ec03404ea7684cb40",
+   "completed_at": "2026-08-22T11:32:26.577292+00:00"
+  },
+  {
+   "case_id": "p2k:case:0005",
+   "condition": "B",
+   "payload_sha256": "81971d4a3517e5e1c1754d3f5f467fc56b5fdb442f6840826e66cdae6c37751b",
+   "prompt_sha256": "4a633929981f5ed707e7d1f1d54f860a4d41e87389b6e877afc45c4558e9679a",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0005_B.json",
+   "raw_response_sha256": "7349c2bfced2c43b50dbc8b35099747678ccfc3934e78abd88b5c62154b11517",
+   "completed_at": "2026-08-22T11:39:02.038713+00:00"
+  },
+  {
+   "case_id": "p2k:case:0006",
+   "condition": "A",
+   "payload_sha256": "881d29233dd0aca29740807b305516fdcfa66c92d6fa0825156475d54334cbd7",
+   "prompt_sha256": "aaad8dbfeb04690f2f8f1d62ad0aeda0ef8d82fefbc93eb35d65fa6b09f05edc",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0006_A.json",
+   "raw_response_sha256": "5e3362ac48f5fdc9e3e14d884d7dfdec5a9554c1ae637bfcf54dd7a261bdc626",
+   "completed_at": "2026-08-22T11:38:56.724848+00:00"
+  },
+  {
+   "case_id": "p2k:case:0006",
+   "condition": "B",
+   "payload_sha256": "0065766a9ec6819c60fc3c256b5769e94a9f0550202438d1005b13f3e7c0178f",
+   "prompt_sha256": "b23b372bf6fb5fd65b79c2fa01c87bfb2c0e3f7eb3a652a3ca8933a190869cbb",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0006_B.json",
+   "raw_response_sha256": "b01d4e20752e30b3d26480bf8ba24507f43acfe20b62a209d856785f53365623",
+   "completed_at": "2026-08-22T11:42:54.541021+00:00"
+  },
+  {
+   "case_id": "p2k:case:0007",
+   "condition": "A",
+   "payload_sha256": "b4474cafa372ca511e7df85601c866e331eb17b82a53eb578603f7c1cc2f9a07",
+   "prompt_sha256": "e55f19b7a8325ec0176276ccad718a58ed3c7b717c543eda4b4b3d24494f9759",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0007_A.json",
+   "raw_response_sha256": "855ff8156ddc4987cc7ad7473fbf4207e91e289232f013bc5719c5c5c0f04b33",
+   "completed_at": "2026-08-22T12:58:59.276774+00:00"
+  },
+  {
+   "case_id": "p2k:case:0007",
+   "condition": "B",
+   "payload_sha256": "d2d52ae42c7e641aa80d8b07a398d951b7f9d01d0cae0f17bea4ad881046fb53",
+   "prompt_sha256": "665ef590d392aaad3d56c1562620dd9898c49bd8066c650ef48638f0b358bcff",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0007_B.json",
+   "raw_response_sha256": "61bb880892846d1701640ed3277421684b2ebf3e91ffe567c291ba484f9c1511",
+   "completed_at": "2026-08-22T11:55:07.403807+00:00"
+  },
+  {
+   "case_id": "p2k:case:0008",
+   "condition": "A",
+   "payload_sha256": "32dd35747f31b0b33f006855e57510a7785a802291142f412739da6dda6053c9",
+   "prompt_sha256": "8c2b20f638af3edb79514778072c18f08dd00053a4930182cb9485df3bb2eb39",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0008_A.json",
+   "raw_response_sha256": "8f7a3c80b503f2edb69f813207f72af093bff3f7fbed5546b5a8076b997786ec",
+   "completed_at": "2026-08-22T11:52:19.694502+00:00"
+  },
+  {
+   "case_id": "p2k:case:0008",
+   "condition": "B",
+   "payload_sha256": "afd91119f2779ba673b9c7cdf00cdcdc38115bb41b83fb12493de045ab60a2e1",
+   "prompt_sha256": "a2adcd391f2a093fa514c7218464bd1ffcca0a479550a5b23606f0124fcbab6b",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0008_B.json",
+   "raw_response_sha256": "3b8670bbcd5cb55b91b76096dab322d174f630dca3c7a865a2a66cabba156954",
+   "completed_at": "2026-08-22T14:08:18.018132+00:00"
+  },
+  {
+   "case_id": "p2k:case:0009",
+   "condition": "A",
+   "payload_sha256": "9d6fbad6911d2ebec7c81d30fde02f3a1931f036f60229971caa078cfaefbfa1",
+   "prompt_sha256": "6e6866a69d96c3bb3585acc06d8e9d304e5624118a12724dfa03c3dc8e2b9408",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0009_A.json",
+   "raw_response_sha256": "0b9c67b797be7273a5540eeba7ff9cebfda77639dc6a6ff4f785d4105a712c13",
+   "completed_at": "2026-08-22T13:06:18.523011+00:00"
+  },
+  {
+   "case_id": "p2k:case:0009",
+   "condition": "B",
+   "payload_sha256": "339ee522f1ade08695cfaff6718623551b618d76e04f2fab319787ad675fa84e",
+   "prompt_sha256": "f6b1fe583403db6b0bfabfe7edd72dc2819df88beed4680308f58b8d568ab9cb",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0009_B.json",
+   "raw_response_sha256": "565a763aedb3a6fd7d180c3720817da236202b0e1ef3b7a6f8f24f9658069cc3",
+   "completed_at": "2026-08-22T13:15:02.246907+00:00"
+  },
+  {
+   "case_id": "p2k:case:0010",
+   "condition": "A",
+   "payload_sha256": "f233191cc840edd7f75b51e295a553c2d38948d580929f1fd5d9a6ddb413eefb",
+   "prompt_sha256": "89b2f8f91b1794efbcdeefb1dc55983f1dbf9fc2ac55f48e590d1577bf442153",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0010_A.json",
+   "raw_response_sha256": "be052eb20c0b2450f89e42c081cab9d8ac7d52db9b3673cd1216841c704abcc5",
+   "completed_at": "2026-08-22T13:22:25.948966+00:00"
+  },
+  {
+   "case_id": "p2k:case:0010",
+   "condition": "B",
+   "payload_sha256": "e2b7c553748c929dbc250ab80671d47d83bf86c3d1722759d85b1f4d973318bb",
+   "prompt_sha256": "5ded2d099f5cf45f26890a9d14da66a127d78f5c0baaa2beafcf6fee2e3e044b",
+   "status": "completed",
+   "raw_path": "raw/p2k:case:0010_B.json",
+   "raw_response_sha256": "07b1fa3101790358a8690ee6b31263eab89aaf7bf6ce166fc36ac397e5a0b502",
+   "completed_at": "2026-08-22T14:17:20.225243+00:00"
+  }
+ ]
+}

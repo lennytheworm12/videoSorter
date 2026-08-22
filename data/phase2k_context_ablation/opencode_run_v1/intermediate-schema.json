@@ -1,0 +1,630 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "Phase 2K full-transcript ablation intermediate response",
+ "schema_version": "phase2k-full-transcript-ablation-intermediate-response-v1",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema_version",
+  "case_id",
+  "condition",
+  "payload_sha256",
+  "instructions_sha256",
+  "fields"
+ ],
+ "properties": {
+  "schema_version": {
+   "type": "string",
+   "const": "phase2k-full-transcript-ablation-intermediate-response-v1"
+  },
+  "case_id": {
+   "type": "string",
+   "pattern": "^p2k:case:[0-9]{4}$"
+  },
+  "condition": {
+   "type": "string",
+   "enum": [
+    "A",
+    "B"
+   ]
+  },
+  "payload_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "instructions_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "fields": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "actors_entities",
+    "reference_bindings",
+    "abilities_resources",
+    "events_actions",
+    "states",
+    "conditions",
+    "recommended_advice",
+    "consequences_outcomes",
+    "explicit_relationships",
+    "uncertainty_unresolved",
+    "supporting_source_spans"
+   ],
+   "properties": {
+    "explicit_relationships": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references",
+       "relation_type"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       },
+       "relation_type": {
+        "type": "string",
+        "enum": [
+         "ACTOR",
+         "TARGET",
+         "USES",
+         "AFFECTS",
+         "CAUSES",
+         "ENABLES",
+         "PREVENTS",
+         "REQUIRES",
+         "CONDITION",
+         "RESULT",
+         "BEFORE",
+         "AFTER",
+         "UNTIL",
+         "NEGATES",
+         "REFERS_TO"
+        ]
+       }
+      }
+     }
+    },
+    "actors_entities": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "reference_bindings": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "abilities_resources": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "events_actions": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "states": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "conditions": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "recommended_advice": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "consequences_outcomes": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "uncertainty_unresolved": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "supporting_source_spans": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "extraction_text",
+       "resolution_status",
+       "source_references"
+      ],
+      "properties": {
+       "extraction_text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+       },
+       "resolution_status": {
+        "type": "string",
+        "enum": [
+         "literal_explicit",
+         "context_resolved",
+         "vocabulary_supported",
+         "unresolved"
+        ]
+       },
+       "source_references": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "quote",
+          "occurrence_index"
+         ],
+         "properties": {
+          "quote": {
+           "type": "string",
+           "minLength": 1
+          },
+          "occurrence_index": {
+           "type": "integer",
+           "minimum": 0
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

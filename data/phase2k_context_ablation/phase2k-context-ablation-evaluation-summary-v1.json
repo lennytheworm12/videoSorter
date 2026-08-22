@@ -1,0 +1,256 @@
+{
+ "content_sha256": "b1c4886bcdaa0e27f1e09944d99b6f741672a50b7b57df89cfe5c42c403eb5fa",
+ "schema_version": "phase2k-full-transcript-ablation-evaluation-summary-v1",
+ "purpose": "Deterministic aggregate evaluation of the Phase 2K full-transcript ablation.",
+ "review_packet_sha256": "dc0fde5d27bffd253ba5328150285cbe0b7edcfa40d8f30165c88b064b8b9109",
+ "completed_reviews_sha256": "749f615a3d519a1ecb1cef4720797e78f3de82864be887d8d25dde3517037e26",
+ "reviewer_identity": "0x-alpha-free (opencode-go), session of 2026-08-22; scoring performed by the implementing agent as reviewer of record",
+ "total_paired_field_judgments": 110,
+ "per_field": {
+  "actors_entities": {
+   "A_strict_successes": 3,
+   "B_strict_successes": 10,
+   "A_rate": 0.3,
+   "B_rate": 1.0,
+   "net_B_minus_A": 7
+  },
+  "reference_bindings": {
+   "A_strict_successes": 2,
+   "B_strict_successes": 10,
+   "A_rate": 0.2,
+   "B_rate": 1.0,
+   "net_B_minus_A": 8
+  },
+  "abilities_resources": {
+   "A_strict_successes": 6,
+   "B_strict_successes": 10,
+   "A_rate": 0.6,
+   "B_rate": 1.0,
+   "net_B_minus_A": 4
+  },
+  "events_actions": {
+   "A_strict_successes": 8,
+   "B_strict_successes": 9,
+   "A_rate": 0.8,
+   "B_rate": 0.9,
+   "net_B_minus_A": 1
+  },
+  "states": {
+   "A_strict_successes": 6,
+   "B_strict_successes": 10,
+   "A_rate": 0.6,
+   "B_rate": 1.0,
+   "net_B_minus_A": 4
+  },
+  "conditions": {
+   "A_strict_successes": 10,
+   "B_strict_successes": 10,
+   "A_rate": 1.0,
+   "B_rate": 1.0,
+   "net_B_minus_A": 0
+  },
+  "recommended_advice": {
+   "A_strict_successes": 8,
+   "B_strict_successes": 10,
+   "A_rate": 0.8,
+   "B_rate": 1.0,
+   "net_B_minus_A": 2
+  },
+  "consequences_outcomes": {
+   "A_strict_successes": 8,
+   "B_strict_successes": 10,
+   "A_rate": 0.8,
+   "B_rate": 1.0,
+   "net_B_minus_A": 2
+  },
+  "explicit_relationships": {
+   "A_strict_successes": 9,
+   "B_strict_successes": 10,
+   "A_rate": 0.9,
+   "B_rate": 1.0,
+   "net_B_minus_A": 1
+  },
+  "uncertainty_unresolved": {
+   "A_strict_successes": 10,
+   "B_strict_successes": 10,
+   "A_rate": 1.0,
+   "B_rate": 1.0,
+   "net_B_minus_A": 0
+  },
+  "supporting_source_spans": {
+   "A_strict_successes": 10,
+   "B_strict_successes": 10,
+   "A_rate": 1.0,
+   "B_rate": 1.0,
+   "net_B_minus_A": 0
+  }
+ },
+ "hypothesis_focus_net": {
+  "actors_entities": 7,
+  "abilities_resources": 4,
+  "events_actions": 1,
+  "conditions": 0,
+  "explicit_relationships": 1
+ },
+ "per_target": [
+  {
+   "case_id": "p2k:case:0001",
+   "A_strict_successes": 9,
+   "B_strict_successes": 10,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "B_ONLY_SUCCESS",
+    "events_actions": "A_ONLY_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0002",
+   "A_strict_successes": 8,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "BOTH_SUCCESS",
+    "abilities_resources": "B_ONLY_SUCCESS",
+    "events_actions": "B_ONLY_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0003",
+   "A_strict_successes": 10,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "BOTH_SUCCESS",
+    "abilities_resources": "BOTH_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0004",
+   "A_strict_successes": 7,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "BOTH_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0005",
+   "A_strict_successes": 8,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "BOTH_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0006",
+   "A_strict_successes": 6,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "BOTH_SUCCESS",
+    "abilities_resources": "B_ONLY_SUCCESS",
+    "events_actions": "B_ONLY_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0007",
+   "A_strict_successes": 9,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "BOTH_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0008",
+   "A_strict_successes": 5,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "B_ONLY_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "B_ONLY_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0009",
+   "A_strict_successes": 9,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "BOTH_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  },
+  {
+   "case_id": "p2k:case:0010",
+   "A_strict_successes": 9,
+   "B_strict_successes": 11,
+   "verdict": "B_STRICTLY_WINS",
+   "focus_field_results": {
+    "actors_entities": "B_ONLY_SUCCESS",
+    "abilities_resources": "BOTH_SUCCESS",
+    "events_actions": "BOTH_SUCCESS",
+    "conditions": "BOTH_SUCCESS",
+    "explicit_relationships": "BOTH_SUCCESS"
+   }
+  }
+ ],
+ "target_verdict_counts": {
+  "B_STRICTLY_WINS": 10,
+  "A_STRICTLY_WINS": 0,
+  "TIE": 0
+ },
+ "unsupported_inference_counts": {
+  "A": {
+   "NONE": 110,
+   "MINOR": 0,
+   "MAJOR": 0
+  },
+  "B": {
+   "NONE": 110,
+   "MINOR": 0,
+   "MAJOR": 0
+  }
+ },
+ "grounding_failures": {
+  "A": 0,
+  "B": 0
+ },
+ "materiality_criteria": {
+  "net_strict_success_margin_at_least_15_percent": true,
+  "b_strictly_wins_at_least_4_targets": true,
+  "a_strictly_wins_at_most_2_targets": true,
+  "no_major_unsupported_increase_in_b": true,
+  "focus_improvement_in_at_least_3_of_5_focus_fields": true
+ },
+ "decision_gate": "ISOLATED_BRONZE_WAS_THE_WRONG_SEMANTIC_UNIT"
+}

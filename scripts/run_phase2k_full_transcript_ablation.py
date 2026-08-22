@@ -49,10 +49,11 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pipeline.phase2j_context_ablation import (
+    _reject_constant,
+    _unique_pairs,
     canonical_sha256,
     file_sha256,
     load_json_strict,
-    load_json_strict_text,
     load_lexical_vocabulary,
     normalize_path_locator,
     open_transcript_db,
@@ -168,8 +169,11 @@ def extract_response_json(text: str) -> dict:
     """Deterministic strict parse of a raw model response.
 
     The response must be a single JSON object.  One optional markdown fence
-    pair (```json ... ``` or ``` ... ```) is stripped before strict parsing;
-    anything else fails closed.
+    pair (```json ... ``` or ``` ... ```) is stripped before parsing.
+    Literal control characters inside strings are tolerated (``strict=False``)
+    because ASR-derived quotes frequently contain them; duplicate keys and
+    non-finite constants are still rejected, and every downstream semantic
+    constraint remains enforced.
     """
     stripped = text.strip()
     if stripped.startswith("```"):
@@ -182,7 +186,17 @@ def extract_response_json(text: str) -> dict:
         if not stripped.endswith("```"):
             raise ArtifactError("response fence is unterminated")
         stripped = stripped[first_newline + 1:-len("```")].strip()
-    body = load_json_strict_text(stripped, label="model response")
+    try:
+        body = json.loads(
+            stripped,
+            object_pairs_hook=_unique_pairs("model response"),
+            parse_constant=_reject_constant,
+            strict=False,
+        )
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise ArtifactError(f"model response JSON is malformed: {exc}") from exc
+    if not isinstance(body, dict):
+        raise ArtifactError("model response must be a JSON object")
     return body
 
 
@@ -489,7 +503,8 @@ def _execute_call(context: RunContext, call: dict) -> None:
         )
     stdout_text = proc.stdout.decode("utf-8")
     parsed = extract_response_json(stdout_text)
-    validate_intermediate_response(
+    # Full import-time grounding check before recording anything.
+    import_intermediate_response(
         parsed, case_id=case_id, condition=condition, payload=payload,
     )
     raw_file = context.raw_path(case_id, condition)
@@ -511,7 +526,12 @@ def _execute_call(context: RunContext, call: dict) -> None:
 
 
 def _validated_existing_call(context: RunContext, call: dict) -> bool:
-    """Return True when the recorded completed call remains valid evidence."""
+    """Return True when the recorded completed call remains valid evidence.
+
+    Validation includes full import-time quote resolution, so a recorded
+    response whose citations do not byte-resolve against its source is
+    treated as invalid and must be re-executed with ``--force``.
+    """
     if call.get("status") != "completed":
         return False
     payload = _find_payload(
@@ -544,10 +564,7 @@ def _validated_existing_call(context: RunContext, call: dict) -> bool:
     stdout_text = raw_file.read_text(encoding="utf-8")
     try:
         parsed = extract_response_json(stdout_text)
-        payload = _find_payload(
-            context.frozen["payloads"], call["case_id"], call["condition"],
-        )
-        validate_intermediate_response(
+        import_intermediate_response(
             parsed,
             case_id=call["case_id"],
             condition=call["condition"],
@@ -557,7 +574,8 @@ def _validated_existing_call(context: RunContext, call: dict) -> bool:
         if not context.force:
             raise SystemExit(
                 f"recorded raw response for {call['case_id']}/"
-                f"{call['condition']} no longer validates; use --force",
+                f"{call['condition']} fails citation grounding; rerun with "
+                "--force to replace exactly this call",
             )
         return False
     return True
@@ -581,9 +599,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     context = RunContext(run_dir=run_dir, frozen=frozen, force=args.force)
     pending_calls = []
     for call in manifest["calls"]:
-        if _validated_existing_call(context, call):
+        is_completed = call.get("status") == "completed"
+        valid = _validated_existing_call(context, call)
+        if valid:
             continue
-        if not args.force and call.get("status") == "completed":
+        if is_completed and not args.force:
             continue
         pending_calls.append(dict(call))
     if not pending_calls:
